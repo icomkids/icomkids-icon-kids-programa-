@@ -65,7 +65,7 @@ export function QuickRegisterDialog({ onSubmit }: Props) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-[#FFA500] text-slate-900 hover:bg-[#FFA500]/90">
+        <Button className="bg-[#F39230] text-slate-900 hover:bg-[#F39230]/90">
           <Plus className="size-4" /> Novo cadastro
         </Button>
       </DialogTrigger>
@@ -117,7 +117,7 @@ export function QuickRegisterDialog({ onSubmit }: Props) {
                   onClick={() => setMinutes(m)}
                   className={`rounded-full border px-3 py-1 text-sm font-semibold transition ${
                     minutes === m
-                      ? "border-[#1E90FF] bg-[#1E90FF] text-white"
+                      ? "border-[#1E78DC] bg-[#1E78DC] text-white"
                       : "border-border bg-background hover:bg-muted"
                   }`}
                 >
@@ -154,7 +154,7 @@ export function QuickRegisterDialog({ onSubmit }: Props) {
                     onClick={() => setPaymentMethod(m)}
                     className={`flex-1 rounded-md border px-2 py-1.5 text-xs font-semibold uppercase transition ${
                       paymentMethod === m
-                        ? "border-[#1E90FF] bg-[#1E90FF] text-white"
+                        ? "border-[#1E78DC] bg-[#1E78DC] text-white"
                         : "border-border bg-background hover:bg-muted"
                     }`}
                   >
@@ -175,7 +175,7 @@ export function QuickRegisterDialog({ onSubmit }: Props) {
             </Button>
             <Button
               type="submit"
-              className="bg-[#1E90FF] text-white hover:bg-[#1E90FF]/90"
+              className="bg-[#1E78DC] text-white hover:bg-[#1E78DC]/90"
               disabled={submitting}
             >
               {submitting ? "Iniciando..." : "Iniciar tempo"}

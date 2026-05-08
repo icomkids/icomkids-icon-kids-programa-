@@ -9,10 +9,10 @@ const labels: Record<DerivedSessionStatus, string> = {
 };
 
 const styles: Record<DerivedSessionStatus, { background: string; color: string }> = {
-  active: { background: "#7CFC00", color: "#0f172a" },
-  ending_soon: { background: "#FFD700", color: "#0f172a" },
-  expired: { background: "#FF1493", color: "#ffffff" },
-  paused: { background: "#00BCD4", color: "#0f172a" },
+  active: { background: "#A6CD3F", color: "#0f172a" },
+  ending_soon: { background: "#F4B73F", color: "#0f172a" },
+  expired: { background: "#EA4D8E", color: "#ffffff" },
+  paused: { background: "#3CB4E0", color: "#0f172a" },
   ended: { background: "#94a3b8", color: "#ffffff" },
 };
 

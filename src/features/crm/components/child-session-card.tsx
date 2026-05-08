@@ -15,10 +15,10 @@ interface Props {
 }
 
 const ringColor: Record<DerivedSessionStatus, string> = {
-  active: "#7CFC00",
-  ending_soon: "#FFD700",
-  expired: "#FF1493",
-  paused: "#00BCD4",
+  active: "#A6CD3F",
+  ending_soon: "#F4B73F",
+  expired: "#EA4D8E",
+  paused: "#3CB4E0",
   ended: "#94a3b8",
 };
 
@@ -43,7 +43,7 @@ export function ChildSessionCard({ session, onPause, onResume, onEnd }: Props) {
             {session.child.photo_url ? (
               <AvatarImage src={session.child.photo_url} alt={session.child.full_name} />
             ) : null}
-            <AvatarFallback className="bg-[#1E90FF] text-white">
+            <AvatarFallback className="bg-[#1E78DC] text-white">
               {initial || <User className="size-5" />}
             </AvatarFallback>
           </Avatar>
@@ -64,7 +64,7 @@ export function ChildSessionCard({ session, onPause, onResume, onEnd }: Props) {
           </p>
           <p
             className="font-mono text-3xl font-bold tabular-nums"
-            style={{ color: ringColor[status] === "#FFD700" ? "#0f172a" : ringColor[status] }}
+            style={{ color: ringColor[status] === "#F4B73F" ? "#0f172a" : ringColor[status] }}
           >
             {formatCountdown(remaining)}
           </p>
@@ -77,7 +77,7 @@ export function ChildSessionCard({ session, onPause, onResume, onEnd }: Props) {
           {status === "paused" ? (
             <Button
               size="sm"
-              className="flex-1 bg-[#7CFC00] text-slate-900 hover:bg-[#7CFC00]/90"
+              className="flex-1 bg-[#A6CD3F] text-slate-900 hover:bg-[#A6CD3F]/90"
               onClick={() => onResume(session.id)}
             >
               <Play className="size-4" /> Retomar
@@ -95,7 +95,7 @@ export function ChildSessionCard({ session, onPause, onResume, onEnd }: Props) {
           )}
           <Button
             size="sm"
-            className="flex-1 bg-[#FF1493] text-white hover:bg-[#FF1493]/90"
+            className="flex-1 bg-[#EA4D8E] text-white hover:bg-[#EA4D8E]/90"
             onClick={() => onEnd(session.id)}
           >
             <Square className="size-4" /> Encerrar

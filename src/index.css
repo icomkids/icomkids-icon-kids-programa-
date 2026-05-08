@@ -5,16 +5,16 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Icon Kids — brand palette as Tailwind v4 design tokens.
- * Per master spec, all UI must use these colors rigorously. */
+/* iCOM Kids — brand palette derived from the official logo.
+ * All UI must use these colors rigorously. */
 @theme {
-  --color-brand-blue: #1E90FF;
-  --color-brand-orange: #FFA500;
-  --color-brand-pink: #FF1493;
-  --color-brand-lime: #7CFC00;
-  --color-brand-cyan: #00BCD4;
-  --color-brand-yellow: #FFD700;
-  --color-brand-purple: #8A2BE2;
+  --color-brand-blue: #1E78DC;
+  --color-brand-orange: #F39230;
+  --color-brand-pink: #EA4D8E;
+  --color-brand-lime: #A6CD3F;
+  --color-brand-cyan: #3CB4E0;
+  --color-brand-yellow: #F4B73F;
+  --color-brand-purple: #7B36BF;
 
   --font-sans: "Nunito", system-ui, "Segoe UI", Roboto, sans-serif;
   --font-display: "Fredoka", system-ui, "Segoe UI", Roboto, sans-serif;
@@ -86,7 +86,7 @@ body {
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
   /* Brand: Azul Principal */
-  --primary: #1E90FF;
+  --primary: #1E78DC;
   --primary-foreground: #ffffff;
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
@@ -95,26 +95,26 @@ body {
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   /* Brand: Rosa Choque para alertas / destructive */
-  --destructive: #FF1493;
+  --destructive: #EA4D8E;
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   /* Brand: focus ring usa azul principal */
-  --ring: #1E90FF;
+  --ring: #1E78DC;
   /* Brand palette nos charts para dashboards consistentes */
-  --chart-1: #1E90FF;
-  --chart-2: #FFA500;
-  --chart-3: #FF1493;
-  --chart-4: #00BCD4;
-  --chart-5: #8A2BE2;
+  --chart-1: #1E78DC;
+  --chart-2: #F39230;
+  --chart-3: #EA4D8E;
+  --chart-4: #3CB4E0;
+  --chart-5: #7B36BF;
   --radius: 0.75rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: #1E90FF;
+  --sidebar-primary: #1E78DC;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: oklch(0.97 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: #1E90FF;
+  --sidebar-ring: #1E78DC;
 }
 
 .dark {
@@ -124,7 +124,7 @@ body {
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: #1E90FF;
+  --primary: #1E78DC;
   --primary-foreground: #ffffff;
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
@@ -132,23 +132,23 @@ body {
   --muted-foreground: oklch(0.708 0 0);
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
-  --destructive: #FF1493;
+  --destructive: #EA4D8E;
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: #1E90FF;
-  --chart-1: #1E90FF;
-  --chart-2: #FFA500;
-  --chart-3: #FF1493;
-  --chart-4: #00BCD4;
-  --chart-5: #8A2BE2;
+  --ring: #1E78DC;
+  --chart-1: #1E78DC;
+  --chart-2: #F39230;
+  --chart-3: #EA4D8E;
+  --chart-4: #3CB4E0;
+  --chart-5: #7B36BF;
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: #1E90FF;
+  --sidebar-primary: #1E78DC;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: oklch(0.269 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: #1E90FF;
+  --sidebar-ring: #1E78DC;
 }
 
 @layer base {

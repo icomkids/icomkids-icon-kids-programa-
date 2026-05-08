@@ -13,7 +13,7 @@ export default function PlaceholderPage({ title, module, description, scope }: P
       <PageHeader title={title} description={description} />
       <div className="space-y-4 p-6">
         <div className="rounded-xl border border-border bg-card p-6">
-          <p className="text-xs font-bold uppercase tracking-widest text-[#1E90FF]">
+          <p className="text-xs font-bold uppercase tracking-widest text-[#1E78DC]">
             Modulo {module.toString().padStart(2, "0")}
           </p>
           <h2 className="mt-1 text-xl font-bold">Em construcao</h2>

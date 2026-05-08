@@ -36,25 +36,24 @@ export default function TelaoPage() {
 
   const accent =
     status === "ending_soon"
-      ? "#FFD700"
+      ? "#F4B73F"
       : status === "paused"
-      ? "#00BCD4"
+      ? "#3CB4E0"
       : status === "expired"
-      ? "#FF1493"
-      : "#7CFC00";
+      ? "#EA4D8E"
+      : "#A6CD3F";
 
   return (
     <div
       className="flex min-h-svh flex-col text-white"
       style={{
         backgroundImage:
-          "linear-gradient(135deg, #1E90FF 0%, #8A2BE2 50%, #FF1493 100%)",
+          "linear-gradient(135deg, #1E78DC 0%, #7B36BF 50%, #EA4D8E 100%)",
       }}
     >
       <header className="flex items-center justify-between px-10 pt-6">
-        <div className="flex items-center gap-3">
-          <Logo size={42} />
-          <p className="text-2xl font-extrabold tracking-tight">Icon Kids</p>
+        <div className="rounded-xl bg-white/95 px-4 py-2 shadow-lg">
+          <Logo height={56} />
         </div>
         <p className="text-sm font-medium opacity-80">
           {visible.length} {visible.length === 1 ? "crianca" : "criancas"} no parque

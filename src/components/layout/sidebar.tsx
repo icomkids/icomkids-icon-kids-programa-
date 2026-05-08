@@ -50,14 +50,11 @@ const items: Item[] = [
 export function Sidebar() {
   return (
     <aside className="hidden h-svh w-64 shrink-0 flex-col border-r border-border bg-card md:flex">
-      <div className="flex items-center gap-2 px-4 py-4">
-        <Logo size={36} />
-        <div className="leading-tight">
-          <p className="text-base font-bold">Icon Kids</p>
-          <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
-            Gestao do parque
-          </p>
-        </div>
+      <div className="flex flex-col items-center gap-1 border-b border-border px-4 pt-5 pb-4">
+        <Logo height={64} />
+        <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-muted-foreground">
+          Gestao do parque
+        </p>
       </div>
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 pb-4">
         {items.map((it) => (
@@ -67,7 +64,7 @@ export function Sidebar() {
             className={({ isActive }) =>
               `group flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition ${
                 isActive
-                  ? "bg-[#1E90FF] text-white"
+                  ? "bg-[#1E78DC] text-white"
                   : "text-foreground hover:bg-muted"
               }`
             }
@@ -92,9 +89,8 @@ export function Sidebar() {
 
 export function MobileNavBar() {
   return (
-    <div className="flex items-center gap-2 border-b border-border bg-card px-4 py-3 md:hidden">
-      <Logo size={28} />
-      <p className="font-bold">Icon Kids</p>
+    <div className="flex items-center justify-center border-b border-border bg-card px-4 py-3 md:hidden">
+      <Logo height={36} />
     </div>
   );
 }

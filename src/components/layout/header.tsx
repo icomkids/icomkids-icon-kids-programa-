@@ -22,7 +22,7 @@ export function PageHeader({ title, description, actions }: Props) {
         {actions}
         <div className="hidden items-center gap-2 rounded-md border border-border bg-background px-3 py-1.5 text-xs sm:flex">
           {isMock ? (
-            <span className="rounded-full bg-[#FFD700] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-900">
+            <span className="rounded-full bg-[#F4B73F] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-900">
               demo
             </span>
           ) : null}

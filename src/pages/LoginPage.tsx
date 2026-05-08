@@ -39,13 +39,14 @@ export default function LoginPage() {
     >
       <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-8 shadow-xl">
         <div className="mb-6 flex flex-col items-center gap-2 text-center">
-          <Logo size={56} />
-          <h1 className="text-xl font-bold">Icon Kids</h1>
-          <p className="text-xs text-muted-foreground">Sistema de gestao do parque</p>
+          <Logo height={96} />
+          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
+            Sistema de gestao do parque
+          </p>
         </div>
 
         {auth.isMock ? (
-          <div className="mb-4 rounded-md border border-[#FFD700] bg-[#FFD700]/15 px-3 py-2 text-xs text-slate-800">
+          <div className="mb-4 rounded-md border border-[#F4B73F] bg-[#F4B73F]/15 px-3 py-2 text-xs text-slate-800">
             <strong>Modo demo:</strong> qualquer email/senha entra. Aplique a migration do Supabase
             para ativar o login real.
           </div>
@@ -75,12 +76,12 @@ export default function LoginPage() {
             />
           </div>
           {error ? (
-            <p className="text-sm font-medium text-[#FF1493]">{error}</p>
+            <p className="text-sm font-medium text-[#EA4D8E]">{error}</p>
           ) : null}
           <Button
             type="submit"
             disabled={submitting}
-            className="w-full bg-[#1E90FF] text-white hover:bg-[#1E90FF]/90"
+            className="w-full bg-[#1E78DC] text-white hover:bg-[#1E78DC]/90"
           >
             {submitting ? "Entrando..." : "Entrar"}
           </Button>

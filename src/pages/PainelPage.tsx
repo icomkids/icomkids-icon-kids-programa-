@@ -34,7 +34,7 @@ export default function PainelPage() {
 
       <div className="space-y-6 p-6">
         {isUsingMockData ? (
-          <div className="rounded-md border border-[#FFD700] bg-[#FFD700]/15 px-4 py-2 text-xs">
+          <div className="rounded-md border border-[#F4B73F] bg-[#F4B73F]/15 px-4 py-2 text-xs">
             <strong>Modo demo:</strong> dados simulados. Aplique a migration no Supabase
             (<code>npx supabase db push</code>) e mude <code>VITE_USE_MOCK_DATA=false</code> no
             <code> .env.local</code> para usar o banco real.
@@ -42,14 +42,14 @@ export default function PainelPage() {
         ) : null}
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <SummaryTile label="Ativos" value={counts.active} color="#7CFC00" />
-          <SummaryTile label="Acabando" value={counts.ending_soon} color="#FFD700" />
-          <SummaryTile label="Esgotados" value={counts.expired} color="#FF1493" />
-          <SummaryTile label="Pausados" value={counts.paused} color="#00BCD4" />
+          <SummaryTile label="Ativos" value={counts.active} color="#A6CD3F" />
+          <SummaryTile label="Acabando" value={counts.ending_soon} color="#F4B73F" />
+          <SummaryTile label="Esgotados" value={counts.expired} color="#EA4D8E" />
+          <SummaryTile label="Pausados" value={counts.paused} color="#3CB4E0" />
         </div>
 
         {error ? (
-          <div className="rounded-md border border-[#FF1493] bg-[#FF1493]/10 px-4 py-3 text-sm text-[#FF1493]">
+          <div className="rounded-md border border-[#EA4D8E] bg-[#EA4D8E]/10 px-4 py-3 text-sm text-[#EA4D8E]">
             {error}
           </div>
         ) : null}
