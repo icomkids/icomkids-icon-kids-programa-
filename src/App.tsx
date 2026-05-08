@@ -6,6 +6,8 @@ import CaixaPage from "@/pages/CaixaPage";
 import CheckoutPage from "@/pages/CheckoutPage";
 import DashboardPage from "@/pages/DashboardPage";
 import LoginPage from "@/pages/LoginPage";
+import NpsDashboardPage from "@/pages/NpsDashboardPage";
+import NpsResponsePage from "@/pages/NpsResponsePage";
 import PainelPage from "@/pages/PainelPage";
 import PartnersPage from "@/pages/PartnersPage";
 import PDVPage from "@/pages/PDVPage";
@@ -22,6 +24,7 @@ function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/telao" element={<TelaoPage />} />
+          <Route path="/nps/:token" element={<NpsResponsePage />} />
           <Route
             element={
               <RequireAuth>
@@ -119,19 +122,7 @@ function App() {
                 />
               }
             />
-            <Route
-              path="/nps"
-              element={
-                <PlaceholderPage
-                  title="NPS automatico"
-                  module={16}
-                  scope={[
-                    "Pesquisa pos check-out via WhatsApp",
-                    "Coleta de feedback e depoimentos",
-                  ]}
-                />
-              }
-            />
+            <Route path="/nps" element={<NpsDashboardPage />} />
             <Route
               path="/equipe"
               element={

@@ -245,6 +245,72 @@ export type Database = {
           },
         ]
       }
+      nps_surveys: {
+        Row: {
+          child_name: string | null
+          classification:
+            | Database["public"]["Enums"]["nps_classification"]
+            | null
+          comment: string | null
+          created_at: string
+          guardian_name: string | null
+          guardian_phone: string | null
+          id: string
+          responded_at: string | null
+          score: number | null
+          sent_at: string | null
+          session_id: string | null
+          token: string
+        }
+        Insert: {
+          child_name?: string | null
+          classification?:
+            | Database["public"]["Enums"]["nps_classification"]
+            | null
+          comment?: string | null
+          created_at?: string
+          guardian_name?: string | null
+          guardian_phone?: string | null
+          id?: string
+          responded_at?: string | null
+          score?: number | null
+          sent_at?: string | null
+          session_id?: string | null
+          token?: string
+        }
+        Update: {
+          child_name?: string | null
+          classification?:
+            | Database["public"]["Enums"]["nps_classification"]
+            | null
+          comment?: string | null
+          created_at?: string
+          guardian_name?: string | null
+          guardian_phone?: string | null
+          id?: string
+          responded_at?: string | null
+          score?: number | null
+          sent_at?: string | null
+          session_id?: string | null
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nps_surveys_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nps_surveys_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions_with_timing"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partners: {
         Row: {
           active: boolean
@@ -868,9 +934,25 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      get_nps_by_token: {
+        Args: { p_token: string }
+        Returns: {
+          child_name: string
+          comment: string
+          guardian_name: string
+          id: string
+          responded_at: string
+          score: number
+        }[]
+      }
+      submit_nps_response: {
+        Args: { p_comment?: string; p_score: number; p_token: string }
+        Returns: undefined
+      }
     }
     Enums: {
       message_status: "queued" | "sent" | "failed"
+      nps_classification: "detractor" | "passive" | "promoter"
       session_status: "active" | "paused" | "ended"
       subscription_status: "active" | "paused" | "canceled" | "expired"
       user_role: "owner" | "staff" | "partner" | "customer"
@@ -1006,6 +1088,7 @@ export const Constants = {
   public: {
     Enums: {
       message_status: ["queued", "sent", "failed"],
+      nps_classification: ["detractor", "passive", "promoter"],
       session_status: ["active", "paused", "ended"],
       subscription_status: ["active", "paused", "canceled", "expired"],
       user_role: ["owner", "staff", "partner", "customer"],

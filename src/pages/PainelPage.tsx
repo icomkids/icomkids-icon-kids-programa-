@@ -9,11 +9,55 @@ import {
 } from "@/features/crm/hooks/use-active-sessions";
 import { derivedStatus } from "@/features/crm/lib/session-timing";
 import { isUsingMockData } from "@/features/crm/lib/sessions-repo";
+import { sendWhatsApp } from "@/features/messaging/lib/uazapi";
+import { npsRepo } from "@/features/nps/lib/nps-repo";
+import type { ActiveSession } from "@/features/crm/types";
+
+/**
+ * After a session is ended, auto-create an NPS survey + send the WhatsApp
+ * invite. Runs in the background and silently swallows any failure so it
+ * never blocks the operator's flow.
+ */
+async function fireNpsFollowUp(session: ActiveSession) {
+  if (!session.guardian || !session.guardian.phone) return;
+  try {
+    const survey = await npsRepo.create({
+      session_id: session.id,
+      guardian_name: session.guardian.full_name,
+      guardian_phone: session.guardian.phone,
+      child_name: session.child.full_name,
+    });
+    const link = `${window.location.origin}/nps/${survey.token}`;
+    const result = await sendWhatsApp({
+      phone: session.guardian.phone,
+      template_key: "nps_survey",
+      variables: {
+        nome: session.guardian.full_name,
+        crianca: session.child.full_name,
+        link,
+      },
+      event_type: "nps_survey",
+      context: { session_id: session.id, survey_id: survey.id },
+    });
+    if (result.ok) {
+      await npsRepo.markSent(survey.id);
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn("NPS follow-up failed:", e);
+  }
+}
 
 export default function PainelPage() {
   useTicker(1000);
   const { sessions, loading, error, registerAndStart, pause, resume, end } =
     useActiveSessions();
+
+  const handleEnd = async (id: string) => {
+    const target = sessions.find((s) => s.id === id);
+    await end(id);
+    if (target) void fireNpsFollowUp(target);
+  };
 
   const counts = useMemo(() => {
     const summary = { active: 0, ending_soon: 0, expired: 0, paused: 0 };
@@ -70,7 +114,7 @@ export default function PainelPage() {
                 session={s}
                 onPause={(id) => void pause(id)}
                 onResume={(id) => void resume(id)}
-                onEnd={(id) => void end(id)}
+                onEnd={(id) => void handleEnd(id)}
               />
             ))}
           </div>
