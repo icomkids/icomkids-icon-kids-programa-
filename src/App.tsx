@@ -1,136 +1,235 @@
-import { Button } from "@/components/ui/button";
-
-const brandSwatches = [
-  { name: "Azul Principal", hex: "#1E90FF", role: "Texto, ícones, destaque (iCOM, K)" },
-  { name: "Laranja", hex: "#FFA500", role: "Botões, destaque (I)" },
-  { name: "Rosa Choque", hex: "#FF1493", role: "Interação, alertas (D, coração)" },
-  { name: "Verde Limão", hex: "#7CFC00", role: "Sucesso (S)" },
-  { name: "Azul Claro", hex: "#00BCD4", role: "Detalhes (estrela, pontos)" },
-  { name: "Amarelo", hex: "#FFD700", role: "Detalhes, raios" },
-  { name: "Roxo", hex: "#8A2BE2", role: "Linhas decorativas, contraste" },
-];
-
-const setupStatus = [
-  { label: "Vite + React + TypeScript", status: "ok" as const },
-  { label: "Tailwind v4 + paleta da marca", status: "ok" as const },
-  { label: "shadcn/ui", status: "ok" as const },
-  { label: "GitHub (icomkids)", status: "ok" as const },
-  { label: "Supabase (cliente + .env)", status: "pending" as const },
-  { label: "Schema do CRM (Módulo 1)", status: "pending" as const },
-];
-
-function StatusBadge({ status }: { status: "ok" | "pending" | "warn" }) {
-  const map = {
-    ok: { label: "Pronto", color: "#7CFC00", text: "#0f172a" },
-    pending: { label: "Pendente", color: "#FFD700", text: "#0f172a" },
-    warn: { label: "Atenção", color: "#FF1493", text: "#ffffff" },
-  };
-  const s = map[status];
-  return (
-    <span
-      className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
-      style={{ background: s.color, color: s.text }}
-    >
-      {s.label}
-    </span>
-  );
-}
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { AppShell } from "@/components/layout/app-shell";
+import { AuthProvider } from "@/features/auth/auth-context";
+import { RequireAuth } from "@/features/auth/require-auth";
+import LoginPage from "@/pages/LoginPage";
+import PainelPage from "@/pages/PainelPage";
+import PlaceholderPage from "@/pages/PlaceholderPage";
+import TelaoPage from "@/pages/TelaoPage";
 
 function App() {
   return (
-    <div className="min-h-svh bg-background text-foreground">
-      <header
-        className="border-b border-border"
-        style={{
-          backgroundImage:
-            "linear-gradient(135deg, #1E90FF 0%, #00BCD4 35%, #FF1493 100%)",
-        }}
-      >
-        <div className="mx-auto max-w-6xl px-6 py-10 text-white">
-          <p className="text-sm font-semibold uppercase tracking-widest opacity-90">
-            Icon Kids
-          </p>
-          <h1 className="mt-2 text-4xl font-bold sm:text-5xl">
-            Sistema de gestão do parque
-          </h1>
-          <p className="mt-3 max-w-2xl text-base opacity-95">
-            CRM, telão, caixa, parceiros, assinaturas, eventos, mídia, segurança,
-            PDV, lista de espera, dashboard, fidelidade, inventário, NPS e equipe
-            — em um único painel.
-          </p>
-          <div className="mt-6 flex gap-3">
-            <Button className="bg-white text-[#1E90FF] hover:bg-white/90">
-              Abrir CRM
-            </Button>
-            <Button
-              variant="outline"
-              className="border-white/40 bg-transparent text-white hover:bg-white/10 hover:text-white"
-            >
-              Documentação
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-6xl px-6 py-10 space-y-10">
-        <section>
-          <h2 className="text-2xl font-bold">Setup do projeto</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Status das fundações antes de iniciar o Módulo 1 (CRM Simples).
-          </p>
-          <ul className="mt-4 grid gap-2 sm:grid-cols-2">
-            {setupStatus.map((item) => (
-              <li
-                key={item.label}
-                className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3"
-              >
-                <span className="text-sm font-medium">{item.label}</span>
-                <StatusBadge status={item.status} />
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section>
-          <h2 className="text-2xl font-bold">Paleta da marca</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Toda interface deve usar rigorosamente estas cores.
-          </p>
-          <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {brandSwatches.map((c) => (
-              <li
-                key={c.hex}
-                className="overflow-hidden rounded-lg border border-border bg-card"
-              >
-                <div className="h-20 w-full" style={{ background: c.hex }} />
-                <div className="px-4 py-3">
-                  <p className="text-sm font-semibold">{c.name}</p>
-                  <p className="font-mono text-xs text-muted-foreground">
-                    {c.hex}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">{c.role}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section>
-          <h2 className="text-2xl font-bold">Próximos passos</h2>
-          <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm">
-            <li>Conectar cliente Supabase via <code>.env.local</code></li>
-            <li>Aplicar migration do schema do CRM (crianças, sessões, responsáveis) com RLS</li>
-            <li>Implementar painel ativo de crianças com timer em tempo real</li>
-          </ol>
-        </section>
-      </main>
-
-      <footer className="border-t border-border">
-        <div className="mx-auto max-w-6xl px-6 py-6 text-xs text-muted-foreground">
-          Icon Kids · build inicial
-        </div>
-      </footer>
-    </div>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/telao" element={<TelaoPage />} />
+          <Route
+            element={
+              <RequireAuth>
+                <AppShell />
+              </RequireAuth>
+            }
+          >
+            <Route index element={<Navigate to="/painel" replace />} />
+            <Route path="/painel" element={<PainelPage />} />
+            <Route
+              path="/caixa"
+              element={
+                <PlaceholderPage
+                  title="Caixa"
+                  module={3}
+                  description="Vendas, formas de pagamento e relatorios diarios."
+                  scope={[
+                    "Registro de venda (nome, tempo, valor)",
+                    "PIX, dinheiro, cartao",
+                    "Faturamento do dia, ticket medio, # de criancas",
+                  ]}
+                />
+              }
+            />
+            <Route
+              path="/parceiros"
+              element={
+                <PlaceholderPage
+                  title="Portal de Parceiros"
+                  module={4}
+                  scope={[
+                    "Acompanhamento de criancas trazidas pela parceria",
+                    "Relatorios financeiros + comissao",
+                  ]}
+                />
+              }
+            />
+            <Route
+              path="/vendas"
+              element={
+                <PlaceholderPage
+                  title="Vendas online"
+                  module={5}
+                  scope={[
+                    "Vitrine publica do parque",
+                    "Compra online de ingressos com gateway",
+                    "Integracao automatica com CRM",
+                  ]}
+                />
+              }
+            />
+            <Route
+              path="/assinaturas"
+              element={
+                <PlaceholderPage
+                  title="Assinaturas"
+                  module={6}
+                  scope={[
+                    "Planos com beneficios (descontos, horas extras)",
+                    "Gestao de assinantes e renovacoes",
+                  ]}
+                />
+              }
+            />
+            <Route
+              path="/agendamento"
+              element={
+                <PlaceholderPage
+                  title="Agendamento e eventos"
+                  module={7}
+                  scope={[
+                    "Agendamento de visitas",
+                    "Reserva de espaco para festas",
+                    "Gestao de disponibilidade e valores",
+                  ]}
+                />
+              }
+            />
+            <Route
+              path="/midia"
+              element={
+                <PlaceholderPage
+                  title="Midia e anuncios"
+                  module={8}
+                  scope={[
+                    "Upload de imagens e videos",
+                    "Tempo de exibicao + frequencia diaria/semanal",
+                    "Agendamento de campanhas",
+                  ]}
+                />
+              }
+            />
+            <Route
+              path="/qrcode"
+              element={
+                <PlaceholderPage
+                  title="QR check-out"
+                  module={9}
+                  scope={[
+                    "QR Code unico no momento do check-in",
+                    "Validacao na saida",
+                  ]}
+                />
+              }
+            />
+            <Route
+              path="/termo"
+              element={
+                <PlaceholderPage
+                  title="Termo de responsabilidade digital"
+                  module={10}
+                  scope={[
+                    "Assinatura via tablet/smartphone",
+                    "Armazenamento seguro no Supabase Storage",
+                  ]}
+                />
+              }
+            />
+            <Route
+              path="/pdv"
+              element={
+                <PlaceholderPage
+                  title="PDV / Lanchonete"
+                  module={11}
+                  scope={[
+                    "Vendas de produtos integradas ao caixa",
+                    "Controle de estoque com alertas",
+                  ]}
+                />
+              }
+            />
+            <Route
+              path="/lista-espera"
+              element={
+                <PlaceholderPage
+                  title="Lista de espera"
+                  module={12}
+                  scope={[
+                    "Cadastro quando o parque esta lotado",
+                    "Notificacao automatica via WhatsApp",
+                  ]}
+                />
+              }
+            />
+            <Route
+              path="/dashboard"
+              element={
+                <PlaceholderPage
+                  title="Dashboard do proprietario"
+                  module={13}
+                  scope={[
+                    "Horarios de pico",
+                    "Desempenho de parceiros",
+                    "Ticket medio + faturamento",
+                  ]}
+                />
+              }
+            />
+            <Route
+              path="/fidelidade"
+              element={
+                <PlaceholderPage
+                  title="Fidelidade"
+                  module={14}
+                  scope={[
+                    "Pontos por visita / compra",
+                    "Recompensas e niveis de fidelidade",
+                  ]}
+                />
+              }
+            />
+            <Route
+              path="/inventario"
+              element={
+                <PlaceholderPage
+                  title="Inventario de ativos"
+                  module={15}
+                  scope={[
+                    "Cadastro de brinquedos e equipamentos",
+                    "Manutencao preventiva agendada",
+                  ]}
+                />
+              }
+            />
+            <Route
+              path="/nps"
+              element={
+                <PlaceholderPage
+                  title="NPS automatico"
+                  module={16}
+                  scope={[
+                    "Pesquisa pos check-out via WhatsApp",
+                    "Coleta de feedback e depoimentos",
+                  ]}
+                />
+              }
+            />
+            <Route
+              path="/equipe"
+              element={
+                <PlaceholderPage
+                  title="Equipe"
+                  module={17}
+                  scope={[
+                    "Cadastro de funcionarios",
+                    "Escala de trabalho",
+                    "Calculo de comissao",
+                  ]}
+                />
+              }
+            />
+          </Route>
+          <Route path="*" element={<Navigate to="/painel" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 
