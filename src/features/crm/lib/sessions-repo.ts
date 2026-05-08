@@ -5,6 +5,8 @@ export interface SessionsRepo {
   listActive(): Promise<ActiveSession[]>;
   /** All sessions (active + ended) started since local midnight today. */
   listToday(): Promise<ActiveSession[]>;
+  /** All sessions started in the last `days` days, ordered newest first. */
+  listSinceDays(days: number): Promise<ActiveSession[]>;
   registerAndStart(input: QuickRegisterInput): Promise<ActiveSession>;
   pause(sessionId: string): Promise<void>;
   resume(sessionId: string): Promise<void>;
@@ -90,6 +92,135 @@ let mockSessions: ActiveSession[] = [...initialMock];
 const mockSubscribers = new Set<() => void>();
 const notify = () => mockSubscribers.forEach((fn) => fn());
 
+// Deterministic LCG so mock historical data is stable across reloads.
+function makeRng(seed: number) {
+  let s = seed % 2147483647;
+  return () => {
+    s = (s * 16807) % 2147483647;
+    return s / 2147483647;
+  };
+}
+
+const childNamesPool = [
+  "Helena Souza",
+  "Davi Almeida",
+  "Sofia Reis",
+  "Lara Pinto",
+  "Pedro Lima",
+  "Alice Costa",
+  "Heitor Mendes",
+  "Manuela Dias",
+  "Bernardo Castro",
+  "Valentina Nunes",
+  "Theo Carvalho",
+  "Cecilia Oliveira",
+  "Gael Ferreira",
+  "Isabela Moraes",
+  "Arthur Ramos",
+  "Maria Eduarda Vieira",
+  "Bryan Pereira",
+  "Antonella Souto",
+];
+
+const guardianNamesPool = [
+  "Mariana Souza",
+  "Carla Almeida",
+  "Renato Reis",
+  "Bruno Pinto",
+  "Joana Lima",
+  "Tiago Costa",
+  "Patricia Mendes",
+  "Felipe Dias",
+  "Andre Castro",
+  "Luiza Nunes",
+  "Roberta Carvalho",
+  "Marcelo Oliveira",
+  "Paula Ferreira",
+  "Gustavo Moraes",
+  "Camila Ramos",
+  "Vinicius Vieira",
+  "Daniela Pereira",
+  "Eduardo Souto",
+];
+
+const durationsMin = [30, 45, 60, 60, 60, 90, 120];
+const methodsRotation: Array<"pix" | "dinheiro" | "cartao"> = ["pix", "dinheiro", "cartao"];
+
+/**
+ * Generate sessions for a specific local day with realistic peak-hour clustering.
+ * Daysago=0 means today's earlier-day sessions; we already have today's active
+ * sessions seeded separately, so this only adds ended ones in the past.
+ */
+function seedSessionsForDay(daysAgo: number, count: number, rngSeed: number): ActiveSession[] {
+  const rng = makeRng(rngSeed);
+  const dayStart = new Date();
+  dayStart.setDate(dayStart.getDate() - daysAgo);
+  dayStart.setHours(0, 0, 0, 0);
+
+  const out: ActiveSession[] = [];
+  for (let i = 0; i < count; i++) {
+    // Peak distribution: ~60% afternoon (14h-19h), ~25% morning (10h-12h), 15% other.
+    const r = rng();
+    let startHour: number;
+    let startMin: number;
+    if (r < 0.6) startHour = 14 + Math.floor(rng() * 5);
+    else if (r < 0.85) startHour = 10 + Math.floor(rng() * 2);
+    else startHour = 9 + Math.floor(rng() * 12);
+    startMin = Math.floor(rng() * 60);
+
+    const startedAt = new Date(dayStart);
+    startedAt.setHours(startHour, startMin, 0, 0);
+
+    // Skip future timestamps if generating today's earlier sessions
+    if (daysAgo === 0 && startedAt.getTime() >= Date.now()) continue;
+
+    const minutes = durationsMin[Math.floor(rng() * durationsMin.length)];
+    const endedAt = new Date(startedAt.getTime() + minutes * 60_000);
+    const method = methodsRotation[Math.floor(rng() * methodsRotation.length)];
+    const cents = minutes * 80 + Math.floor(rng() * 800); // ~R$24-100 range
+
+    const childIdx = Math.floor(rng() * childNamesPool.length);
+    out.push({
+      id: nextId(),
+      child: {
+        id: nextId(),
+        full_name: childNamesPool[childIdx],
+        birth_date: null,
+        photo_url: null,
+        notes: null,
+      },
+      guardian: {
+        id: nextId(),
+        full_name: guardianNamesPool[childIdx],
+        phone: null,
+      },
+      contracted_minutes: minutes,
+      started_at: startedAt.toISOString(),
+      paused_at: null,
+      paused_total_seconds: 0,
+      ended_at: endedAt.toISOString(),
+      status: "ended",
+      amount_paid_cents: cents,
+      payment_method: method,
+    });
+  }
+  return out;
+}
+
+// Seed last 6 days (1..6 days ago) so dashboard has a full week curve.
+// We use a different prime seed per day so days don't all look identical.
+const HISTORICAL_DAYS = 6;
+for (let d = 1; d <= HISTORICAL_DAYS; d++) {
+  const isWeekend = (() => {
+    const dt = new Date();
+    dt.setDate(dt.getDate() - d);
+    const dow = dt.getDay();
+    return dow === 0 || dow === 6;
+  })();
+  const count = isWeekend ? 14 + ((d * 7) % 4) : 8 + ((d * 5) % 3);
+  mockSessions.push(...seedSessionsForDay(d, count, 13_576_201 * d));
+}
+
 // Seed a few ended sessions earlier today so the Caixa page has data on load.
 const earlierEnded: ActiveSession[] = [
   {
@@ -140,6 +271,15 @@ export const mockSessionsRepo: SessionsRepo = {
   },
   async listToday() {
     const since = new Date();
+    since.setHours(0, 0, 0, 0);
+    const sinceMs = since.getTime();
+    return mockSessions
+      .filter((s) => new Date(s.started_at).getTime() >= sinceMs)
+      .sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime());
+  },
+  async listSinceDays(days) {
+    const since = new Date();
+    since.setDate(since.getDate() - days);
     since.setHours(0, 0, 0, 0);
     const sinceMs = since.getTime();
     return mockSessions
@@ -279,6 +419,18 @@ export const supabaseSessionsRepo: SessionsRepo = {
       .from("sessions")
       .select(SESSION_SELECT)
       .gte("started_at", startOfTodayISO())
+      .order("started_at", { ascending: false });
+    if (error) throw error;
+    return (data as unknown as SessionRow[]).map(rowToSession);
+  },
+  async listSinceDays(days) {
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+    since.setHours(0, 0, 0, 0);
+    const { data, error } = await supabase
+      .from("sessions")
+      .select(SESSION_SELECT)
+      .gte("started_at", since.toISOString())
       .order("started_at", { ascending: false });
     if (error) throw error;
     return (data as unknown as SessionRow[]).map(rowToSession);

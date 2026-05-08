@@ -3,6 +3,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { AuthProvider } from "@/features/auth/auth-context";
 import { RequireAuth } from "@/features/auth/require-auth";
 import CaixaPage from "@/pages/CaixaPage";
+import DashboardPage from "@/pages/DashboardPage";
 import LoginPage from "@/pages/LoginPage";
 import PainelPage from "@/pages/PainelPage";
 import PlaceholderPage from "@/pages/PlaceholderPage";
@@ -145,20 +146,7 @@ function App() {
                 />
               }
             />
-            <Route
-              path="/dashboard"
-              element={
-                <PlaceholderPage
-                  title="Dashboard do proprietario"
-                  module={13}
-                  scope={[
-                    "Horarios de pico",
-                    "Desempenho de parceiros",
-                    "Ticket medio + faturamento",
-                  ]}
-                />
-              }
-            />
+            <Route path="/dashboard" element={<DashboardPage />} />
             <Route
               path="/fidelidade"
               element={
