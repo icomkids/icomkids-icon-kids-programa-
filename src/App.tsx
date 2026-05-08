@@ -8,6 +8,7 @@ import DashboardPage from "@/pages/DashboardPage";
 import LoginPage from "@/pages/LoginPage";
 import PainelPage from "@/pages/PainelPage";
 import PartnersPage from "@/pages/PartnersPage";
+import PDVPage from "@/pages/PDVPage";
 import PlaceholderPage from "@/pages/PlaceholderPage";
 import SubscriptionsPage from "@/pages/SubscriptionsPage";
 import TelaoPage from "@/pages/TelaoPage";
@@ -87,19 +88,7 @@ function App() {
                 />
               }
             />
-            <Route
-              path="/pdv"
-              element={
-                <PlaceholderPage
-                  title="PDV / Lanchonete"
-                  module={11}
-                  scope={[
-                    "Vendas de produtos integradas ao caixa",
-                    "Controle de estoque com alertas",
-                  ]}
-                />
-              }
-            />
+            <Route path="/pdv" element={<PDVPage />} />
             <Route
               path="/lista-espera"
               element={
