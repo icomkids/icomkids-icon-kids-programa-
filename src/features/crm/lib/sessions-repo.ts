@@ -3,12 +3,20 @@ import type { ActiveSession, QuickRegisterInput } from "../types";
 
 export interface SessionsRepo {
   listActive(): Promise<ActiveSession[]>;
+  /** All sessions (active + ended) started since local midnight today. */
+  listToday(): Promise<ActiveSession[]>;
   registerAndStart(input: QuickRegisterInput): Promise<ActiveSession>;
   pause(sessionId: string): Promise<void>;
   resume(sessionId: string): Promise<void>;
   end(sessionId: string): Promise<void>;
   /** Subscribe to changes; returns an unsubscribe fn. */
   subscribe(onChange: () => void): () => void;
+}
+
+function startOfTodayISO(): string {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString();
 }
 
 // ============================================================================
@@ -82,9 +90,61 @@ let mockSessions: ActiveSession[] = [...initialMock];
 const mockSubscribers = new Set<() => void>();
 const notify = () => mockSubscribers.forEach((fn) => fn());
 
+// Seed a few ended sessions earlier today so the Caixa page has data on load.
+const earlierEnded: ActiveSession[] = [
+  {
+    id: nextId(),
+    child: { id: nextId(), full_name: "Lara Pinto", birth_date: null, photo_url: null, notes: null },
+    guardian: { id: nextId(), full_name: "Bruno Pinto", phone: "(11) 99100-2233" },
+    contracted_minutes: 60,
+    started_at: new Date(Date.now() - 4 * 3600_000).toISOString(),
+    paused_at: null,
+    paused_total_seconds: 0,
+    ended_at: new Date(Date.now() - 3 * 3600_000).toISOString(),
+    status: "ended",
+    amount_paid_cents: 4500,
+    payment_method: "pix",
+  },
+  {
+    id: nextId(),
+    child: { id: nextId(), full_name: "Pedro Lima", birth_date: null, photo_url: null, notes: null },
+    guardian: { id: nextId(), full_name: "Joana Lima", phone: "(11) 99211-3344" },
+    contracted_minutes: 30,
+    started_at: new Date(Date.now() - 5 * 3600_000).toISOString(),
+    paused_at: null,
+    paused_total_seconds: 0,
+    ended_at: new Date(Date.now() - 4.5 * 3600_000).toISOString(),
+    status: "ended",
+    amount_paid_cents: 3000,
+    payment_method: "dinheiro",
+  },
+  {
+    id: nextId(),
+    child: { id: nextId(), full_name: "Alice Costa", birth_date: null, photo_url: null, notes: null },
+    guardian: { id: nextId(), full_name: "Tiago Costa", phone: "(11) 98123-7788" },
+    contracted_minutes: 90,
+    started_at: new Date(Date.now() - 6 * 3600_000).toISOString(),
+    paused_at: null,
+    paused_total_seconds: 0,
+    ended_at: new Date(Date.now() - 4.5 * 3600_000).toISOString(),
+    status: "ended",
+    amount_paid_cents: 6500,
+    payment_method: "cartao",
+  },
+];
+mockSessions = [...mockSessions, ...earlierEnded];
+
 export const mockSessionsRepo: SessionsRepo = {
   async listActive() {
     return mockSessions.filter((s) => s.status !== "ended");
+  },
+  async listToday() {
+    const since = new Date();
+    since.setHours(0, 0, 0, 0);
+    const sinceMs = since.getTime();
+    return mockSessions
+      .filter((s) => new Date(s.started_at).getTime() >= sinceMs)
+      .sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime());
   },
   async registerAndStart(input) {
     const child_id = nextId();
@@ -201,14 +261,24 @@ function rowToSession(row: SessionRow): ActiveSession {
   };
 }
 
+const SESSION_SELECT =
+  "id, child_id, guardian_id, contracted_minutes, started_at, paused_at, paused_total_seconds, ended_at, status, amount_paid_cents, payment_method, children:children(id, full_name, birth_date, photo_url, notes), guardians:guardians(id, full_name, phone)";
+
 export const supabaseSessionsRepo: SessionsRepo = {
   async listActive() {
     const { data, error } = await supabase
       .from("sessions")
-      .select(
-        "id, child_id, guardian_id, contracted_minutes, started_at, paused_at, paused_total_seconds, ended_at, status, amount_paid_cents, payment_method, children:children(id, full_name, birth_date, photo_url, notes), guardians:guardians(id, full_name, phone)"
-      )
+      .select(SESSION_SELECT)
       .neq("status", "ended")
+      .order("started_at", { ascending: false });
+    if (error) throw error;
+    return (data as unknown as SessionRow[]).map(rowToSession);
+  },
+  async listToday() {
+    const { data, error } = await supabase
+      .from("sessions")
+      .select(SESSION_SELECT)
+      .gte("started_at", startOfTodayISO())
       .order("started_at", { ascending: false });
     if (error) throw error;
     return (data as unknown as SessionRow[]).map(rowToSession);

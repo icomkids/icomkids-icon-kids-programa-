@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "@/components/layout/app-shell";
 import { AuthProvider } from "@/features/auth/auth-context";
 import { RequireAuth } from "@/features/auth/require-auth";
+import CaixaPage from "@/pages/CaixaPage";
 import LoginPage from "@/pages/LoginPage";
 import PainelPage from "@/pages/PainelPage";
 import PlaceholderPage from "@/pages/PlaceholderPage";
@@ -23,21 +24,7 @@ function App() {
           >
             <Route index element={<Navigate to="/painel" replace />} />
             <Route path="/painel" element={<PainelPage />} />
-            <Route
-              path="/caixa"
-              element={
-                <PlaceholderPage
-                  title="Caixa"
-                  module={3}
-                  description="Vendas, formas de pagamento e relatorios diarios."
-                  scope={[
-                    "Registro de venda (nome, tempo, valor)",
-                    "PIX, dinheiro, cartao",
-                    "Faturamento do dia, ticket medio, # de criancas",
-                  ]}
-                />
-              }
-            />
+            <Route path="/caixa" element={<CaixaPage />} />
             <Route
               path="/parceiros"
               element={
