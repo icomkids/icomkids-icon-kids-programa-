@@ -3,6 +3,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { AuthProvider } from "@/features/auth/auth-context";
 import { RequireAuth } from "@/features/auth/require-auth";
 import CaixaPage from "@/pages/CaixaPage";
+import CheckoutPage from "@/pages/CheckoutPage";
 import DashboardPage from "@/pages/DashboardPage";
 import LoginPage from "@/pages/LoginPage";
 import PainelPage from "@/pages/PainelPage";
@@ -72,19 +73,7 @@ function App() {
                 />
               }
             />
-            <Route
-              path="/qrcode"
-              element={
-                <PlaceholderPage
-                  title="QR check-out"
-                  module={9}
-                  scope={[
-                    "QR Code unico no momento do check-in",
-                    "Validacao na saida",
-                  ]}
-                />
-              }
-            />
+            <Route path="/qrcode" element={<CheckoutPage />} />
             <Route
               path="/termo"
               element={

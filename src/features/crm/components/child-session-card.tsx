@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { formatCountdown, formatTimeOfDay } from "@/lib/format";
 import { derivedStatus, remainingSeconds } from "../lib/session-timing";
 import type { ActiveSession, DerivedSessionStatus } from "../types";
+import { QrCodeButton } from "./qr-code-button";
 import { SessionStatusBadge } from "./status-badge";
 
 interface Props {
@@ -100,6 +101,13 @@ export function ChildSessionCard({ session, onPause, onResume, onEnd }: Props) {
           >
             <Square className="size-4" /> Encerrar
           </Button>
+        </div>
+        <div className="flex justify-center">
+          <QrCodeButton
+            childName={session.child.full_name}
+            guardianName={session.guardian?.full_name ?? null}
+            token={session.qr_code_token}
+          />
         </div>
       </CardContent>
     </Card>

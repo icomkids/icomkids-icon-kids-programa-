@@ -30,6 +30,7 @@ export interface ActiveSession {
   payment_method: string | null;
   partner_id: string | null;
   partner_name: string | null;
+  qr_code_token: string | null;
 }
 
 export interface QuickRegisterInput {

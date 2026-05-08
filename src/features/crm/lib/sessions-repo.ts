@@ -8,12 +8,20 @@ export interface SessionsRepo {
   listToday(): Promise<ActiveSession[]>;
   /** All sessions started in the last `days` days, ordered newest first. */
   listSinceDays(days: number): Promise<ActiveSession[]>;
+  /** Lookup an active or paused session by its QR code token. Returns null if
+   *  not found or already ended. */
+  findByQrToken(token: string): Promise<ActiveSession | null>;
   registerAndStart(input: QuickRegisterInput): Promise<ActiveSession>;
   pause(sessionId: string): Promise<void>;
   resume(sessionId: string): Promise<void>;
   end(sessionId: string): Promise<void>;
   /** Subscribe to changes; returns an unsubscribe fn. */
   subscribe(onChange: () => void): () => void;
+}
+
+/** Generate a short opaque token used as a QR payload. */
+function newQrToken(): string {
+  return crypto.randomUUID();
 }
 
 function startOfTodayISO(): string {
@@ -50,6 +58,7 @@ const initialMock: ActiveSession[] = [
     payment_method: "pix",
     partner_id: null,
     partner_name: null,
+    qr_code_token: null,
   },
   {
     id: nextId(),
@@ -71,6 +80,7 @@ const initialMock: ActiveSession[] = [
     payment_method: "cartao",
     partner_id: null,
     partner_name: null,
+    qr_code_token: null,
   },
   {
     id: nextId(),
@@ -92,6 +102,7 @@ const initialMock: ActiveSession[] = [
     payment_method: "dinheiro",
     partner_id: null,
     partner_name: null,
+    qr_code_token: null,
   },
 ];
 
@@ -211,6 +222,7 @@ function seedSessionsForDay(daysAgo: number, count: number, rngSeed: number): Ac
       payment_method: method,
       partner_id: null,
       partner_name: null,
+      qr_code_token: null,
     });
   }
   return out;
@@ -246,6 +258,7 @@ const earlierEnded: ActiveSession[] = [
     payment_method: "pix",
     partner_id: null,
     partner_name: null,
+    qr_code_token: null,
   },
   {
     id: nextId(),
@@ -261,6 +274,7 @@ const earlierEnded: ActiveSession[] = [
     payment_method: "dinheiro",
     partner_id: null,
     partner_name: null,
+    qr_code_token: null,
   },
   {
     id: nextId(),
@@ -276,6 +290,7 @@ const earlierEnded: ActiveSession[] = [
     payment_method: "cartao",
     partner_id: null,
     partner_name: null,
+    qr_code_token: null,
   },
 ];
 mockSessions = [...mockSessions, ...earlierEnded];
@@ -300,6 +315,13 @@ export const mockSessionsRepo: SessionsRepo = {
     return mockSessions
       .filter((s) => new Date(s.started_at).getTime() >= sinceMs)
       .sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime());
+  },
+  async findByQrToken(token) {
+    return (
+      mockSessions.find(
+        (s) => s.qr_code_token === token && s.status !== "ended"
+      ) ?? null
+    );
   },
   async registerAndStart(input) {
     const child_id = nextId();
@@ -331,6 +353,7 @@ export const mockSessionsRepo: SessionsRepo = {
       payment_method: input.payment_method ?? null,
       partner_id: partner?.id ?? null,
       partner_name: partner?.name ?? null,
+      qr_code_token: newQrToken(),
     };
     mockSessions = [session, ...mockSessions];
     notify();
@@ -386,6 +409,7 @@ interface SessionRow {
   status: "active" | "paused" | "ended";
   amount_paid_cents: number | null;
   payment_method: string | null;
+  qr_code_token: string | null;
   children: {
     id: string;
     full_name: string;
@@ -417,6 +441,7 @@ function rowToSession(row: SessionRow): ActiveSession {
     payment_method: row.payment_method,
     partner_id: row.partner_id,
     partner_name: row.partners?.name ?? null,
+    qr_code_token: row.qr_code_token,
     child: row.children ?? {
       id: row.child_id,
       full_name: "(criança removida)",
@@ -429,7 +454,7 @@ function rowToSession(row: SessionRow): ActiveSession {
 }
 
 const SESSION_SELECT =
-  "id, child_id, guardian_id, partner_id, contracted_minutes, started_at, paused_at, paused_total_seconds, ended_at, status, amount_paid_cents, payment_method, children:children(id, full_name, birth_date, photo_url, notes), guardians:guardians(id, full_name, phone), partners:partners(id, name)";
+  "id, child_id, guardian_id, partner_id, contracted_minutes, started_at, paused_at, paused_total_seconds, ended_at, status, amount_paid_cents, payment_method, qr_code_token, children:children(id, full_name, birth_date, photo_url, notes), guardians:guardians(id, full_name, phone), partners:partners(id, name)";
 
 export const supabaseSessionsRepo: SessionsRepo = {
   async listActive() {
@@ -461,6 +486,17 @@ export const supabaseSessionsRepo: SessionsRepo = {
       .order("started_at", { ascending: false });
     if (error) throw error;
     return (data as unknown as SessionRow[]).map(rowToSession);
+  },
+  async findByQrToken(token) {
+    const { data, error } = await supabase
+      .from("sessions")
+      .select(SESSION_SELECT)
+      .eq("qr_code_token", token)
+      .neq("status", "ended")
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return null;
+    return rowToSession(data as unknown as SessionRow);
   },
   async registerAndStart(input) {
     const { data: childRow, error: cErr } = await supabase
@@ -505,9 +541,10 @@ export const supabaseSessionsRepo: SessionsRepo = {
         contracted_minutes: input.contracted_minutes,
         amount_paid_cents: input.amount_paid_cents ?? null,
         payment_method: input.payment_method ?? null,
+        qr_code_token: newQrToken(),
       })
       .select(
-        "id, child_id, guardian_id, partner_id, contracted_minutes, started_at, paused_at, paused_total_seconds, ended_at, status, amount_paid_cents, payment_method"
+        "id, child_id, guardian_id, partner_id, contracted_minutes, started_at, paused_at, paused_total_seconds, ended_at, status, amount_paid_cents, payment_method, qr_code_token"
       )
       .single();
     if (sErr) throw sErr;
