@@ -9,20 +9,8 @@ create type public.user_role as enum ('owner', 'staff', 'partner', 'customer');
 create type public.session_status as enum ('active', 'paused', 'ended');
 
 -- ============================================================================
--- HELPER FUNCTIONS
+-- HELPER FUNCTIONS (table-independent — defined first)
 -- ============================================================================
-
--- Returns the role of the currently authenticated user (or null if not in profiles yet).
--- security definer + locked search_path so RLS policies can call it safely.
-create or replace function public.auth_user_role()
-returns public.user_role
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select role from public.profiles where id = auth.uid()
-$$;
 
 -- updated_at touch trigger
 create or replace function public.tg_set_updated_at()
@@ -36,7 +24,8 @@ end;
 $$;
 
 -- ============================================================================
--- PROFILES — 1:1 with auth.users
+-- PROFILES — 1:1 with auth.users (created BEFORE auth_user_role function so
+-- the SQL-language function body can resolve public.profiles at create time).
 -- ============================================================================
 
 create table public.profiles (
@@ -54,6 +43,22 @@ create index profiles_role_idx on public.profiles(role);
 create trigger profiles_set_updated_at
   before update on public.profiles
   for each row execute function public.tg_set_updated_at();
+
+-- ============================================================================
+-- HELPER: auth_user_role (depends on public.profiles existing)
+-- ============================================================================
+
+-- Returns the role of the currently authenticated user (or null if not in profiles yet).
+-- security definer + locked search_path so RLS policies can call it safely.
+create or replace function public.auth_user_role()
+returns public.user_role
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select role from public.profiles where id = auth.uid()
+$$;
 
 -- Auto-create a profile row when a new auth.users row is inserted.
 create or replace function public.handle_new_user()
