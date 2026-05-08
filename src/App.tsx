@@ -12,6 +12,7 @@ import PDVPage from "@/pages/PDVPage";
 import PlaceholderPage from "@/pages/PlaceholderPage";
 import SubscriptionsPage from "@/pages/SubscriptionsPage";
 import TelaoPage from "@/pages/TelaoPage";
+import WaitlistPage from "@/pages/WaitlistPage";
 
 function App() {
   return (
@@ -89,19 +90,7 @@ function App() {
               }
             />
             <Route path="/pdv" element={<PDVPage />} />
-            <Route
-              path="/lista-espera"
-              element={
-                <PlaceholderPage
-                  title="Lista de espera"
-                  module={12}
-                  scope={[
-                    "Cadastro quando o parque esta lotado",
-                    "Notificacao automatica via WhatsApp",
-                  ]}
-                />
-              }
-            />
+            <Route path="/lista-espera" element={<WaitlistPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route
               path="/fidelidade"

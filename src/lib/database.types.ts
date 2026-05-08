@@ -594,6 +594,51 @@ export type Database = {
           },
         ]
       }
+      waitlist_entries: {
+        Row: {
+          arrived_at: string | null
+          called_at: string | null
+          child_full_name: string | null
+          closed_at: string | null
+          created_at: string
+          guardian_full_name: string
+          guardian_phone: string
+          id: string
+          notes: string | null
+          party_size: number
+          status: Database["public"]["Enums"]["waitlist_status"]
+          updated_at: string
+        }
+        Insert: {
+          arrived_at?: string | null
+          called_at?: string | null
+          child_full_name?: string | null
+          closed_at?: string | null
+          created_at?: string
+          guardian_full_name: string
+          guardian_phone: string
+          id?: string
+          notes?: string | null
+          party_size?: number
+          status?: Database["public"]["Enums"]["waitlist_status"]
+          updated_at?: string
+        }
+        Update: {
+          arrived_at?: string | null
+          called_at?: string | null
+          child_full_name?: string | null
+          closed_at?: string | null
+          created_at?: string
+          guardian_full_name?: string
+          guardian_phone?: string
+          id?: string
+          notes?: string | null
+          party_size?: number
+          status?: Database["public"]["Enums"]["waitlist_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       webhook_events: {
         Row: {
           attempts: number
@@ -735,6 +780,7 @@ export type Database = {
       session_status: "active" | "paused" | "ended"
       subscription_status: "active" | "paused" | "canceled" | "expired"
       user_role: "owner" | "staff" | "partner" | "customer"
+      waitlist_status: "waiting" | "called" | "arrived" | "no_show" | "canceled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -868,6 +914,7 @@ export const Constants = {
       session_status: ["active", "paused", "ended"],
       subscription_status: ["active", "paused", "canceled", "expired"],
       user_role: ["owner", "staff", "partner", "customer"],
+      waitlist_status: ["waiting", "called", "arrived", "no_show", "canceled"],
     },
   },
 } as const
