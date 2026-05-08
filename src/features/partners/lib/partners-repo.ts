@@ -158,7 +158,7 @@ export const supabasePartnersRepo: PartnersRepo = {
   },
   subscribe(onChange) {
     const channel = supabase
-      .channel("partners-changes")
+      .channel(`partners-changes-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "partners" }, onChange)
       .subscribe();
     return () => {

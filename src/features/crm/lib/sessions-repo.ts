@@ -554,8 +554,11 @@ export const supabaseSessionsRepo: SessionsRepo = {
     if (error) throw error;
   },
   subscribe(onChange) {
+    // Unique channel name per subscriber so multiple components on the same
+    // page can subscribe without colliding (Supabase realtime errors out if
+    // you try to .on() the same channel twice).
     const channel = supabase
-      .channel("sessions-changes")
+      .channel(`sessions-changes-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "sessions" }, onChange)
       .subscribe();
     return () => {
