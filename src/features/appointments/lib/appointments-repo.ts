@@ -3,6 +3,7 @@ import type {
   Appointment,
   AppointmentInput,
   AppointmentStatus,
+  Gender,
 } from "../types";
 
 export interface AppointmentsRepo {
@@ -13,6 +14,14 @@ export interface AppointmentsRepo {
   create(input: AppointmentInput): Promise<Appointment>;
   setStatus(id: string, status: AppointmentStatus): Promise<void>;
   subscribe(onChange: () => void): () => void;
+}
+
+interface AppointmentChildRow {
+  id: string;
+  full_name: string;
+  age: number | null;
+  gender: Gender | null;
+  notes: string | null;
 }
 
 interface AppointmentRow {
@@ -31,13 +40,24 @@ interface AppointmentRow {
   status: AppointmentStatus;
   notes: string | null;
   created_at: string;
+  appointment_children: AppointmentChildRow[];
 }
 
 const SELECT =
-  "id, kind, title, guardian_name, guardian_phone, child_name, party_size, scheduled_date, scheduled_start_time, scheduled_end_time, total_cents, deposit_cents, status, notes, created_at";
+  "id, kind, title, guardian_name, guardian_phone, child_name, party_size, scheduled_date, scheduled_start_time, scheduled_end_time, total_cents, deposit_cents, status, notes, created_at, appointment_children:appointment_children(id, full_name, age, gender, notes)";
 
 function rowToAppointment(row: AppointmentRow): Appointment {
-  return { ...row };
+  const { appointment_children, ...rest } = row;
+  return {
+    ...rest,
+    children: (appointment_children ?? []).map((c) => ({
+      id: c.id,
+      full_name: c.full_name,
+      age: c.age,
+      gender: c.gender,
+      notes: c.notes,
+    })),
+  };
 }
 
 function todayIsoDate(): string {
@@ -70,7 +90,12 @@ export const supabaseAppointmentsRepo: AppointmentsRepo = {
     return (data as unknown as AppointmentRow[]).map(rowToAppointment);
   },
   async create(input) {
-    const { data, error } = await supabase
+    const partySize =
+      input.children && input.children.length > 0
+        ? input.children.length
+        : input.party_size ?? 1;
+
+    const { data: appt, error } = await supabase
       .from("appointments")
       .insert({
         kind: input.kind,
@@ -78,7 +103,7 @@ export const supabaseAppointmentsRepo: AppointmentsRepo = {
         guardian_name: input.guardian_name,
         guardian_phone: input.guardian_phone,
         child_name: input.child_name ?? null,
-        party_size: input.party_size ?? 1,
+        party_size: partySize,
         scheduled_date: input.scheduled_date,
         scheduled_start_time: input.scheduled_start_time,
         scheduled_end_time: input.scheduled_end_time ?? null,
@@ -86,10 +111,31 @@ export const supabaseAppointmentsRepo: AppointmentsRepo = {
         deposit_cents: input.deposit_cents ?? 0,
         notes: input.notes ?? null,
       })
-      .select(SELECT)
+      .select("id")
       .single();
     if (error) throw error;
-    return rowToAppointment(data as unknown as AppointmentRow);
+
+    if (input.children && input.children.length > 0) {
+      const rows = input.children.map((c) => ({
+        appointment_id: appt.id,
+        full_name: c.full_name,
+        age: c.age,
+        gender: c.gender,
+        notes: c.notes,
+      }));
+      const { error: cErr } = await supabase
+        .from("appointment_children")
+        .insert(rows);
+      if (cErr) throw cErr;
+    }
+
+    const { data: full, error: fErr } = await supabase
+      .from("appointments")
+      .select(SELECT)
+      .eq("id", appt.id)
+      .single();
+    if (fErr) throw fErr;
+    return rowToAppointment(full as unknown as AppointmentRow);
   },
   async setStatus(id, status) {
     const { error } = await supabase

@@ -39,6 +39,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      appointment_children: {
+        Row: {
+          age: number | null
+          appointment_id: string
+          created_at: string
+          full_name: string
+          gender: Database["public"]["Enums"]["gender"] | null
+          id: string
+          notes: string | null
+        }
+        Insert: {
+          age?: number | null
+          appointment_id: string
+          created_at?: string
+          full_name: string
+          gender?: Database["public"]["Enums"]["gender"] | null
+          id?: string
+          notes?: string | null
+        }
+        Update: {
+          age?: number | null
+          appointment_id?: string
+          created_at?: string
+          full_name?: string
+          gender?: Database["public"]["Enums"]["gender"] | null
+          id?: string
+          notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_children_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointments: {
         Row: {
           child_name: string | null
@@ -1016,6 +1054,7 @@ export type Database = {
         | "completed"
         | "canceled"
         | "no_show"
+      gender: "boy" | "girl"
       message_status: "queued" | "sent" | "failed"
       nps_classification: "detractor" | "passive" | "promoter"
       session_status: "active" | "paused" | "ended"
@@ -1161,6 +1200,7 @@ export const Constants = {
         "canceled",
         "no_show",
       ],
+      gender: ["boy", "girl"],
       message_status: ["queued", "sent", "failed"],
       nps_classification: ["detractor", "passive", "promoter"],
       session_status: ["active", "paused", "ended"],

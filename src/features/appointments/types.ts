@@ -1,4 +1,5 @@
 export type AppointmentKind = "visit" | "event";
+export type Gender = "boy" | "girl";
 
 export type AppointmentStatus =
   | "requested"
@@ -7,6 +8,14 @@ export type AppointmentStatus =
   | "completed"
   | "canceled"
   | "no_show";
+
+export interface AppointmentChild {
+  id?: string;
+  full_name: string;
+  age: number | null;
+  gender: Gender | null;
+  notes: string | null;
+}
 
 export interface Appointment {
   id: string;
@@ -24,6 +33,7 @@ export interface Appointment {
   status: AppointmentStatus;
   notes: string | null;
   created_at: string;
+  children: AppointmentChild[];
 }
 
 export interface AppointmentInput {
@@ -39,4 +49,5 @@ export interface AppointmentInput {
   total_cents?: number;
   deposit_cents?: number;
   notes?: string;
+  children?: AppointmentChild[];
 }

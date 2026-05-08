@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
 import {
+  Baby,
   CalendarRange,
   CheckCircle2,
   MessageCircle,
   PartyPopper,
   Plus,
+  Trash2,
   X,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/header";
@@ -34,9 +36,11 @@ import { sendWhatsApp } from "@/features/messaging/lib/uazapi";
 import { formatBRL } from "@/lib/format";
 import type {
   Appointment,
+  AppointmentChild,
   AppointmentInput,
   AppointmentKind,
   AppointmentStatus,
+  Gender,
 } from "@/features/appointments/types";
 
 const statusMeta: Record<AppointmentStatus, { label: string; bg: string; fg: string }> = {
@@ -209,8 +213,32 @@ export default function AppointmentsPage() {
                             {a.party_size}{" "}
                             {a.party_size === 1 ? "crianca" : "criancas"}
                           </p>
+                          {a.children.length > 0 ? (
+                            <ul className="mt-1.5 flex flex-wrap gap-1">
+                              {a.children.map((c, i) => (
+                                <li
+                                  key={c.id ?? i}
+                                  className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                                  style={{
+                                    background:
+                                      c.gender === "girl"
+                                        ? "#EA4D8E"
+                                        : c.gender === "boy"
+                                        ? "#1E78DC"
+                                        : "#94a3b8",
+                                    color: "#ffffff",
+                                  }}
+                                >
+                                  {c.full_name}
+                                  {c.age != null
+                                    ? ` · ${c.age}a`
+                                    : ""}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
                           {a.total_cents > 0 ? (
-                            <p className="text-[11px] text-muted-foreground">
+                            <p className="mt-1 text-[11px] text-muted-foreground">
                               Total {formatBRL(a.total_cents)}
                               {a.deposit_cents > 0
                                 ? ` · Sinal ${formatBRL(a.deposit_cents)}`
@@ -360,6 +388,14 @@ function Kpi({
   );
 }
 
+interface ChildDraft {
+  full_name: string;
+  age: string;
+  gender: Gender | "";
+}
+
+const emptyChild = (): ChildDraft => ({ full_name: "", age: "", gender: "" });
+
 function NewAppointmentDialog({
   onSubmit,
 }: {
@@ -371,8 +407,6 @@ function NewAppointmentDialog({
   const [title, setTitle] = useState("");
   const [guardian, setGuardian] = useState("");
   const [phone, setPhone] = useState("");
-  const [child, setChild] = useState("");
-  const [partySize, setPartySize] = useState("1");
   const [date, setDate] = useState(() =>
     new Date().toISOString().slice(0, 10)
   );
@@ -380,24 +414,48 @@ function NewAppointmentDialog({
   const [end, setEnd] = useState("");
   const [total, setTotal] = useState("");
   const [deposit, setDeposit] = useState("");
+  const [children, setChildren] = useState<ChildDraft[]>([emptyChild()]);
 
   const reset = () => {
     setKind("visit");
     setTitle("");
     setGuardian("");
     setPhone("");
-    setChild("");
-    setPartySize("1");
     setDate(new Date().toISOString().slice(0, 10));
     setStart("14:00");
     setEnd("");
     setTotal("");
     setDeposit("");
+    setChildren([emptyChild()]);
   };
+
+  const updateChild = (idx: number, patch: Partial<ChildDraft>) => {
+    setChildren((prev) =>
+      prev.map((c, i) => (i === idx ? { ...c, ...patch } : c))
+    );
+  };
+
+  const addChild = () => setChildren((prev) => [...prev, emptyChild()]);
+  const removeChild = (idx: number) =>
+    setChildren((prev) =>
+      prev.length === 1 ? prev : prev.filter((_, i) => i !== idx)
+    );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!guardian.trim() || !phone.trim() || !date || !start) return;
+    const filledChildren: AppointmentChild[] = children
+      .filter((c) => c.full_name.trim().length > 0)
+      .map((c) => ({
+        full_name: c.full_name.trim(),
+        age: c.age ? Math.max(0, parseInt(c.age, 10)) : null,
+        gender: c.gender || null,
+        notes: null,
+      }));
+    if (filledChildren.length === 0) {
+      // Need at least one child
+      return;
+    }
     setSubmitting(true);
     try {
       const totalCents = total
@@ -411,13 +469,14 @@ function NewAppointmentDialog({
         title: title.trim() || undefined,
         guardian_name: guardian.trim(),
         guardian_phone: phone.trim(),
-        child_name: child.trim() || undefined,
-        party_size: parseInt(partySize, 10) || 1,
+        child_name: filledChildren[0]?.full_name,
+        party_size: filledChildren.length,
         scheduled_date: date,
         scheduled_start_time: start,
         scheduled_end_time: end || undefined,
         total_cents: Number.isFinite(totalCents) ? totalCents : 0,
         deposit_cents: Number.isFinite(depositCents) ? depositCents : 0,
+        children: filledChildren,
       });
       reset();
       setOpen(false);
@@ -492,25 +551,81 @@ function NewAppointmentDialog({
               />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="ap-child">Crianca</Label>
-              <Input
-                id="ap-child"
-                value={child}
-                onChange={(e) => setChild(e.target.value)}
-              />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="flex items-center gap-1.5">
+                <Baby className="size-3.5" />
+                Criancas ({children.length})
+              </Label>
+              <button
+                type="button"
+                onClick={addChild}
+                className="flex items-center gap-1 rounded-md bg-[#1E78DC]/10 px-2 py-1 text-[11px] font-semibold text-[#1E78DC] hover:bg-[#1E78DC]/20"
+              >
+                <Plus className="size-3" /> Adicionar
+              </button>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="ap-party">Quantas criancas</Label>
-              <Input
-                id="ap-party"
-                type="number"
-                min={1}
-                value={partySize}
-                onChange={(e) => setPartySize(e.target.value)}
-              />
-            </div>
+            <ul className="space-y-2">
+              {children.map((c, i) => (
+                <li
+                  key={i}
+                  className="grid grid-cols-[1fr_auto_auto_auto] gap-1.5 rounded-md border border-border p-2"
+                >
+                  <Input
+                    placeholder="Nome"
+                    value={c.full_name}
+                    onChange={(e) => updateChild(i, { full_name: e.target.value })}
+                    className="h-8 text-sm"
+                    required={i === 0}
+                  />
+                  <Input
+                    type="number"
+                    min={0}
+                    max={18}
+                    placeholder="Idade"
+                    value={c.age}
+                    onChange={(e) => updateChild(i, { age: e.target.value })}
+                    className="h-8 w-20 text-sm"
+                  />
+                  <div className="flex gap-0.5">
+                    {(
+                      [
+                        { v: "boy" as const, label: "M", color: "#1E78DC" },
+                        { v: "girl" as const, label: "F", color: "#EA4D8E" },
+                      ]
+                    ).map((g) => (
+                      <button
+                        key={g.v}
+                        type="button"
+                        onClick={() =>
+                          updateChild(i, {
+                            gender: c.gender === g.v ? "" : g.v,
+                          })
+                        }
+                        className="flex size-8 items-center justify-center rounded text-xs font-bold transition"
+                        style={{
+                          background: c.gender === g.v ? g.color : "transparent",
+                          color: c.gender === g.v ? "#ffffff" : g.color,
+                          border: `1px solid ${g.color}`,
+                        }}
+                        aria-label={g.v === "boy" ? "Menino" : "Menina"}
+                      >
+                        {g.label}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeChild(i)}
+                    disabled={children.length === 1}
+                    className="flex size-8 items-center justify-center rounded text-muted-foreground hover:text-[#EA4D8E] disabled:opacity-30 disabled:cursor-not-allowed"
+                    aria-label="Remover crianca"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
+                </li>
+              ))}
+            </ul>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
