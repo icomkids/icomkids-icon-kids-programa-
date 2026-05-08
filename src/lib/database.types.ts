@@ -152,6 +152,56 @@ export type Database = {
           },
         ]
       }
+      partners: {
+        Row: {
+          active: boolean
+          commission_pct: number
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          profile_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          commission_pct?: number
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          profile_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          commission_pct?: number
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          profile_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partners_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -193,6 +243,7 @@ export type Database = {
           guardian_id: string | null
           id: string
           notes: string | null
+          partner_id: string | null
           paused_at: string | null
           paused_total_seconds: number
           payment_method: string | null
@@ -211,6 +262,7 @@ export type Database = {
           guardian_id?: string | null
           id?: string
           notes?: string | null
+          partner_id?: string | null
           paused_at?: string | null
           paused_total_seconds?: number
           payment_method?: string | null
@@ -229,6 +281,7 @@ export type Database = {
           guardian_id?: string | null
           id?: string
           notes?: string | null
+          partner_id?: string | null
           paused_at?: string | null
           paused_total_seconds?: number
           payment_method?: string | null
@@ -257,6 +310,13 @@ export type Database = {
             columns: ["guardian_id"]
             isOneToOne: false
             referencedRelation: "guardians"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sessions_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
             referencedColumns: ["id"]
           },
         ]
@@ -308,6 +368,7 @@ export type Database = {
           guardian_id: string | null
           id: string | null
           notes: string | null
+          partner_id: string | null
           paused_at: string | null
           paused_total_seconds: number | null
           payment_method: string | null
@@ -328,6 +389,7 @@ export type Database = {
           guardian_id?: string | null
           id?: string | null
           notes?: string | null
+          partner_id?: string | null
           paused_at?: string | null
           paused_total_seconds?: number | null
           payment_method?: string | null
@@ -348,6 +410,7 @@ export type Database = {
           guardian_id?: string | null
           id?: string | null
           notes?: string | null
+          partner_id?: string | null
           paused_at?: string | null
           paused_total_seconds?: number | null
           payment_method?: string | null
@@ -377,6 +440,13 @@ export type Database = {
             columns: ["guardian_id"]
             isOneToOne: false
             referencedRelation: "guardians"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sessions_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
             referencedColumns: ["id"]
           },
         ]

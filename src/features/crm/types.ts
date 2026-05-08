@@ -28,6 +28,8 @@ export interface ActiveSession {
   status: SessionStatus;
   amount_paid_cents: number | null;
   payment_method: string | null;
+  partner_id: string | null;
+  partner_name: string | null;
 }
 
 export interface QuickRegisterInput {
@@ -38,4 +40,5 @@ export interface QuickRegisterInput {
   photo_url?: string;
   amount_paid_cents?: number;
   payment_method?: "pix" | "dinheiro" | "cartao";
+  partner_id?: string | null;
 }

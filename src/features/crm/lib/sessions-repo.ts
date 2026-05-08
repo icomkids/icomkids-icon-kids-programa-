@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { mockPartners } from "@/features/partners/lib/partners-repo";
 import type { ActiveSession, QuickRegisterInput } from "../types";
 
 export interface SessionsRepo {
@@ -47,6 +48,8 @@ const initialMock: ActiveSession[] = [
     status: "active",
     amount_paid_cents: 4500,
     payment_method: "pix",
+    partner_id: null,
+    partner_name: null,
   },
   {
     id: nextId(),
@@ -66,6 +69,8 @@ const initialMock: ActiveSession[] = [
     status: "active",
     amount_paid_cents: 3000,
     payment_method: "cartao",
+    partner_id: null,
+    partner_name: null,
   },
   {
     id: nextId(),
@@ -85,6 +90,8 @@ const initialMock: ActiveSession[] = [
     status: "active",
     amount_paid_cents: 3000,
     payment_method: "dinheiro",
+    partner_id: null,
+    partner_name: null,
   },
 ];
 
@@ -202,6 +209,8 @@ function seedSessionsForDay(daysAgo: number, count: number, rngSeed: number): Ac
       status: "ended",
       amount_paid_cents: cents,
       payment_method: method,
+      partner_id: null,
+      partner_name: null,
     });
   }
   return out;
@@ -235,6 +244,8 @@ const earlierEnded: ActiveSession[] = [
     status: "ended",
     amount_paid_cents: 4500,
     payment_method: "pix",
+    partner_id: null,
+    partner_name: null,
   },
   {
     id: nextId(),
@@ -248,6 +259,8 @@ const earlierEnded: ActiveSession[] = [
     status: "ended",
     amount_paid_cents: 3000,
     payment_method: "dinheiro",
+    partner_id: null,
+    partner_name: null,
   },
   {
     id: nextId(),
@@ -261,6 +274,8 @@ const earlierEnded: ActiveSession[] = [
     status: "ended",
     amount_paid_cents: 6500,
     payment_method: "cartao",
+    partner_id: null,
+    partner_name: null,
   },
 ];
 mockSessions = [...mockSessions, ...earlierEnded];
@@ -289,6 +304,9 @@ export const mockSessionsRepo: SessionsRepo = {
   async registerAndStart(input) {
     const child_id = nextId();
     const guardian_id = nextId();
+    const partner = input.partner_id
+      ? mockPartners.find((p) => p.id === input.partner_id) ?? null
+      : null;
     const session: ActiveSession = {
       id: nextId(),
       child: {
@@ -311,6 +329,8 @@ export const mockSessionsRepo: SessionsRepo = {
       status: "active",
       amount_paid_cents: input.amount_paid_cents ?? null,
       payment_method: input.payment_method ?? null,
+      partner_id: partner?.id ?? null,
+      partner_name: partner?.name ?? null,
     };
     mockSessions = [session, ...mockSessions];
     notify();
@@ -357,6 +377,7 @@ interface SessionRow {
   id: string;
   child_id: string;
   guardian_id: string | null;
+  partner_id: string | null;
   contracted_minutes: number;
   started_at: string;
   paused_at: string | null;
@@ -377,6 +398,10 @@ interface SessionRow {
     full_name: string;
     phone: string | null;
   } | null;
+  partners: {
+    id: string;
+    name: string;
+  } | null;
 }
 
 function rowToSession(row: SessionRow): ActiveSession {
@@ -390,6 +415,8 @@ function rowToSession(row: SessionRow): ActiveSession {
     status: row.status,
     amount_paid_cents: row.amount_paid_cents,
     payment_method: row.payment_method,
+    partner_id: row.partner_id,
+    partner_name: row.partners?.name ?? null,
     child: row.children ?? {
       id: row.child_id,
       full_name: "(criança removida)",
@@ -402,7 +429,7 @@ function rowToSession(row: SessionRow): ActiveSession {
 }
 
 const SESSION_SELECT =
-  "id, child_id, guardian_id, contracted_minutes, started_at, paused_at, paused_total_seconds, ended_at, status, amount_paid_cents, payment_method, children:children(id, full_name, birth_date, photo_url, notes), guardians:guardians(id, full_name, phone)";
+  "id, child_id, guardian_id, partner_id, contracted_minutes, started_at, paused_at, paused_total_seconds, ended_at, status, amount_paid_cents, payment_method, children:children(id, full_name, birth_date, photo_url, notes), guardians:guardians(id, full_name, phone), partners:partners(id, name)";
 
 export const supabaseSessionsRepo: SessionsRepo = {
   async listActive() {
@@ -459,25 +486,37 @@ export const supabaseSessionsRepo: SessionsRepo = {
       is_primary: true,
     });
 
+    let partnerRow: { id: string; name: string } | null = null;
+    if (input.partner_id) {
+      const { data: p } = await supabase
+        .from("partners")
+        .select("id, name")
+        .eq("id", input.partner_id)
+        .maybeSingle();
+      partnerRow = p ?? null;
+    }
+
     const { data: sessionRow, error: sErr } = await supabase
       .from("sessions")
       .insert({
         child_id: childRow.id,
         guardian_id: guardianRow.id,
+        partner_id: input.partner_id ?? null,
         contracted_minutes: input.contracted_minutes,
         amount_paid_cents: input.amount_paid_cents ?? null,
         payment_method: input.payment_method ?? null,
       })
       .select(
-        "id, child_id, guardian_id, contracted_minutes, started_at, paused_at, paused_total_seconds, ended_at, status, amount_paid_cents, payment_method"
+        "id, child_id, guardian_id, partner_id, contracted_minutes, started_at, paused_at, paused_total_seconds, ended_at, status, amount_paid_cents, payment_method"
       )
       .single();
     if (sErr) throw sErr;
 
     return rowToSession({
-      ...(sessionRow as Omit<SessionRow, "children" | "guardians">),
+      ...(sessionRow as Omit<SessionRow, "children" | "guardians" | "partners">),
       children: childRow,
       guardians: guardianRow,
+      partners: partnerRow,
     } as SessionRow);
   },
   async pause(sessionId) {

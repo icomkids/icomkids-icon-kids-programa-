@@ -6,6 +6,7 @@ import CaixaPage from "@/pages/CaixaPage";
 import DashboardPage from "@/pages/DashboardPage";
 import LoginPage from "@/pages/LoginPage";
 import PainelPage from "@/pages/PainelPage";
+import PartnersPage from "@/pages/PartnersPage";
 import PlaceholderPage from "@/pages/PlaceholderPage";
 import TelaoPage from "@/pages/TelaoPage";
 
@@ -26,19 +27,7 @@ function App() {
             <Route index element={<Navigate to="/painel" replace />} />
             <Route path="/painel" element={<PainelPage />} />
             <Route path="/caixa" element={<CaixaPage />} />
-            <Route
-              path="/parceiros"
-              element={
-                <PlaceholderPage
-                  title="Portal de Parceiros"
-                  module={4}
-                  scope={[
-                    "Acompanhamento de criancas trazidas pela parceria",
-                    "Relatorios financeiros + comissao",
-                  ]}
-                />
-              }
-            />
+            <Route path="/parceiros" element={<PartnersPage />} />
             <Route
               path="/vendas"
               element={

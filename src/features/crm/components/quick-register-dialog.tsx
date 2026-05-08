@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { usePartners } from "@/features/partners/hooks/use-partners";
 import type { QuickRegisterInput } from "../types";
 
 interface Props {
@@ -21,6 +22,7 @@ interface Props {
 const PRESETS = [30, 45, 60, 90, 120];
 
 export function QuickRegisterDialog({ onSubmit }: Props) {
+  const { partners } = usePartners(true);
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [childName, setChildName] = useState("");
@@ -29,6 +31,7 @@ export function QuickRegisterDialog({ onSubmit }: Props) {
   const [minutes, setMinutes] = useState(60);
   const [paymentMethod, setPaymentMethod] = useState<"pix" | "dinheiro" | "cartao">("pix");
   const [amountReais, setAmountReais] = useState<string>("");
+  const [partnerId, setPartnerId] = useState<string>("");
 
   const reset = () => {
     setChildName("");
@@ -37,6 +40,7 @@ export function QuickRegisterDialog({ onSubmit }: Props) {
     setMinutes(60);
     setPaymentMethod("pix");
     setAmountReais("");
+    setPartnerId("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -54,6 +58,7 @@ export function QuickRegisterDialog({ onSubmit }: Props) {
         contracted_minutes: minutes,
         payment_method: paymentMethod,
         amount_paid_cents: Number.isFinite(cents) ? cents : undefined,
+        partner_id: partnerId || null,
       });
       reset();
       setOpen(false);
@@ -164,6 +169,24 @@ export function QuickRegisterDialog({ onSubmit }: Props) {
               </div>
             </div>
           </div>
+          {partners.length > 0 ? (
+            <div className="space-y-1.5">
+              <Label htmlFor="qr-partner">Parceiro (opcional)</Label>
+              <select
+                id="qr-partner"
+                value={partnerId}
+                onChange={(e) => setPartnerId(e.target.value)}
+                className="flex h-9 w-full rounded-md border border-border bg-background px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1E78DC]"
+              >
+                <option value="">Nenhum (cliente direto)</option>
+                {partners.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
           <DialogFooter className="pt-2">
             <Button
               type="button"

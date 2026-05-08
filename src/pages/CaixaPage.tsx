@@ -142,6 +142,7 @@ export default function CaixaPage() {
                   <TableRow>
                     <TableHead>Crianca</TableHead>
                     <TableHead>Responsavel</TableHead>
+                    <TableHead>Parceiro</TableHead>
                     <TableHead className="text-right">Tempo</TableHead>
                     <TableHead>Inicio</TableHead>
                     <TableHead>Pagamento</TableHead>
@@ -157,6 +158,15 @@ export default function CaixaPage() {
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {s.guardian?.full_name ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {s.partner_name ? (
+                          <span className="rounded-full bg-[#1E78DC]/10 px-2 py-0.5 text-[11px] font-semibold text-[#1E78DC]">
+                            {s.partner_name}
+                          </span>
+                        ) : (
+                          <span className="text-[11px]">Direto</span>
+                        )}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
                         {s.contracted_minutes} min
