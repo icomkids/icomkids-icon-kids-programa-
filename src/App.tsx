@@ -8,6 +8,7 @@ import LoginPage from "@/pages/LoginPage";
 import PainelPage from "@/pages/PainelPage";
 import PartnersPage from "@/pages/PartnersPage";
 import PlaceholderPage from "@/pages/PlaceholderPage";
+import SubscriptionsPage from "@/pages/SubscriptionsPage";
 import TelaoPage from "@/pages/TelaoPage";
 
 function App() {
@@ -42,19 +43,7 @@ function App() {
                 />
               }
             />
-            <Route
-              path="/assinaturas"
-              element={
-                <PlaceholderPage
-                  title="Assinaturas"
-                  module={6}
-                  scope={[
-                    "Planos com beneficios (descontos, horas extras)",
-                    "Gestao de assinantes e renovacoes",
-                  ]}
-                />
-              }
-            />
+            <Route path="/assinaturas" element={<SubscriptionsPage />} />
             <Route
               path="/agendamento"
               element={

@@ -321,6 +321,137 @@ export type Database = {
           },
         ]
       }
+      subscription_payments: {
+        Row: {
+          amount_cents: number
+          covers_period: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          paid_at: string
+          payment_method: string | null
+          subscription_id: string
+        }
+        Insert: {
+          amount_cents: number
+          covers_period?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          paid_at?: string
+          payment_method?: string | null
+          subscription_id: string
+        }
+        Update: {
+          amount_cents?: number
+          covers_period?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          paid_at?: string
+          payment_method?: string | null
+          subscription_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_payments_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscription_plans: {
+        Row: {
+          active: boolean
+          created_at: string
+          description: string | null
+          discount_pct: number
+          id: string
+          included_minutes: number
+          monthly_cents: number
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          discount_pct?: number
+          id?: string
+          included_minutes?: number
+          monthly_cents: number
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          discount_pct?: number
+          id?: string
+          included_minutes?: number
+          monthly_cents?: number
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          canceled_at: string | null
+          created_at: string
+          guardian_id: string
+          id: string
+          next_billing_on: string
+          notes: string | null
+          plan_id: string
+          starts_on: string
+          status: Database["public"]["Enums"]["subscription_status"]
+          updated_at: string
+        }
+        Insert: {
+          canceled_at?: string | null
+          created_at?: string
+          guardian_id: string
+          id?: string
+          next_billing_on: string
+          notes?: string | null
+          plan_id: string
+          starts_on?: string
+          status?: Database["public"]["Enums"]["subscription_status"]
+          updated_at?: string
+        }
+        Update: {
+          canceled_at?: string | null
+          created_at?: string
+          guardian_id?: string
+          id?: string
+          next_billing_on?: string
+          notes?: string | null
+          plan_id?: string
+          starts_on?: string
+          status?: Database["public"]["Enums"]["subscription_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_guardian_id_fkey"
+            columns: ["guardian_id"]
+            isOneToOne: false
+            referencedRelation: "guardians"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       webhook_events: {
         Row: {
           attempts: number
@@ -460,6 +591,7 @@ export type Database = {
     }
     Enums: {
       session_status: "active" | "paused" | "ended"
+      subscription_status: "active" | "paused" | "canceled" | "expired"
       user_role: "owner" | "staff" | "partner" | "customer"
     }
     CompositeTypes: {
@@ -592,6 +724,7 @@ export const Constants = {
   public: {
     Enums: {
       session_status: ["active", "paused", "ended"],
+      subscription_status: ["active", "paused", "canceled", "expired"],
       user_role: ["owner", "staff", "partner", "customer"],
     },
   },
