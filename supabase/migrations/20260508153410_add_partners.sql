@@ -40,7 +40,11 @@ create index sessions_partner_id_idx on public.sessions(partner_id)
   where partner_id is not null;
 
 -- Refresh the sessions_with_timing view to include the new column.
-create or replace view public.sessions_with_timing as
+-- Drop+recreate (instead of CREATE OR REPLACE) because adding a column to
+-- the underlying table changes the position of `expected_end_at` and
+-- Postgres rejects the column-rename that CREATE OR REPLACE implies.
+drop view if exists public.sessions_with_timing;
+create view public.sessions_with_timing as
 select
   s.*,
   s.started_at + make_interval(mins => s.contracted_minutes) as expected_end_at,
