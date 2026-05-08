@@ -152,6 +152,99 @@ export type Database = {
           },
         ]
       }
+      message_templates: {
+        Row: {
+          active: boolean
+          body: string
+          created_at: string
+          id: string
+          key: string
+          name: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          body: string
+          created_at?: string
+          id?: string
+          key: string
+          name: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          body?: string
+          created_at?: string
+          id?: string
+          key?: string
+          name?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      messages_log: {
+        Row: {
+          body: string
+          context: Json | null
+          created_at: string
+          event_type: string | null
+          failed_at: string | null
+          id: string
+          phone: string
+          provider_response: Json | null
+          sent_at: string | null
+          status: Database["public"]["Enums"]["message_status"]
+          template_key: string | null
+          triggered_by: string | null
+        }
+        Insert: {
+          body: string
+          context?: Json | null
+          created_at?: string
+          event_type?: string | null
+          failed_at?: string | null
+          id?: string
+          phone: string
+          provider_response?: Json | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["message_status"]
+          template_key?: string | null
+          triggered_by?: string | null
+        }
+        Update: {
+          body?: string
+          context?: Json | null
+          created_at?: string
+          event_type?: string | null
+          failed_at?: string | null
+          id?: string
+          phone?: string
+          provider_response?: Json | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["message_status"]
+          template_key?: string | null
+          triggered_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_log_template_key_fkey"
+            columns: ["template_key"]
+            isOneToOne: false
+            referencedRelation: "message_templates"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "messages_log_triggered_by_fkey"
+            columns: ["triggered_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partners: {
         Row: {
           active: boolean
@@ -777,6 +870,7 @@ export type Database = {
       }
     }
     Enums: {
+      message_status: "queued" | "sent" | "failed"
       session_status: "active" | "paused" | "ended"
       subscription_status: "active" | "paused" | "canceled" | "expired"
       user_role: "owner" | "staff" | "partner" | "customer"
@@ -911,6 +1005,7 @@ export const Constants = {
   },
   public: {
     Enums: {
+      message_status: ["queued", "sent", "failed"],
       session_status: ["active", "paused", "ended"],
       subscription_status: ["active", "paused", "canceled", "expired"],
       user_role: ["owner", "staff", "partner", "customer"],

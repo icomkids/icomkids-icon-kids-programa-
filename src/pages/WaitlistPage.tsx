@@ -30,20 +30,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { isUsingMockData } from "@/features/crm/lib/sessions-repo";
+import { sendWhatsApp } from "@/features/messaging/lib/uazapi";
 import { useWaitlist } from "@/features/waitlist/hooks/use-waitlist";
 import { formatTimeOfDay } from "@/lib/format";
 import type { WaitlistEntry, WaitlistInput } from "@/features/waitlist/types";
-
-function buildWhatsappLink(entry: WaitlistEntry): string {
-  // Strip everything except digits; assume Brazilian numbers default +55.
-  const digits = entry.guardian_phone.replace(/\D/g, "");
-  const e164 = digits.startsWith("55") ? digits : `55${digits}`;
-  const child = entry.child_full_name ? `, ${entry.child_full_name}` : "";
-  const text = encodeURIComponent(
-    `Oi ${entry.guardian_full_name}! Sua vaga no iCOM Kids esta liberada${child}. Pode vir agora :)`
-  );
-  return `https://wa.me/${e164}?text=${text}`;
-}
 
 function elapsedMinutes(iso: string): number {
   return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000));
@@ -51,6 +41,36 @@ function elapsedMinutes(iso: string): number {
 
 export default function WaitlistPage() {
   const { active, closed, loading, error, add, setStatus } = useWaitlist();
+  const [sendingId, setSendingId] = useState<string | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
+
+  const callGuardian = async (entry: WaitlistEntry) => {
+    setSendingId(entry.id);
+    setSendError(null);
+    try {
+      const result = await sendWhatsApp({
+        phone: entry.guardian_phone,
+        template_key: "waitlist_called",
+        variables: {
+          nome: entry.guardian_full_name,
+          crianca_sufix: entry.child_full_name
+            ? `, ${entry.child_full_name}`
+            : "",
+        },
+        event_type: "waitlist_called",
+        context: { waitlist_id: entry.id },
+      });
+      if (!result.ok) {
+        setSendError(
+          result.error ?? "Falha ao enviar — verifique a configuracao do WhatsApp."
+        );
+        return;
+      }
+      await setStatus(entry.id, "called");
+    } finally {
+      setSendingId(null);
+    }
+  };
 
   const totals = useMemo(() => {
     const waiting = active.filter((e) => e.status === "waiting");
@@ -89,6 +109,11 @@ export default function WaitlistPage() {
         {error ? (
           <div className="rounded-md border border-[#EA4D8E] bg-[#EA4D8E]/10 px-4 py-3 text-sm text-[#EA4D8E]">
             {error}
+          </div>
+        ) : null}
+        {sendError ? (
+          <div className="rounded-md border border-[#EA4D8E] bg-[#EA4D8E]/10 px-4 py-3 text-sm text-[#EA4D8E]">
+            {sendError}
           </div>
         ) : null}
 
@@ -177,19 +202,13 @@ export default function WaitlistPage() {
                     <div className="flex flex-wrap gap-1">
                       {!isCalled ? (
                         <Button
-                          asChild
                           size="sm"
                           className="bg-[#A6CD3F] text-slate-900 hover:bg-[#A6CD3F]/90"
-                          onClick={() => void setStatus(e.id, "called")}
+                          disabled={sendingId === e.id}
+                          onClick={() => void callGuardian(e)}
                         >
-                          <a
-                            href={buildWhatsappLink(e)}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            <MessageCircle className="size-3.5" />
-                            Chamar
-                          </a>
+                          <MessageCircle className="size-3.5" />
+                          {sendingId === e.id ? "Enviando..." : "Chamar"}
                         </Button>
                       ) : (
                         <Button

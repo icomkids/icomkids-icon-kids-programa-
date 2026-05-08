@@ -10,6 +10,7 @@ import PainelPage from "@/pages/PainelPage";
 import PartnersPage from "@/pages/PartnersPage";
 import PDVPage from "@/pages/PDVPage";
 import PlaceholderPage from "@/pages/PlaceholderPage";
+import SettingsPage from "@/pages/SettingsPage";
 import SubscriptionsPage from "@/pages/SubscriptionsPage";
 import TelaoPage from "@/pages/TelaoPage";
 import WaitlistPage from "@/pages/WaitlistPage";
@@ -145,6 +146,7 @@ function App() {
                 />
               }
             />
+            <Route path="/configuracoes" element={<SettingsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/painel" replace />} />
         </Routes>

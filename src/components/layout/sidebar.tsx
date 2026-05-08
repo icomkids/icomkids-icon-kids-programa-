@@ -3,6 +3,7 @@ import {
   Banknote,
   CalendarRange,
   Coffee,
+  Cog,
   FileSignature,
   Gauge,
   GraduationCap,
@@ -47,6 +48,10 @@ const items: Item[] = [
   { to: "/equipe", label: "Equipe", icon: Users, module: 17 },
 ];
 
+const utilityItems: Array<{ to: string; label: string; icon: React.ComponentType<{ className?: string }> }> = [
+  { to: "/configuracoes", label: "Configuracoes", icon: Cog },
+];
+
 export function Sidebar() {
   return (
     <aside className="hidden h-svh w-64 shrink-0 flex-col border-r border-border bg-card md:flex">
@@ -77,6 +82,23 @@ export function Sidebar() {
             >
               <span className="opacity-80">M{it.module.toString().padStart(2, "0")}</span>
             </span>
+          </NavLink>
+        ))}
+        <div className="my-2 border-t border-border" />
+        {utilityItems.map((it) => (
+          <NavLink
+            key={it.to}
+            to={it.to}
+            className={({ isActive }) =>
+              `flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition ${
+                isActive
+                  ? "bg-[#1E78DC] text-white"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`
+            }
+          >
+            <it.icon className="size-4 shrink-0" />
+            <span className="flex-1 truncate">{it.label}</span>
           </NavLink>
         ))}
       </nav>
