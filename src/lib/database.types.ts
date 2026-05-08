@@ -39,6 +39,63 @@ export type Database = {
   }
   public: {
     Tables: {
+      appointments: {
+        Row: {
+          child_name: string | null
+          created_at: string
+          deposit_cents: number
+          guardian_name: string
+          guardian_phone: string
+          id: string
+          kind: Database["public"]["Enums"]["appointment_kind"]
+          notes: string | null
+          party_size: number
+          scheduled_date: string
+          scheduled_end_time: string | null
+          scheduled_start_time: string
+          status: Database["public"]["Enums"]["appointment_status"]
+          title: string | null
+          total_cents: number
+          updated_at: string
+        }
+        Insert: {
+          child_name?: string | null
+          created_at?: string
+          deposit_cents?: number
+          guardian_name: string
+          guardian_phone: string
+          id?: string
+          kind?: Database["public"]["Enums"]["appointment_kind"]
+          notes?: string | null
+          party_size?: number
+          scheduled_date: string
+          scheduled_end_time?: string | null
+          scheduled_start_time: string
+          status?: Database["public"]["Enums"]["appointment_status"]
+          title?: string | null
+          total_cents?: number
+          updated_at?: string
+        }
+        Update: {
+          child_name?: string | null
+          created_at?: string
+          deposit_cents?: number
+          guardian_name?: string
+          guardian_phone?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["appointment_kind"]
+          notes?: string | null
+          party_size?: number
+          scheduled_date?: string
+          scheduled_end_time?: string | null
+          scheduled_start_time?: string
+          status?: Database["public"]["Enums"]["appointment_status"]
+          title?: string | null
+          total_cents?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       child_guardians: {
         Row: {
           child_id: string
@@ -951,6 +1008,14 @@ export type Database = {
       }
     }
     Enums: {
+      appointment_kind: "visit" | "event"
+      appointment_status:
+        | "requested"
+        | "confirmed"
+        | "in_progress"
+        | "completed"
+        | "canceled"
+        | "no_show"
       message_status: "queued" | "sent" | "failed"
       nps_classification: "detractor" | "passive" | "promoter"
       session_status: "active" | "paused" | "ended"
@@ -1087,6 +1152,15 @@ export const Constants = {
   },
   public: {
     Enums: {
+      appointment_kind: ["visit", "event"],
+      appointment_status: [
+        "requested",
+        "confirmed",
+        "in_progress",
+        "completed",
+        "canceled",
+        "no_show",
+      ],
       message_status: ["queued", "sent", "failed"],
       nps_classification: ["detractor", "passive", "promoter"],
       session_status: ["active", "paused", "ended"],

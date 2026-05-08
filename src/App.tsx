@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "@/components/layout/app-shell";
 import { AuthProvider } from "@/features/auth/auth-context";
 import { RequireAuth } from "@/features/auth/require-auth";
+import AppointmentsPage from "@/pages/AppointmentsPage";
 import CaixaPage from "@/pages/CaixaPage";
 import CheckoutPage from "@/pages/CheckoutPage";
 import DashboardPage from "@/pages/DashboardPage";
@@ -51,20 +52,7 @@ function App() {
               }
             />
             <Route path="/assinaturas" element={<SubscriptionsPage />} />
-            <Route
-              path="/agendamento"
-              element={
-                <PlaceholderPage
-                  title="Agendamento e eventos"
-                  module={7}
-                  scope={[
-                    "Agendamento de visitas",
-                    "Reserva de espaco para festas",
-                    "Gestao de disponibilidade e valores",
-                  ]}
-                />
-              }
-            />
+            <Route path="/agendamento" element={<AppointmentsPage />} />
             <Route
               path="/midia"
               element={
