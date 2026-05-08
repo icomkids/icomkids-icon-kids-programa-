@@ -16,6 +16,8 @@ interface WaitlistRow {
   guardian_full_name: string;
   guardian_phone: string;
   child_full_name: string | null;
+  child_age: number | null;
+  child_gender: "boy" | "girl" | null;
   party_size: number;
   notes: string | null;
   status: WaitlistStatus;
@@ -26,7 +28,7 @@ interface WaitlistRow {
 }
 
 const SELECT =
-  "id, guardian_full_name, guardian_phone, child_full_name, party_size, notes, status, called_at, arrived_at, closed_at, created_at";
+  "id, guardian_full_name, guardian_phone, child_full_name, child_age, child_gender, party_size, notes, status, called_at, arrived_at, closed_at, created_at";
 
 function rowToEntry(row: WaitlistRow): WaitlistEntry {
   return {
@@ -34,6 +36,8 @@ function rowToEntry(row: WaitlistRow): WaitlistEntry {
     guardian_full_name: row.guardian_full_name,
     guardian_phone: row.guardian_phone,
     child_full_name: row.child_full_name,
+    child_age: row.child_age,
+    child_gender: row.child_gender,
     party_size: row.party_size,
     notes: row.notes,
     status: row.status,
@@ -104,6 +108,8 @@ export const mockWaitlistRepo: WaitlistRepo = {
       guardian_full_name: input.guardian_full_name,
       guardian_phone: input.guardian_phone,
       child_full_name: input.child_full_name ?? null,
+      child_age: input.child_age ?? null,
+      child_gender: input.child_gender ?? null,
       party_size: input.party_size ?? 1,
       notes: input.notes ?? null,
       status: "waiting",
@@ -159,6 +165,8 @@ export const supabaseWaitlistRepo: WaitlistRepo = {
         guardian_full_name: input.guardian_full_name,
         guardian_phone: input.guardian_phone,
         child_full_name: input.child_full_name ?? null,
+        child_age: input.child_age ?? null,
+        child_gender: input.child_gender ?? null,
         party_size: input.party_size ?? 1,
         notes: input.notes ?? null,
       })

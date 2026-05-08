@@ -49,7 +49,23 @@ export function ChildSessionCard({ session, onPause, onResume, onEnd }: Props) {
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-base font-bold">{session.child.full_name}</p>
+            <p className="flex items-center gap-1.5 truncate text-base font-bold">
+              <span className="truncate">{session.child.full_name}</span>
+              {session.child.gender ? (
+                <span
+                  className="inline-flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                  style={{
+                    background:
+                      session.child.gender === "girl" ? "#EA4D8E" : "#1E78DC",
+                  }}
+                  aria-label={
+                    session.child.gender === "girl" ? "Menina" : "Menino"
+                  }
+                >
+                  {session.child.gender === "girl" ? "F" : "M"}
+                </span>
+              ) : null}
+            </p>
             <p className="truncate text-xs text-muted-foreground">
               Resp.: {session.guardian?.full_name ?? "—"}
             </p>

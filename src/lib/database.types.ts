@@ -178,6 +178,7 @@ export type Database = {
           birth_date: string | null
           created_at: string
           full_name: string
+          gender: Database["public"]["Enums"]["gender"] | null
           id: string
           notes: string | null
           photo_url: string | null
@@ -187,6 +188,7 @@ export type Database = {
           birth_date?: string | null
           created_at?: string
           full_name: string
+          gender?: Database["public"]["Enums"]["gender"] | null
           id?: string
           notes?: string | null
           photo_url?: string | null
@@ -196,6 +198,7 @@ export type Database = {
           birth_date?: string | null
           created_at?: string
           full_name?: string
+          gender?: Database["public"]["Enums"]["gender"] | null
           id?: string
           notes?: string | null
           photo_url?: string | null
@@ -852,7 +855,9 @@ export type Database = {
         Row: {
           arrived_at: string | null
           called_at: string | null
+          child_age: number | null
           child_full_name: string | null
+          child_gender: Database["public"]["Enums"]["gender"] | null
           closed_at: string | null
           created_at: string
           guardian_full_name: string
@@ -866,7 +871,9 @@ export type Database = {
         Insert: {
           arrived_at?: string | null
           called_at?: string | null
+          child_age?: number | null
           child_full_name?: string | null
+          child_gender?: Database["public"]["Enums"]["gender"] | null
           closed_at?: string | null
           created_at?: string
           guardian_full_name: string
@@ -880,7 +887,9 @@ export type Database = {
         Update: {
           arrived_at?: string | null
           called_at?: string | null
+          child_age?: number | null
           child_full_name?: string | null
+          child_gender?: Database["public"]["Enums"]["gender"] | null
           closed_at?: string | null
           created_at?: string
           guardian_full_name?: string

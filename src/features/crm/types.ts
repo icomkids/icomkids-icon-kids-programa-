@@ -2,10 +2,13 @@ export type UserRole = "owner" | "staff" | "partner" | "customer";
 export type SessionStatus = "active" | "paused" | "ended";
 export type DerivedSessionStatus = "active" | "ending_soon" | "expired" | "paused" | "ended";
 
+export type ChildGender = "boy" | "girl";
+
 export interface Child {
   id: string;
   full_name: string;
   birth_date: string | null;
+  gender: ChildGender | null;
   photo_url: string | null;
   notes: string | null;
 }
@@ -35,6 +38,8 @@ export interface ActiveSession {
 
 export interface QuickRegisterInput {
   child_full_name: string;
+  child_birth_date?: string;
+  child_gender?: ChildGender;
   guardian_full_name: string;
   guardian_phone?: string;
   contracted_minutes: number;

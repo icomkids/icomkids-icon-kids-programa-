@@ -33,7 +33,11 @@ import { isUsingMockData } from "@/features/crm/lib/sessions-repo";
 import { sendWhatsApp } from "@/features/messaging/lib/uazapi";
 import { useWaitlist } from "@/features/waitlist/hooks/use-waitlist";
 import { formatTimeOfDay } from "@/lib/format";
-import type { WaitlistEntry, WaitlistInput } from "@/features/waitlist/types";
+import type {
+  WaitlistEntry,
+  WaitlistGender,
+  WaitlistInput,
+} from "@/features/waitlist/types";
 
 function elapsedMinutes(iso: string): number {
   return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000));
@@ -174,6 +178,21 @@ export default function WaitlistPage() {
                           <span className="text-muted-foreground">
                             {" "}
                             · {e.child_full_name}
+                            {e.child_age != null ? ` (${e.child_age}a)` : ""}
+                          </span>
+                        ) : null}
+                        {e.child_gender ? (
+                          <span
+                            className="ml-2 inline-flex size-5 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                            style={{
+                              background:
+                                e.child_gender === "girl" ? "#EA4D8E" : "#1E78DC",
+                            }}
+                            aria-label={
+                              e.child_gender === "girl" ? "Menina" : "Menino"
+                            }
+                          >
+                            {e.child_gender === "girl" ? "F" : "M"}
                           </span>
                         ) : null}
                         {e.party_size > 1 ? (
@@ -346,12 +365,16 @@ function AddToWaitlistDialog({
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [child, setChild] = useState("");
+  const [age, setAge] = useState("");
+  const [gender, setGender] = useState<WaitlistGender | "">("");
   const [party, setParty] = useState("1");
 
   const reset = () => {
     setName("");
     setPhone("");
     setChild("");
+    setAge("");
+    setGender("");
     setParty("1");
   };
 
@@ -360,10 +383,13 @@ function AddToWaitlistDialog({
     if (!name.trim() || !phone.trim()) return;
     setSubmitting(true);
     try {
+      const ageNum = age ? Math.max(0, parseInt(age, 10)) : undefined;
       await onSubmit({
         guardian_full_name: name.trim(),
         guardian_phone: phone.trim(),
         child_full_name: child.trim() || undefined,
+        child_age: Number.isFinite(ageNum) ? ageNum : undefined,
+        child_gender: gender || undefined,
         party_size: parseInt(party, 10) || 1,
       });
       reset();
@@ -426,6 +452,47 @@ function AddToWaitlistDialog({
                 value={party}
                 onChange={(e) => setParty(e.target.value)}
               />
+            </div>
+          </div>
+          <div className="grid grid-cols-[auto_1fr] gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="wl-age">Idade</Label>
+              <Input
+                id="wl-age"
+                type="number"
+                min={0}
+                max={18}
+                value={age}
+                onChange={(e) => setAge(e.target.value)}
+                className="w-20"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Sexo</Label>
+              <div className="flex gap-1">
+                {(
+                  [
+                    { v: "boy" as const, label: "M", color: "#1E78DC" },
+                    { v: "girl" as const, label: "F", color: "#EA4D8E" },
+                  ]
+                ).map((g) => (
+                  <button
+                    key={g.v}
+                    type="button"
+                    onClick={() =>
+                      setGender(gender === g.v ? "" : g.v)
+                    }
+                    className="flex h-9 w-12 items-center justify-center rounded-md text-sm font-bold transition"
+                    style={{
+                      background: gender === g.v ? g.color : "transparent",
+                      color: gender === g.v ? "#ffffff" : g.color,
+                      border: `1px solid ${g.color}`,
+                    }}
+                  >
+                    {g.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
           <DialogFooter className="pt-2">

@@ -13,7 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { usePartners } from "@/features/partners/hooks/use-partners";
-import type { QuickRegisterInput } from "../types";
+import type { ChildGender, QuickRegisterInput } from "../types";
 
 interface Props {
   onSubmit: (input: QuickRegisterInput) => Promise<unknown>;
@@ -26,6 +26,8 @@ export function QuickRegisterDialog({ onSubmit }: Props) {
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [childName, setChildName] = useState("");
+  const [childBirth, setChildBirth] = useState("");
+  const [childGender, setChildGender] = useState<ChildGender | "">("");
   const [guardianName, setGuardianName] = useState("");
   const [guardianPhone, setGuardianPhone] = useState("");
   const [minutes, setMinutes] = useState(60);
@@ -35,6 +37,8 @@ export function QuickRegisterDialog({ onSubmit }: Props) {
 
   const reset = () => {
     setChildName("");
+    setChildBirth("");
+    setChildGender("");
     setGuardianName("");
     setGuardianPhone("");
     setMinutes(60);
@@ -53,6 +57,8 @@ export function QuickRegisterDialog({ onSubmit }: Props) {
         : undefined;
       await onSubmit({
         child_full_name: childName.trim(),
+        child_birth_date: childBirth || undefined,
+        child_gender: childGender || undefined,
         guardian_full_name: guardianName.trim(),
         guardian_phone: guardianPhone.trim() || undefined,
         contracted_minutes: minutes,
@@ -91,6 +97,45 @@ export function QuickRegisterDialog({ onSubmit }: Props) {
               onChange={(e) => setChildName(e.target.value)}
               autoFocus
             />
+          </div>
+          <div className="grid grid-cols-[1fr_auto] gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="qr-birth">Data de nascimento</Label>
+              <Input
+                id="qr-birth"
+                type="date"
+                value={childBirth}
+                onChange={(e) => setChildBirth(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Sexo</Label>
+              <div className="flex gap-1">
+                {(
+                  [
+                    { v: "boy" as const, label: "M", color: "#1E78DC" },
+                    { v: "girl" as const, label: "F", color: "#EA4D8E" },
+                  ]
+                ).map((g) => (
+                  <button
+                    key={g.v}
+                    type="button"
+                    onClick={() =>
+                      setChildGender(childGender === g.v ? "" : g.v)
+                    }
+                    className="flex h-9 w-10 items-center justify-center rounded-md text-sm font-bold transition"
+                    style={{
+                      background:
+                        childGender === g.v ? g.color : "transparent",
+                      color: childGender === g.v ? "#ffffff" : g.color,
+                      border: `1px solid ${g.color}`,
+                    }}
+                  >
+                    {g.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">

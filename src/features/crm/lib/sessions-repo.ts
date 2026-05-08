@@ -44,6 +44,7 @@ const initialMock: ActiveSession[] = [
       id: nextId(),
       full_name: "Helena Souza",
       birth_date: "2019-03-12",
+        gender: null,
       photo_url: null,
       notes: null,
     },
@@ -66,6 +67,7 @@ const initialMock: ActiveSession[] = [
       id: nextId(),
       full_name: "Davi Almeida",
       birth_date: "2020-08-04",
+        gender: null,
       photo_url: null,
       notes: null,
     },
@@ -88,6 +90,7 @@ const initialMock: ActiveSession[] = [
       id: nextId(),
       full_name: "Sofia Reis",
       birth_date: "2018-11-22",
+        gender: null,
       photo_url: null,
       notes: null,
     },
@@ -204,6 +207,7 @@ function seedSessionsForDay(daysAgo: number, count: number, rngSeed: number): Ac
         id: nextId(),
         full_name: childNamesPool[childIdx],
         birth_date: null,
+        gender: null,
         photo_url: null,
         notes: null,
       },
@@ -246,7 +250,7 @@ for (let d = 1; d <= HISTORICAL_DAYS; d++) {
 const earlierEnded: ActiveSession[] = [
   {
     id: nextId(),
-    child: { id: nextId(), full_name: "Lara Pinto", birth_date: null, photo_url: null, notes: null },
+    child: { id: nextId(), full_name: "Lara Pinto", birth_date: null, gender: null, photo_url: null, notes: null },
     guardian: { id: nextId(), full_name: "Bruno Pinto", phone: "(11) 99100-2233" },
     contracted_minutes: 60,
     started_at: new Date(Date.now() - 4 * 3600_000).toISOString(),
@@ -262,7 +266,7 @@ const earlierEnded: ActiveSession[] = [
   },
   {
     id: nextId(),
-    child: { id: nextId(), full_name: "Pedro Lima", birth_date: null, photo_url: null, notes: null },
+    child: { id: nextId(), full_name: "Pedro Lima", birth_date: null, gender: null, photo_url: null, notes: null },
     guardian: { id: nextId(), full_name: "Joana Lima", phone: "(11) 99211-3344" },
     contracted_minutes: 30,
     started_at: new Date(Date.now() - 5 * 3600_000).toISOString(),
@@ -278,7 +282,7 @@ const earlierEnded: ActiveSession[] = [
   },
   {
     id: nextId(),
-    child: { id: nextId(), full_name: "Alice Costa", birth_date: null, photo_url: null, notes: null },
+    child: { id: nextId(), full_name: "Alice Costa", birth_date: null, gender: null, photo_url: null, notes: null },
     guardian: { id: nextId(), full_name: "Tiago Costa", phone: "(11) 98123-7788" },
     contracted_minutes: 90,
     started_at: new Date(Date.now() - 6 * 3600_000).toISOString(),
@@ -334,7 +338,8 @@ export const mockSessionsRepo: SessionsRepo = {
       child: {
         id: child_id,
         full_name: input.child_full_name,
-        birth_date: null,
+        birth_date: input.child_birth_date ?? null,
+        gender: input.child_gender ?? null,
         photo_url: input.photo_url ?? null,
         notes: null,
       },
@@ -414,6 +419,7 @@ interface SessionRow {
     id: string;
     full_name: string;
     birth_date: string | null;
+    gender: "boy" | "girl" | null;
     photo_url: string | null;
     notes: string | null;
   } | null;
@@ -446,6 +452,7 @@ function rowToSession(row: SessionRow): ActiveSession {
       id: row.child_id,
       full_name: "(criança removida)",
       birth_date: null,
+        gender: null,
       photo_url: null,
       notes: null,
     },
@@ -454,7 +461,7 @@ function rowToSession(row: SessionRow): ActiveSession {
 }
 
 const SESSION_SELECT =
-  "id, child_id, guardian_id, partner_id, contracted_minutes, started_at, paused_at, paused_total_seconds, ended_at, status, amount_paid_cents, payment_method, qr_code_token, children:children(id, full_name, birth_date, photo_url, notes), guardians:guardians(id, full_name, phone), partners:partners(id, name)";
+  "id, child_id, guardian_id, partner_id, contracted_minutes, started_at, paused_at, paused_total_seconds, ended_at, status, amount_paid_cents, payment_method, qr_code_token, children:children(id, full_name, birth_date, gender, photo_url, notes), guardians:guardians(id, full_name, phone), partners:partners(id, name)";
 
 export const supabaseSessionsRepo: SessionsRepo = {
   async listActive() {
@@ -501,8 +508,13 @@ export const supabaseSessionsRepo: SessionsRepo = {
   async registerAndStart(input) {
     const { data: childRow, error: cErr } = await supabase
       .from("children")
-      .insert({ full_name: input.child_full_name, photo_url: input.photo_url ?? null })
-      .select("id, full_name, birth_date, photo_url, notes")
+      .insert({
+        full_name: input.child_full_name,
+        birth_date: input.child_birth_date ?? null,
+        gender: input.child_gender ?? null,
+        photo_url: input.photo_url ?? null,
+      })
+      .select("id, full_name, birth_date, gender, photo_url, notes")
       .single();
     if (cErr) throw cErr;
 
