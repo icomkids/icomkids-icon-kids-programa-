@@ -27,16 +27,20 @@ async function callUazapi(
   baseUrl: string,
   token: string,
   path: string,
+  method: "GET" | "POST" = "POST",
   body?: unknown
 ): Promise<{ status: number; data: any }> {
-  const resp = await fetch(`${baseUrl.replace(/\/$/, "")}${path}`, {
-    method: "POST",
+  const init: RequestInit = {
+    method,
     headers: {
       "Content-Type": "application/json",
       token,
     },
-    body: body == null ? "{}" : JSON.stringify(body),
-  });
+  };
+  if (method !== "GET") {
+    init.body = body == null ? "{}" : JSON.stringify(body);
+  }
+  const resp = await fetch(`${baseUrl.replace(/\/$/, "")}${path}`, init);
   let data: any;
   try {
     data = await resp.json();
@@ -120,7 +124,13 @@ Deno.serve(async (req) => {
   }
 
   if (input.action === "status") {
-    const { status, data } = await callUazapi(baseUrl, token, "/instance/status");
+    // free.uazapi.com expects GET on /instance/status (returns 405 on POST).
+    const { status, data } = await callUazapi(
+      baseUrl,
+      token,
+      "/instance/status",
+      "GET"
+    );
     if (status >= 400) {
       return jsonResponse(
         {
@@ -136,8 +146,22 @@ Deno.serve(async (req) => {
 
   if (input.action === "connect") {
     // /instance/connect returns the QR (and may also indicate connected
-    // state if the instance is already authenticated).
-    const { status, data } = await callUazapi(baseUrl, token, "/instance/connect");
+    // state if the instance is already authenticated). Some uazapi builds
+    // accept GET, others POST — try POST first then fall back to GET on 405.
+    let { status, data } = await callUazapi(
+      baseUrl,
+      token,
+      "/instance/connect",
+      "POST"
+    );
+    if (status === 405) {
+      ({ status, data } = await callUazapi(
+        baseUrl,
+        token,
+        "/instance/connect",
+        "GET"
+      ));
+    }
     if (status >= 400) {
       return jsonResponse(
         {
@@ -152,7 +176,20 @@ Deno.serve(async (req) => {
   }
 
   if (input.action === "disconnect") {
-    const { status, data } = await callUazapi(baseUrl, token, "/instance/logout");
+    let { status, data } = await callUazapi(
+      baseUrl,
+      token,
+      "/instance/logout",
+      "POST"
+    );
+    if (status === 405) {
+      ({ status, data } = await callUazapi(
+        baseUrl,
+        token,
+        "/instance/logout",
+        "GET"
+      ));
+    }
     if (status >= 400) {
       return jsonResponse(
         {
