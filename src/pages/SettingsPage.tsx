@@ -3,7 +3,6 @@ import {
   CheckCircle2,
   MessageSquare,
   Send,
-  Settings,
   XCircle,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/header";
@@ -19,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { WhatsAppConnectionCard } from "@/features/messaging/components/whatsapp-connection-card";
 import { useMessagesLog } from "@/features/messaging/hooks/use-messages-log";
 import { sendWhatsApp } from "@/features/messaging/lib/uazapi";
 import { formatTimeOfDay } from "@/lib/format";
@@ -74,23 +74,13 @@ export default function SettingsPage() {
       />
 
       <div className="space-y-6 p-6">
-        <section className="grid gap-6 lg:grid-cols-2">
+        <WhatsAppConnectionCard />
+
+        <section className="grid gap-6 lg:grid-cols-[auto_1fr]">
           <div className="rounded-xl border border-border bg-card p-5">
-            <header className="flex items-center gap-2">
-              <Settings className="size-4 text-[#1E78DC]" />
-              <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-                Status uazapi
-              </h2>
-            </header>
-            <p className="mt-2 text-xs text-muted-foreground">
-              O token e a URL da instancia ficam guardados como{" "}
-              <code className="rounded bg-muted px-1 py-0.5">
-                supabase secrets
-              </code>{" "}
-              da edge function{" "}
-              <code className="rounded bg-muted px-1 py-0.5">send-whatsapp</code>.
-              Nada sensivel fica no frontend.
-            </p>
+            <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+              Mensagens
+            </h2>
             <div className="mt-3 grid grid-cols-3 gap-3">
               <Stat label="Total" value={stats.total.toString()} color="#1E78DC" />
               <Stat
