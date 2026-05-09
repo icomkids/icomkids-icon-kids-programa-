@@ -8,6 +8,7 @@ import CheckoutPage from "@/pages/CheckoutPage";
 import DashboardPage from "@/pages/DashboardPage";
 import InventoryPage from "@/pages/InventoryPage";
 import LoginPage from "@/pages/LoginPage";
+import LoyaltyPage from "@/pages/LoyaltyPage";
 import NpsDashboardPage from "@/pages/NpsDashboardPage";
 import NpsResponsePage from "@/pages/NpsResponsePage";
 import PainelPage from "@/pages/PainelPage";
@@ -86,19 +87,7 @@ function App() {
             <Route path="/pdv" element={<PDVPage />} />
             <Route path="/lista-espera" element={<WaitlistPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
-            <Route
-              path="/fidelidade"
-              element={
-                <PlaceholderPage
-                  title="Fidelidade"
-                  module={14}
-                  scope={[
-                    "Pontos por visita / compra",
-                    "Recompensas e niveis de fidelidade",
-                  ]}
-                />
-              }
-            />
+            <Route path="/fidelidade" element={<LoyaltyPage />} />
             <Route path="/inventario" element={<InventoryPage />} />
             <Route path="/nps" element={<NpsDashboardPage />} />
             <Route path="/equipe" element={<TeamPage />} />

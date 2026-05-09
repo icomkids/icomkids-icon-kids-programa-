@@ -9,9 +9,34 @@ import {
 } from "@/features/crm/hooks/use-active-sessions";
 import { derivedStatus } from "@/features/crm/lib/session-timing";
 import { isUsingMockData } from "@/features/crm/lib/sessions-repo";
+import { loyaltyRepo } from "@/features/loyalty/lib/loyalty-repo";
 import { sendWhatsApp } from "@/features/messaging/lib/uazapi";
 import { npsRepo } from "@/features/nps/lib/nps-repo";
 import type { ActiveSession } from "@/features/crm/types";
+
+/**
+ * Awards 1 loyalty point per R$1 spent on the session. Idempotency: each
+ * session has a unique id; the RPC inserts a transaction tied to it. If
+ * the operator ends the same session twice, the same points are added
+ * twice — that's a known limitation we accept for the MVP (the painel
+ * removes the card on first end, so double-clicks are unusual).
+ */
+async function fireLoyaltyAccrual(session: ActiveSession) {
+  if (!session.guardian) return;
+  const points = Math.floor((session.amount_paid_cents ?? 0) / 100);
+  if (points <= 0) return;
+  try {
+    await loyaltyRepo.awardPoints(
+      session.guardian.id,
+      points,
+      `Sessao de ${session.child.full_name}`,
+      { session_id: session.id }
+    );
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn("Loyalty accrual failed:", e);
+  }
+}
 
 /**
  * After a session is ended, auto-create an NPS survey + send the WhatsApp
@@ -56,7 +81,10 @@ export default function PainelPage() {
   const handleEnd = async (id: string) => {
     const target = sessions.find((s) => s.id === id);
     await end(id);
-    if (target) void fireNpsFollowUp(target);
+    if (target) {
+      void fireLoyaltyAccrual(target);
+      void fireNpsFollowUp(target);
+    }
   };
 
   const counts = useMemo(() => {

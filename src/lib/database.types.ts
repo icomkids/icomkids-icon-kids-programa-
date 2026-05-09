@@ -342,6 +342,143 @@ export type Database = {
           },
         ]
       }
+      loyalty_accounts: {
+        Row: {
+          created_at: string
+          guardian_id: string
+          id: string
+          points_balance: number
+          total_earned: number
+          total_redeemed: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          guardian_id: string
+          id?: string
+          points_balance?: number
+          total_earned?: number
+          total_redeemed?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          guardian_id?: string
+          id?: string
+          points_balance?: number
+          total_earned?: number
+          total_redeemed?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_accounts_guardian_id_fkey"
+            columns: ["guardian_id"]
+            isOneToOne: true
+            referencedRelation: "guardians"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loyalty_rewards: {
+        Row: {
+          active: boolean
+          cost_points: number
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          cost_points: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          cost_points?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      loyalty_transactions: {
+        Row: {
+          account_id: string
+          created_at: string
+          delta: number
+          id: string
+          product_sale_id: string | null
+          reason: string
+          reward_id: string | null
+          session_id: string | null
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          delta: number
+          id?: string
+          product_sale_id?: string | null
+          reason: string
+          reward_id?: string | null
+          session_id?: string | null
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          delta?: number
+          id?: string
+          product_sale_id?: string | null
+          reason?: string
+          reward_id?: string | null
+          session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_transactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_transactions_product_sale_id_fkey"
+            columns: ["product_sale_id"]
+            isOneToOne: false
+            referencedRelation: "product_sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_transactions_reward_id_fkey"
+            columns: ["reward_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_rewards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_transactions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_transactions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions_with_timing"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_templates: {
         Row: {
           active: boolean
@@ -1224,6 +1361,20 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      award_loyalty_points: {
+        Args: {
+          p_guardian_id: string
+          p_points: number
+          p_product_sale_id?: string
+          p_reason: string
+          p_session_id?: string
+        }
+        Returns: undefined
+      }
+      ensure_loyalty_account: {
+        Args: { p_guardian_id: string }
+        Returns: string
+      }
       get_nps_by_token: {
         Args: { p_token: string }
         Returns: {
@@ -1234,6 +1385,10 @@ export type Database = {
           responded_at: string
           score: number
         }[]
+      }
+      redeem_loyalty_reward: {
+        Args: { p_account_id: string; p_reward_id: string }
+        Returns: undefined
       }
       staff_commissions_for_period: {
         Args: { p_from: string; p_to: string }
