@@ -15,6 +15,7 @@ import PDVPage from "@/pages/PDVPage";
 import PlaceholderPage from "@/pages/PlaceholderPage";
 import SettingsPage from "@/pages/SettingsPage";
 import SubscriptionsPage from "@/pages/SubscriptionsPage";
+import TeamPage from "@/pages/TeamPage";
 import TelaoPage from "@/pages/TelaoPage";
 import WaitlistPage from "@/pages/WaitlistPage";
 
@@ -111,20 +112,7 @@ function App() {
               }
             />
             <Route path="/nps" element={<NpsDashboardPage />} />
-            <Route
-              path="/equipe"
-              element={
-                <PlaceholderPage
-                  title="Equipe"
-                  module={17}
-                  scope={[
-                    "Cadastro de funcionarios",
-                    "Escala de trabalho",
-                    "Calculo de comissao",
-                  ]}
-                />
-              }
-            />
+            <Route path="/equipe" element={<TeamPage />} />
             <Route path="/configuracoes" element={<SettingsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/painel" replace />} />

@@ -720,6 +720,100 @@ export type Database = {
           },
         ]
       }
+      staff_members: {
+        Row: {
+          active: boolean
+          commission_pct: number
+          created_at: string
+          email: string | null
+          full_name: string
+          id: string
+          notes: string | null
+          phone: string | null
+          profile_id: string | null
+          role_label: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          commission_pct?: number
+          created_at?: string
+          email?: string | null
+          full_name: string
+          id?: string
+          notes?: string | null
+          phone?: string | null
+          profile_id?: string | null
+          role_label?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          commission_pct?: number
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          notes?: string | null
+          phone?: string | null
+          profile_id?: string | null
+          role_label?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_members_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_shifts: {
+        Row: {
+          created_at: string
+          end_time: string
+          id: string
+          member_id: string
+          notes: string | null
+          scheduled_date: string
+          start_time: string
+          status: Database["public"]["Enums"]["shift_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          end_time: string
+          id?: string
+          member_id: string
+          notes?: string | null
+          scheduled_date: string
+          start_time: string
+          status?: Database["public"]["Enums"]["shift_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          end_time?: string
+          id?: string
+          member_id?: string
+          notes?: string | null
+          scheduled_date?: string
+          start_time?: string
+          status?: Database["public"]["Enums"]["shift_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_shifts_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "staff_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscription_payments: {
         Row: {
           amount_cents: number
@@ -1049,6 +1143,17 @@ export type Database = {
           score: number
         }[]
       }
+      staff_commissions_for_period: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          attributed_cents: number
+          commission_cents: number
+          commission_pct: number
+          full_name: string
+          member_id: string
+          role_label: string
+        }[]
+      }
       submit_nps_response: {
         Args: { p_comment?: string; p_score: number; p_token: string }
         Returns: undefined
@@ -1067,6 +1172,7 @@ export type Database = {
       message_status: "queued" | "sent" | "failed"
       nps_classification: "detractor" | "passive" | "promoter"
       session_status: "active" | "paused" | "ended"
+      shift_status: "scheduled" | "completed" | "no_show" | "canceled"
       subscription_status: "active" | "paused" | "canceled" | "expired"
       user_role: "owner" | "staff" | "partner" | "customer"
       waitlist_status: "waiting" | "called" | "arrived" | "no_show" | "canceled"
@@ -1213,6 +1319,7 @@ export const Constants = {
       message_status: ["queued", "sent", "failed"],
       nps_classification: ["detractor", "passive", "promoter"],
       session_status: ["active", "paused", "ended"],
+      shift_status: ["scheduled", "completed", "no_show", "canceled"],
       subscription_status: ["active", "paused", "canceled", "expired"],
       user_role: ["owner", "staff", "partner", "customer"],
       waitlist_status: ["waiting", "called", "arrived", "no_show", "canceled"],
