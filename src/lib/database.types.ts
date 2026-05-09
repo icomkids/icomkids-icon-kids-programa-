@@ -479,6 +479,51 @@ export type Database = {
           },
         ]
       }
+      media_items: {
+        Row: {
+          active: boolean
+          created_at: string
+          display_weight: number
+          duration_seconds: number
+          ends_on: string | null
+          id: string
+          kind: Database["public"]["Enums"]["media_kind"]
+          name: string
+          notes: string | null
+          starts_on: string | null
+          storage_path: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          display_weight?: number
+          duration_seconds?: number
+          ends_on?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["media_kind"]
+          name: string
+          notes?: string | null
+          starts_on?: string | null
+          storage_path: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          display_weight?: number
+          duration_seconds?: number
+          ends_on?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["media_kind"]
+          name?: string
+          notes?: string | null
+          starts_on?: string | null
+          storage_path?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       message_templates: {
         Row: {
           active: boolean
@@ -1424,6 +1469,7 @@ export type Database = {
         | "overdue"
         | "canceled"
       maintenance_type: "preventive" | "corrective"
+      media_kind: "image" | "video"
       message_status: "queued" | "sent" | "failed"
       nps_classification: "detractor" | "passive" | "promoter"
       session_status: "active" | "paused" | "ended"
@@ -1580,6 +1626,7 @@ export const Constants = {
         "canceled",
       ],
       maintenance_type: ["preventive", "corrective"],
+      media_kind: ["image", "video"],
       message_status: ["queued", "sent", "failed"],
       nps_classification: ["detractor", "passive", "promoter"],
       session_status: ["active", "paused", "ended"],

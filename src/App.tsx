@@ -9,6 +9,7 @@ import DashboardPage from "@/pages/DashboardPage";
 import InventoryPage from "@/pages/InventoryPage";
 import LoginPage from "@/pages/LoginPage";
 import LoyaltyPage from "@/pages/LoyaltyPage";
+import MediaPage from "@/pages/MediaPage";
 import NpsDashboardPage from "@/pages/NpsDashboardPage";
 import NpsResponsePage from "@/pages/NpsResponsePage";
 import PainelPage from "@/pages/PainelPage";
@@ -56,20 +57,7 @@ function App() {
             />
             <Route path="/assinaturas" element={<SubscriptionsPage />} />
             <Route path="/agendamento" element={<AppointmentsPage />} />
-            <Route
-              path="/midia"
-              element={
-                <PlaceholderPage
-                  title="Midia e anuncios"
-                  module={8}
-                  scope={[
-                    "Upload de imagens e videos",
-                    "Tempo de exibicao + frequencia diaria/semanal",
-                    "Agendamento de campanhas",
-                  ]}
-                />
-              }
-            />
+            <Route path="/midia" element={<MediaPage />} />
             <Route path="/qrcode" element={<CheckoutPage />} />
             <Route
               path="/termo"
