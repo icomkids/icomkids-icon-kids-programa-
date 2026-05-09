@@ -6,6 +6,7 @@ import AppointmentsPage from "@/pages/AppointmentsPage";
 import CaixaPage from "@/pages/CaixaPage";
 import CheckoutPage from "@/pages/CheckoutPage";
 import DashboardPage from "@/pages/DashboardPage";
+import InventoryPage from "@/pages/InventoryPage";
 import LoginPage from "@/pages/LoginPage";
 import NpsDashboardPage from "@/pages/NpsDashboardPage";
 import NpsResponsePage from "@/pages/NpsResponsePage";
@@ -98,19 +99,7 @@ function App() {
                 />
               }
             />
-            <Route
-              path="/inventario"
-              element={
-                <PlaceholderPage
-                  title="Inventario de ativos"
-                  module={15}
-                  scope={[
-                    "Cadastro de brinquedos e equipamentos",
-                    "Manutencao preventiva agendada",
-                  ]}
-                />
-              }
-            />
+            <Route path="/inventario" element={<InventoryPage />} />
             <Route path="/nps" element={<NpsDashboardPage />} />
             <Route path="/equipe" element={<TeamPage />} />
             <Route path="/configuracoes" element={<SettingsPage />} />

@@ -134,6 +134,98 @@ export type Database = {
         }
         Relationships: []
       }
+      asset_maintenance: {
+        Row: {
+          asset_id: string
+          completed_at: string | null
+          cost_cents: number
+          created_at: string
+          id: string
+          notes: string | null
+          performed_by: string | null
+          scheduled_date: string
+          status: Database["public"]["Enums"]["maintenance_status"]
+          type: Database["public"]["Enums"]["maintenance_type"]
+          updated_at: string
+        }
+        Insert: {
+          asset_id: string
+          completed_at?: string | null
+          cost_cents?: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          performed_by?: string | null
+          scheduled_date: string
+          status?: Database["public"]["Enums"]["maintenance_status"]
+          type?: Database["public"]["Enums"]["maintenance_type"]
+          updated_at?: string
+        }
+        Update: {
+          asset_id?: string
+          completed_at?: string | null
+          cost_cents?: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          performed_by?: string | null
+          scheduled_date?: string
+          status?: Database["public"]["Enums"]["maintenance_status"]
+          type?: Database["public"]["Enums"]["maintenance_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asset_maintenance_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assets: {
+        Row: {
+          active: boolean
+          category: string | null
+          condition: Database["public"]["Enums"]["asset_condition"]
+          created_at: string
+          id: string
+          location: string | null
+          name: string
+          notes: string | null
+          purchase_date: string | null
+          serial_number: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          category?: string | null
+          condition?: Database["public"]["Enums"]["asset_condition"]
+          created_at?: string
+          id?: string
+          location?: string | null
+          name: string
+          notes?: string | null
+          purchase_date?: string | null
+          serial_number?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          category?: string | null
+          condition?: Database["public"]["Enums"]["asset_condition"]
+          created_at?: string
+          id?: string
+          location?: string | null
+          name?: string
+          notes?: string | null
+          purchase_date?: string | null
+          serial_number?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       child_guardians: {
         Row: {
           child_id: string
@@ -1168,7 +1260,15 @@ export type Database = {
         | "completed"
         | "canceled"
         | "no_show"
+      asset_condition: "good" | "attention" | "broken"
       gender: "boy" | "girl"
+      maintenance_status:
+        | "scheduled"
+        | "in_progress"
+        | "completed"
+        | "overdue"
+        | "canceled"
+      maintenance_type: "preventive" | "corrective"
       message_status: "queued" | "sent" | "failed"
       nps_classification: "detractor" | "passive" | "promoter"
       session_status: "active" | "paused" | "ended"
@@ -1315,7 +1415,16 @@ export const Constants = {
         "canceled",
         "no_show",
       ],
+      asset_condition: ["good", "attention", "broken"],
       gender: ["boy", "girl"],
+      maintenance_status: [
+        "scheduled",
+        "in_progress",
+        "completed",
+        "overdue",
+        "canceled",
+      ],
+      maintenance_type: ["preventive", "corrective"],
       message_status: ["queued", "sent", "failed"],
       nps_classification: ["detractor", "passive", "promoter"],
       session_status: ["active", "paused", "ended"],
