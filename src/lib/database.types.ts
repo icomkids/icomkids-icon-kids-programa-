@@ -1219,6 +1219,95 @@ export type Database = {
           },
         ]
       }
+      term_signatures: {
+        Row: {
+          child_name: string | null
+          created_at: string
+          guardian_document: string | null
+          guardian_name: string
+          guardian_phone: string | null
+          id: string
+          ip: string | null
+          notes: string | null
+          signature_data_url: string | null
+          signed_at: string | null
+          template_id: string | null
+          template_version: number | null
+          token: string
+          user_agent: string | null
+        }
+        Insert: {
+          child_name?: string | null
+          created_at?: string
+          guardian_document?: string | null
+          guardian_name: string
+          guardian_phone?: string | null
+          id?: string
+          ip?: string | null
+          notes?: string | null
+          signature_data_url?: string | null
+          signed_at?: string | null
+          template_id?: string | null
+          template_version?: number | null
+          token?: string
+          user_agent?: string | null
+        }
+        Update: {
+          child_name?: string | null
+          created_at?: string
+          guardian_document?: string | null
+          guardian_name?: string
+          guardian_phone?: string | null
+          id?: string
+          ip?: string | null
+          notes?: string | null
+          signature_data_url?: string | null
+          signed_at?: string | null
+          template_id?: string | null
+          template_version?: number | null
+          token?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "term_signatures_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "term_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      term_templates: {
+        Row: {
+          active: boolean
+          body: string
+          created_at: string
+          id: string
+          title: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          active?: boolean
+          body: string
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          version: number
+        }
+        Update: {
+          active?: boolean
+          body?: string
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: []
+      }
       waitlist_entries: {
         Row: {
           arrived_at: string | null
@@ -1431,6 +1520,19 @@ export type Database = {
           score: number
         }[]
       }
+      get_term_signature_by_token: {
+        Args: { p_token: string }
+        Returns: {
+          child_name: string
+          guardian_name: string
+          guardian_phone: string
+          id: string
+          signed_at: string
+          template_body: string
+          template_title: string
+          template_version: number
+        }[]
+      }
       redeem_loyalty_reward: {
         Args: { p_account_id: string; p_reward_id: string }
         Returns: undefined
@@ -1448,6 +1550,15 @@ export type Database = {
       }
       submit_nps_response: {
         Args: { p_comment?: string; p_score: number; p_token: string }
+        Returns: undefined
+      }
+      submit_term_signature: {
+        Args: {
+          p_guardian_document?: string
+          p_signature_data_url: string
+          p_token: string
+          p_user_agent?: string
+        }
         Returns: undefined
       }
     }

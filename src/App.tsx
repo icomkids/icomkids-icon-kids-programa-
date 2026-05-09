@@ -20,6 +20,8 @@ import SettingsPage from "@/pages/SettingsPage";
 import SubscriptionsPage from "@/pages/SubscriptionsPage";
 import TeamPage from "@/pages/TeamPage";
 import TelaoPage from "@/pages/TelaoPage";
+import TermsPage from "@/pages/TermsPage";
+import TermSignPage from "@/pages/TermSignPage";
 import WaitlistPage from "@/pages/WaitlistPage";
 
 function App() {
@@ -30,6 +32,7 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/telao" element={<TelaoPage />} />
           <Route path="/nps/:token" element={<NpsResponsePage />} />
+          <Route path="/termo/sign/:token" element={<TermSignPage />} />
           <Route
             element={
               <RequireAuth>
@@ -59,19 +62,7 @@ function App() {
             <Route path="/agendamento" element={<AppointmentsPage />} />
             <Route path="/midia" element={<MediaPage />} />
             <Route path="/qrcode" element={<CheckoutPage />} />
-            <Route
-              path="/termo"
-              element={
-                <PlaceholderPage
-                  title="Termo de responsabilidade digital"
-                  module={10}
-                  scope={[
-                    "Assinatura via tablet/smartphone",
-                    "Armazenamento seguro no Supabase Storage",
-                  ]}
-                />
-              }
-            />
+            <Route path="/termo" element={<TermsPage />} />
             <Route path="/pdv" element={<PDVPage />} />
             <Route path="/lista-espera" element={<WaitlistPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
