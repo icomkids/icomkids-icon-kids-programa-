@@ -1,4 +1,4 @@
--- Icon Kids — Module 5 (Vendas online + Stripe Checkout)
+-- Icon Kids — Module 5 (Vendas online com Asaas Checkout)
 
 create type public.ticket_order_status as enum (
   'pending',
@@ -18,9 +18,8 @@ create table public.ticket_offers (
   description text,
   duration_minutes integer check (duration_minutes is null or duration_minutes > 0),
   price_cents integer not null check (price_cents >= 0),
-  /** Stripe Price ID pre-criado no painel Stripe (recomendado). Se vazio,
-   *  a edge function cria um price_data inline na hora do checkout. */
-  stripe_price_id text,
+  /** Identificador externo opcional (ex.: id no painel Asaas, ou SKU). */
+  external_id text,
   active boolean not null default true,
   display_order integer not null default 0,
   notes text,
@@ -48,11 +47,16 @@ create table public.ticket_orders (
   guardian_name text not null,
   guardian_phone text,
   guardian_email text,
+  guardian_document text,                          -- CPF/CNPJ
   child_name text,
   amount_cents integer not null check (amount_cents >= 0),
   status public.ticket_order_status not null default 'pending',
-  stripe_session_id text unique,
-  stripe_payment_intent text,
+  /** ID do checkout retornado pelo Asaas (POST /v3/checkouts). */
+  asaas_checkout_id text unique,
+  /** ID do payment quando o checkout converte em cobranca. */
+  asaas_payment_id text unique,
+  /** URL hospedada do checkout para reabrir o pagamento depois. */
+  checkout_url text,
   paid_at timestamptz,
   /** Se a sessao no parque ja foi gerada a partir desse pedido. */
   redeemed_session_id uuid references public.sessions(id) on delete set null,
@@ -66,8 +70,10 @@ create table public.ticket_orders (
 create index ticket_orders_status_idx on public.ticket_orders(status, created_at desc);
 create index ticket_orders_paid_idx on public.ticket_orders(paid_at desc nulls last)
   where status = 'paid';
-create index ticket_orders_session_idx on public.ticket_orders(stripe_session_id)
-  where stripe_session_id is not null;
+create index ticket_orders_checkout_idx on public.ticket_orders(asaas_checkout_id)
+  where asaas_checkout_id is not null;
+create index ticket_orders_payment_idx on public.ticket_orders(asaas_payment_id)
+  where asaas_payment_id is not null;
 
 create trigger ticket_orders_set_updated_at
   before update on public.ticket_orders
@@ -84,7 +90,7 @@ create policy "ticket_offers_owner_all" on public.ticket_offers for all
   using (public.auth_user_role() = 'owner')
   with check (public.auth_user_role() = 'owner');
 
--- Lojinha publica le offers ativos.
+-- Lojinha publica le offers ativos (sem auth).
 create policy "ticket_offers_public_read_active" on public.ticket_offers for select
   using (active);
 
@@ -108,7 +114,8 @@ returns table (
   child_name text,
   amount_cents integer,
   status public.ticket_order_status,
-  paid_at timestamptz
+  paid_at timestamptz,
+  checkout_url text
 )
 language sql
 stable
@@ -116,7 +123,7 @@ security definer
 set search_path = public
 as $$
   select id, offer_name, offer_duration_minutes, guardian_name, child_name,
-         amount_cents, status, paid_at
+         amount_cents, status, paid_at, checkout_url
     from public.ticket_orders
    where qr_code_token = p_token
 $$;
