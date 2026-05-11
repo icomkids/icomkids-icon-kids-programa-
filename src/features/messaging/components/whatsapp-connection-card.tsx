@@ -85,6 +85,11 @@ export function WhatsAppConnectionCard() {
           <div className="min-w-0 flex-1 text-sm">
             <p className="font-bold text-[#EA4D8E]">Falha ao consultar a uazapi</p>
             <p className="mt-1 text-xs text-muted-foreground">{status.error}</p>
+            {status.raw ? (
+              <pre className="mt-2 max-h-32 overflow-auto rounded bg-black/5 p-2 text-[10px] text-muted-foreground">
+                {JSON.stringify(status.raw, null, 2)}
+              </pre>
+            ) : null}
             <p className="mt-2 text-[11px] text-muted-foreground">
               Verifique se os secrets <code>UAZAPI_BASE_URL</code> e{" "}
               <code>UAZAPI_TOKEN</code> estao corretos e se a function

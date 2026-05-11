@@ -9,11 +9,11 @@ import {
   remainingSeconds,
 } from "@/features/crm/lib/session-timing";
 import { useMedia } from "@/features/media/hooks/use-media";
+import { TELAO_CHILD_SECONDS_KEY } from "@/features/settings/components/telao-settings-card";
+import { useSetting } from "@/features/settings/hooks/use-setting";
 import type { ActiveSession } from "@/features/crm/types";
 import type { MediaItem } from "@/features/media/types";
 import { formatCountdown } from "@/lib/format";
-
-const CHILD_ROTATION_MS = 8_000;
 
 type Slide =
   | { type: "child"; session: ActiveSession }
@@ -41,6 +41,10 @@ export default function TelaoPage() {
   useTicker(1000);
   const { sessions } = useActiveSessions();
   const { items: mediaItems } = useMedia(true);
+  const { value: childSeconds } = useSetting<number>(
+    TELAO_CHILD_SECONDS_KEY,
+    8
+  );
 
   const visibleChildren = useMemo(
     () =>
@@ -64,10 +68,11 @@ export default function TelaoPage() {
 
   // Schedule the next tick based on the slide's intrinsic duration.
   const currentSlide = queue[index % Math.max(1, queue.length)];
+  const childMs = Math.max(2, Math.min(60, Number(childSeconds) || 8)) * 1000;
   const tickMs =
     currentSlide?.type === "media"
       ? Math.max(1, currentSlide.item.duration_seconds) * 1000
-      : CHILD_ROTATION_MS;
+      : childMs;
 
   useEffect(() => {
     if (queue.length === 0) return;

@@ -13,7 +13,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { usePartners } from "@/features/partners/hooks/use-partners";
+import { uploadChildPhoto } from "../lib/child-photo-upload";
 import type { ChildGender, QuickRegisterInput } from "../types";
+import { WebcamCapture } from "./webcam-capture";
 
 interface Props {
   onSubmit: (input: QuickRegisterInput) => Promise<unknown>;
@@ -34,6 +36,9 @@ export function QuickRegisterDialog({ onSubmit }: Props) {
   const [paymentMethod, setPaymentMethod] = useState<"pix" | "dinheiro" | "cartao">("pix");
   const [amountReais, setAmountReais] = useState<string>("");
   const [partnerId, setPartnerId] = useState<string>("");
+  const [photoBlob, setPhotoBlob] = useState<Blob | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const reset = () => {
     setChildName("");
@@ -45,13 +50,32 @@ export function QuickRegisterDialog({ onSubmit }: Props) {
     setPaymentMethod("pix");
     setAmountReais("");
     setPartnerId("");
+    if (photoPreview) URL.revokeObjectURL(photoPreview);
+    setPhotoBlob(null);
+    setPhotoPreview(null);
+    setUploadError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!childName.trim() || !guardianName.trim() || minutes <= 0) return;
     setSubmitting(true);
+    setUploadError(null);
     try {
+      let photoUrl: string | undefined;
+      if (photoBlob) {
+        try {
+          photoUrl = await uploadChildPhoto(photoBlob);
+        } catch (err) {
+          setUploadError(
+            err instanceof Error
+              ? `Falha ao subir foto: ${err.message}`
+              : "Falha ao subir foto."
+          );
+          setSubmitting(false);
+          return;
+        }
+      }
       const cents = amountReais
         ? Math.round(parseFloat(amountReais.replace(",", ".")) * 100)
         : undefined;
@@ -62,6 +86,7 @@ export function QuickRegisterDialog({ onSubmit }: Props) {
         guardian_full_name: guardianName.trim(),
         guardian_phone: guardianPhone.trim() || undefined,
         contracted_minutes: minutes,
+        photo_url: photoUrl,
         payment_method: paymentMethod,
         amount_paid_cents: Number.isFinite(cents) ? cents : undefined,
         partner_id: partnerId || null,
@@ -97,6 +122,26 @@ export function QuickRegisterDialog({ onSubmit }: Props) {
               onChange={(e) => setChildName(e.target.value)}
               autoFocus
             />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Foto (opcional)</Label>
+            <WebcamCapture
+              existingPreviewUrl={photoPreview}
+              onCapture={(blob, url) => {
+                if (photoPreview) URL.revokeObjectURL(photoPreview);
+                setPhotoBlob(blob);
+                setPhotoPreview(url);
+                setUploadError(null);
+              }}
+              onClear={() => {
+                if (photoPreview) URL.revokeObjectURL(photoPreview);
+                setPhotoBlob(null);
+                setPhotoPreview(null);
+              }}
+            />
+            {uploadError ? (
+              <p className="text-xs text-[#EA4D8E]">{uploadError}</p>
+            ) : null}
           </div>
           <div className="grid grid-cols-[1fr_auto] gap-3">
             <div className="space-y-1.5">

@@ -18,7 +18,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { RulesList } from "@/features/automation/components/rules-list";
+import { ScheduledList } from "@/features/automation/components/scheduled-list";
+import { EmailLogTable } from "@/features/messaging/components/email-log-table";
+import { EmailTestCard } from "@/features/messaging/components/email-test-card";
 import { WhatsAppConnectionCard } from "@/features/messaging/components/whatsapp-connection-card";
+import { TelaoSettingsCard } from "@/features/settings/components/telao-settings-card";
 import { useMessagesLog } from "@/features/messaging/hooks/use-messages-log";
 import { sendWhatsApp } from "@/features/messaging/lib/uazapi";
 import { formatTimeOfDay } from "@/lib/format";
@@ -70,10 +75,18 @@ export default function SettingsPage() {
     <div>
       <PageHeader
         title="Configuracoes"
-        description="WhatsApp / uazapi e log de mensagens enviadas pelo sistema."
+        description="WhatsApp (uazapi), email (Resend), regras de automacao e logs."
       />
 
       <div className="space-y-6 p-6">
+        <h2 className="text-xs font-bold uppercase tracking-[0.4em] text-[#7B36BF]">
+          Telao
+        </h2>
+        <TelaoSettingsCard />
+
+        <h2 className="pt-4 text-xs font-bold uppercase tracking-[0.4em] text-[#1E78DC]">
+          WhatsApp
+        </h2>
         <WhatsAppConnectionCard />
 
         <section className="grid gap-6 lg:grid-cols-[auto_1fr]">
@@ -217,6 +230,25 @@ export default function SettingsPage() {
               </Table>
             </div>
           )}
+        </section>
+
+        <h2 className="pt-4 text-xs font-bold uppercase tracking-[0.4em] text-[#EA4D8E]">
+          Email
+        </h2>
+        <section className="grid gap-6 lg:grid-cols-[1fr_1fr]">
+          <EmailTestCard />
+          <EmailLogTable />
+        </section>
+
+        <h2 className="pt-4 text-xs font-bold uppercase tracking-[0.4em] text-[#F4B73F]">
+          Automacoes
+        </h2>
+        <p className="-mt-3 text-xs text-muted-foreground">
+          Regras automaticas (gatilhos) e mensagens agendadas pra disparo unico.
+        </p>
+        <section className="grid gap-6 lg:grid-cols-2">
+          <RulesList />
+          <ScheduledList />
         </section>
       </div>
     </div>

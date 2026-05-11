@@ -24,7 +24,30 @@ async function invoke(action: "status" | "connect" | "disconnect") {
   }>("whatsapp-control", { body: { action } });
 
   if (error) {
-    return { error: error.message } as InstanceStatus;
+    // supabase.functions.invoke nao expoe o body do erro por padrao —
+    // a Response esta em error.context. Tenta extrair o JSON pra
+    // mostrar o erro real (e nao o generico "non-2xx").
+    let detail = error.message;
+    let raw: unknown = undefined;
+    const ctx = (error as unknown as { context?: Response }).context;
+    if (ctx && typeof ctx.text === "function") {
+      try {
+        const txt = await ctx.text();
+        try {
+          const parsed = JSON.parse(txt) as {
+            error?: string;
+            raw?: unknown;
+          };
+          if (parsed?.error) detail = parsed.error;
+          raw = parsed?.raw ?? parsed;
+        } catch {
+          if (txt) detail = txt;
+        }
+      } catch {
+        // ignora — fica com error.message
+      }
+    }
+    return { error: detail, raw } as InstanceStatus;
   }
   if (data?.error) {
     return { error: data.error, raw: data.raw } as InstanceStatus;
