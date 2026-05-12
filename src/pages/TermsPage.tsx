@@ -255,13 +255,23 @@ function SignatureRow({ signature }: { signature: TermSignature }) {
                   {signature.child_name ?? "sem crianca"}
                 </DialogDescription>
               </DialogHeader>
-              {signature.signature_data_url ? (
+              {signature.signature_data_url?.startsWith("data:image") ? (
                 <div className="rounded-xl border border-border bg-white p-3">
                   <img
                     src={signature.signature_data_url}
                     alt="Assinatura"
                     className="mx-auto max-h-48"
                   />
+                </div>
+              ) : signature.signature_data_url === "checkbox:accepted" ? (
+                <div className="rounded-xl border-2 border-[#1E78DC] bg-[#1E78DC]/10 p-4 text-center">
+                  <p className="text-sm font-bold text-[#1E78DC]">
+                    ✓ Aceito via checkbox
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    O responsavel marcou "Li e aceito os termos" na pagina
+                    publica.
+                  </p>
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">

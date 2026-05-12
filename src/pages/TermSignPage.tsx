@@ -5,9 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/common/logo";
-import { SignaturePad } from "@/features/terms/components/signature-pad";
 import { termsRepo } from "@/features/terms/lib/terms-repo";
 import type { PublicTermView } from "@/features/terms/types";
+
+/** Marker textual gravado em signature_data_url quando aceito via
+ *  checkbox. Mantemos a coluna preenchida pra identificar o tipo de
+ *  aceite (manuscrita data:image/... vs checkbox). */
+const CHECKBOX_MARKER = "checkbox:accepted";
 
 type Phase =
   | "loading"
@@ -22,7 +26,7 @@ export default function TermSignPage() {
   const { token } = useParams<{ token: string }>();
   const [phase, setPhase] = useState<Phase>("loading");
   const [view, setView] = useState<PublicTermView | null>(null);
-  const [signature, setSignature] = useState<string | null>(null);
+  const [accepted, setAccepted] = useState(false);
   const [document, setDocument] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -58,11 +62,11 @@ export default function TermSignPage() {
   }, [token]);
 
   const submit = async () => {
-    if (!token || !signature) return;
+    if (!token || !accepted) return;
     setPhase("submitting");
     setError(null);
     try {
-      await termsRepo.submitSignature(token, signature, {
+      await termsRepo.submitSignature(token, CHECKBOX_MARKER, {
         user_agent: navigator.userAgent,
         guardian_document: document.trim() || undefined,
       });
@@ -156,25 +160,40 @@ export default function TermSignPage() {
                   inputMode="numeric"
                   value={document}
                   onChange={(e) => setDocument(e.target.value)}
-                  placeholder="Para identificacao no documento assinado"
+                  placeholder="Para identificacao no documento aceito"
                 />
               </div>
-              <div className="space-y-1.5">
-                <Label>Assine com o dedo ou o mouse</Label>
-                <SignaturePad onChange={setSignature} />
-              </div>
+
+              <label
+                htmlFor="ts-accept"
+                className="flex cursor-pointer items-start gap-3 rounded-xl border-2 border-border bg-card p-4 transition hover:border-[#1E78DC]/50"
+                style={
+                  accepted
+                    ? { borderColor: "#1E78DC", background: "#1E78DC10" }
+                    : undefined
+                }
+              >
+                <input
+                  id="ts-accept"
+                  type="checkbox"
+                  checked={accepted}
+                  onChange={(e) => setAccepted(e.target.checked)}
+                  className="mt-0.5 size-5 cursor-pointer accent-[#1E78DC]"
+                />
+                <span className="text-sm">
+                  <strong>Li e aceito</strong> os termos de responsabilidade
+                  acima e autorizo o iCOM Kids a guardar este registro.
+                </span>
+              </label>
+
               <Button
                 type="button"
                 onClick={() => void submit()}
-                disabled={phase === "submitting" || !signature}
+                disabled={phase === "submitting" || !accepted}
                 className="w-full bg-[#1E78DC] text-white hover:bg-[#1E78DC]/90"
               >
-                {phase === "submitting" ? "Enviando..." : "Aceito e assino"}
+                {phase === "submitting" ? "Enviando..." : "Confirmar aceite"}
               </Button>
-              <p className="text-center text-[11px] text-muted-foreground">
-                Ao assinar, voce concorda com os termos acima e autoriza o
-                iCOM Kids a guardar este documento.
-              </p>
             </div>
           </>
         ) : null}

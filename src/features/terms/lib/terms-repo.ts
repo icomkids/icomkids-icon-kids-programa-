@@ -13,10 +13,16 @@ export interface TermsRepo {
   createRequest(input: NewSignatureRequest): Promise<TermSignature>;
   /** Public — uses the security-definer RPC. */
   getByToken(token: string): Promise<PublicTermView | null>;
-  /** Public — uses the security-definer RPC. */
+  /**
+   * Public — uses the security-definer RPC.
+   * O signatureDataUrl agora e opcional: o termo virou um checkbox
+   * "li e aceito". O parametro continua aceitando data URL pra nao
+   * quebrar fluxos antigos (assinatura manuscrita), mas o padrao do
+   * sistema e null + marker textual.
+   */
   submitSignature(
     token: string,
-    signatureDataUrl: string,
+    signatureDataUrl: string | null,
     options?: { user_agent?: string; guardian_document?: string }
   ): Promise<void>;
   subscribe(onChange: () => void): () => void;
