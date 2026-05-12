@@ -9,6 +9,11 @@ interface AuthState {
   loading: boolean;
   email: string | null;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  signUp: (
+    email: string,
+    password: string,
+    fullName: string
+  ) => Promise<{ error: string | null; needsConfirmation: boolean }>;
   signOut: () => Promise<void>;
   isMock: boolean;
 }
@@ -52,6 +57,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: error?.message ?? null };
   };
 
+  const signUp: AuthState["signUp"] = async (email, password, fullName) => {
+    if (MOCK_AUTH) {
+      localStorage.setItem("icon-kids:mock-auth", email);
+      setMockEmail(email);
+      return { error: null, needsConfirmation: false };
+    }
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { full_name: fullName },
+      },
+    });
+    if (error) return { error: error.message, needsConfirmation: false };
+    // Quando o Supabase Auth requer confirmacao de email, `session` vem nulo.
+    const needsConfirmation = !data.session;
+    return { error: null, needsConfirmation };
+  };
+
   const signOut = async () => {
     if (MOCK_AUTH) {
       localStorage.removeItem("icon-kids:mock-auth");
@@ -66,6 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loading,
     email: MOCK_AUTH ? mockEmail : session?.user.email ?? null,
     signIn,
+    signUp,
     signOut,
     isMock: MOCK_AUTH,
   };
