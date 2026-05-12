@@ -38,3 +38,4 @@ supabase/.branches/
 *.njsproj
 *.sln
 *.sw?
+.claude/
