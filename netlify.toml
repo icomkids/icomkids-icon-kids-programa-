@@ -1,0 +1,13 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# SPA fallback: qualquer rota que nao seja um arquivo estatico
+# devolve index.html, pra o React Router cuidar do /painel, /telao, etc.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
