@@ -10,6 +10,7 @@ import {
 import { derivedStatus } from "@/features/crm/lib/session-timing";
 import { isUsingMockData } from "@/features/crm/lib/sessions-repo";
 import { loyaltyRepo } from "@/features/loyalty/lib/loyalty-repo";
+import { sendEmail } from "@/features/messaging/lib/resend";
 import { sendWhatsApp } from "@/features/messaging/lib/uazapi";
 import { npsRepo } from "@/features/nps/lib/nps-repo";
 import type { ActiveSession } from "@/features/crm/types";
@@ -39,37 +40,65 @@ async function fireLoyaltyAccrual(session: ActiveSession) {
 }
 
 /**
- * After a session is ended, auto-create an NPS survey + send the WhatsApp
- * invite. Runs in the background and silently swallows any failure so it
- * never blocks the operator's flow.
+ * After a session is ended, auto-create a feedback survey and notify the
+ * guardian via WhatsApp + Email (whichever contacts are on file). Survey
+ * is created even if no contact info exists — the owner can follow up
+ * manually in the /nps dashboard.
+ *
+ * Silently swallows failures so it never blocks the operator's flow.
  */
-async function fireNpsFollowUp(session: ActiveSession) {
-  if (!session.guardian || !session.guardian.phone) return;
+async function fireFeedbackFollowUp(session: ActiveSession) {
+  if (!session.guardian) return;
+  const { full_name, phone, email } = session.guardian;
   try {
     const survey = await npsRepo.create({
       session_id: session.id,
-      guardian_name: session.guardian.full_name,
-      guardian_phone: session.guardian.phone,
+      guardian_name: full_name,
+      guardian_phone: phone,
+      guardian_email: email,
       child_name: session.child.full_name,
     });
     const link = `${window.location.origin}/nps/${survey.token}`;
-    const result = await sendWhatsApp({
-      phone: session.guardian.phone,
-      template_key: "nps_survey",
-      variables: {
-        nome: session.guardian.full_name,
-        crianca: session.child.full_name,
-        link,
-      },
-      event_type: "nps_survey",
-      context: { session_id: session.id, survey_id: survey.id },
-    });
-    if (result.ok) {
+    const variables = {
+      nome: full_name,
+      crianca: session.child.full_name,
+      link,
+    };
+
+    const tasks: Promise<{ ok: boolean }>[] = [];
+    if (phone) {
+      tasks.push(
+        sendWhatsApp({
+          phone,
+          template_key: "nps_survey",
+          variables,
+          event_type: "feedback_survey",
+          context: { session_id: session.id, survey_id: survey.id },
+        })
+      );
+    }
+    if (email) {
+      tasks.push(
+        sendEmail({
+          to: email,
+          to_name: full_name,
+          template_key: "email_feedback_survey",
+          variables,
+          subject: `Obrigado pela visita, ${full_name}! Avalie em 1 minuto.`,
+          event_type: "feedback_survey",
+          context: { session_id: session.id, survey_id: survey.id },
+        })
+      );
+    }
+    if (tasks.length === 0) return;
+
+    const results = await Promise.all(tasks);
+    if (results.some((r) => r.ok)) {
       await npsRepo.markSent(survey.id);
     }
   } catch (e) {
     // eslint-disable-next-line no-console
-    console.warn("NPS follow-up failed:", e);
+    console.warn("Feedback follow-up failed:", e);
   }
 }
 
@@ -83,7 +112,7 @@ export default function PainelPage() {
     await end(id);
     if (target) {
       void fireLoyaltyAccrual(target);
-      void fireNpsFollowUp(target);
+      void fireFeedbackFollowUp(target);
     }
   };
 

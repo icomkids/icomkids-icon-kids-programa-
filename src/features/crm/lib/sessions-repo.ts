@@ -48,7 +48,7 @@ const initialMock: ActiveSession[] = [
       photo_url: null,
       notes: null,
     },
-    guardian: { id: nextId(), full_name: "Mariana Souza", phone: "(11) 99876-5432" },
+    guardian: { id: nextId(), full_name: "Mariana Souza", phone: "(11) 99876-5432", email: null },
     contracted_minutes: 60,
     started_at: new Date(Date.now() - 25 * 60_000).toISOString(),
     paused_at: null,
@@ -71,7 +71,7 @@ const initialMock: ActiveSession[] = [
       photo_url: null,
       notes: null,
     },
-    guardian: { id: nextId(), full_name: "Carla Almeida", phone: "(11) 99123-4567" },
+    guardian: { id: nextId(), full_name: "Carla Almeida", phone: "(11) 99123-4567", email: null },
     contracted_minutes: 30,
     started_at: new Date(Date.now() - 27 * 60_000).toISOString(),
     paused_at: null,
@@ -94,7 +94,7 @@ const initialMock: ActiveSession[] = [
       photo_url: null,
       notes: null,
     },
-    guardian: { id: nextId(), full_name: "Renato Reis", phone: "(11) 98765-1122" },
+    guardian: { id: nextId(), full_name: "Renato Reis", phone: "(11) 98765-1122", email: null },
     contracted_minutes: 30,
     started_at: new Date(Date.now() - 31 * 60_000).toISOString(),
     paused_at: null,
@@ -215,6 +215,7 @@ function seedSessionsForDay(daysAgo: number, count: number, rngSeed: number): Ac
         id: nextId(),
         full_name: guardianNamesPool[childIdx],
         phone: null,
+        email: null,
       },
       contracted_minutes: minutes,
       started_at: startedAt.toISOString(),
@@ -251,7 +252,7 @@ const earlierEnded: ActiveSession[] = [
   {
     id: nextId(),
     child: { id: nextId(), full_name: "Lara Pinto", birth_date: null, gender: null, photo_url: null, notes: null },
-    guardian: { id: nextId(), full_name: "Bruno Pinto", phone: "(11) 99100-2233" },
+    guardian: { id: nextId(), full_name: "Bruno Pinto", phone: "(11) 99100-2233", email: null },
     contracted_minutes: 60,
     started_at: new Date(Date.now() - 4 * 3600_000).toISOString(),
     paused_at: null,
@@ -267,7 +268,7 @@ const earlierEnded: ActiveSession[] = [
   {
     id: nextId(),
     child: { id: nextId(), full_name: "Pedro Lima", birth_date: null, gender: null, photo_url: null, notes: null },
-    guardian: { id: nextId(), full_name: "Joana Lima", phone: "(11) 99211-3344" },
+    guardian: { id: nextId(), full_name: "Joana Lima", phone: "(11) 99211-3344", email: null },
     contracted_minutes: 30,
     started_at: new Date(Date.now() - 5 * 3600_000).toISOString(),
     paused_at: null,
@@ -283,7 +284,7 @@ const earlierEnded: ActiveSession[] = [
   {
     id: nextId(),
     child: { id: nextId(), full_name: "Alice Costa", birth_date: null, gender: null, photo_url: null, notes: null },
-    guardian: { id: nextId(), full_name: "Tiago Costa", phone: "(11) 98123-7788" },
+    guardian: { id: nextId(), full_name: "Tiago Costa", phone: "(11) 98123-7788", email: null },
     contracted_minutes: 90,
     started_at: new Date(Date.now() - 6 * 3600_000).toISOString(),
     paused_at: null,
@@ -347,6 +348,7 @@ export const mockSessionsRepo: SessionsRepo = {
         id: guardian_id,
         full_name: input.guardian_full_name,
         phone: input.guardian_phone ?? null,
+        email: input.guardian_email ?? null,
       },
       contracted_minutes: input.contracted_minutes,
       started_at: new Date().toISOString(),
@@ -427,6 +429,7 @@ interface SessionRow {
     id: string;
     full_name: string;
     phone: string | null;
+    email: string | null;
   } | null;
   partners: {
     id: string;
@@ -461,7 +464,7 @@ function rowToSession(row: SessionRow): ActiveSession {
 }
 
 const SESSION_SELECT =
-  "id, child_id, guardian_id, partner_id, contracted_minutes, started_at, paused_at, paused_total_seconds, ended_at, status, amount_paid_cents, payment_method, qr_code_token, children:children(id, full_name, birth_date, gender, photo_url, notes), guardians:guardians(id, full_name, phone), partners:partners(id, name)";
+  "id, child_id, guardian_id, partner_id, contracted_minutes, started_at, paused_at, paused_total_seconds, ended_at, status, amount_paid_cents, payment_method, qr_code_token, children:children(id, full_name, birth_date, gender, photo_url, notes), guardians:guardians(id, full_name, phone, email), partners:partners(id, name)";
 
 export const supabaseSessionsRepo: SessionsRepo = {
   async listActive() {
@@ -523,8 +526,9 @@ export const supabaseSessionsRepo: SessionsRepo = {
       .insert({
         full_name: input.guardian_full_name,
         phone: input.guardian_phone ?? null,
+        email: input.guardian_email ?? null,
       })
-      .select("id, full_name, phone")
+      .select("id, full_name, phone, email")
       .single();
     if (gErr) throw gErr;
 

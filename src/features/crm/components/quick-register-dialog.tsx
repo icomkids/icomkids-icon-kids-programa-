@@ -32,6 +32,7 @@ export function QuickRegisterDialog({ onSubmit }: Props) {
   const [childGender, setChildGender] = useState<ChildGender | "">("");
   const [guardianName, setGuardianName] = useState("");
   const [guardianPhone, setGuardianPhone] = useState("");
+  const [guardianEmail, setGuardianEmail] = useState("");
   const [minutes, setMinutes] = useState(60);
   const [paymentMethod, setPaymentMethod] = useState<"pix" | "dinheiro" | "cartao">("pix");
   const [amountReais, setAmountReais] = useState<string>("");
@@ -46,6 +47,7 @@ export function QuickRegisterDialog({ onSubmit }: Props) {
     setChildGender("");
     setGuardianName("");
     setGuardianPhone("");
+    setGuardianEmail("");
     setMinutes(60);
     setPaymentMethod("pix");
     setAmountReais("");
@@ -85,6 +87,7 @@ export function QuickRegisterDialog({ onSubmit }: Props) {
         child_gender: childGender || undefined,
         guardian_full_name: guardianName.trim(),
         guardian_phone: guardianPhone.trim() || undefined,
+        guardian_email: guardianEmail.trim() || undefined,
         contracted_minutes: minutes,
         photo_url: photoUrl,
         payment_method: paymentMethod,
@@ -201,6 +204,19 @@ export function QuickRegisterDialog({ onSubmit }: Props) {
                 placeholder="(11) 9..."
               />
             </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="qr-email">Email (opcional)</Label>
+            <Input
+              id="qr-email"
+              type="email"
+              value={guardianEmail}
+              onChange={(e) => setGuardianEmail(e.target.value)}
+              placeholder="pai@exemplo.com"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Usado pra mandar a pesquisa pos-visita por email tambem.
+            </p>
           </div>
           <div className="space-y-1.5">
             <Label>Tempo</Label>

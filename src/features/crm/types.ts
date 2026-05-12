@@ -17,6 +17,7 @@ export interface Guardian {
   id: string;
   full_name: string;
   phone: string | null;
+  email: string | null;
 }
 
 export interface ActiveSession {
@@ -42,6 +43,7 @@ export interface QuickRegisterInput {
   child_gender?: ChildGender;
   guardian_full_name: string;
   guardian_phone?: string;
+  guardian_email?: string;
   contracted_minutes: number;
   photo_url?: string;
   amount_paid_cents?: number;
