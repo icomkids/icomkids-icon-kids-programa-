@@ -13,6 +13,7 @@ import { loyaltyRepo } from "@/features/loyalty/lib/loyalty-repo";
 import { sendEmail } from "@/features/messaging/lib/resend";
 import { sendWhatsApp } from "@/features/messaging/lib/uazapi";
 import { npsRepo } from "@/features/nps/lib/nps-repo";
+import { termsRepo } from "@/features/terms/lib/terms-repo";
 import type { ActiveSession } from "@/features/crm/types";
 
 /**
@@ -102,10 +103,73 @@ async function fireFeedbackFollowUp(session: ActiveSession) {
   }
 }
 
+/**
+ * Quando uma sessao comeca, cria uma solicitacao de termo de
+ * responsabilidade pra essa familia e manda o link por WhatsApp +
+ * Email. Silencioso em falha pra nao bloquear o atendimento.
+ */
+async function fireSessionWelcome(session: ActiveSession) {
+  if (!session.guardian) return;
+  const { full_name, phone, email } = session.guardian;
+  if (!phone && !email) return; // sem contato, nao envia (operador cria manual em /termo)
+  try {
+    const req = await termsRepo.createRequest({
+      guardian_name: full_name,
+      guardian_phone: phone ?? undefined,
+      child_name: session.child.full_name,
+    });
+    const link = `${window.location.origin}/termo/sign/${req.token}`;
+    const variables = {
+      nome: full_name,
+      crianca: session.child.full_name,
+      tempo: session.contracted_minutes.toString(),
+      link,
+    };
+
+    const tasks: Promise<unknown>[] = [];
+    if (phone) {
+      tasks.push(
+        sendWhatsApp({
+          phone,
+          template_key: "wa_session_welcome",
+          variables,
+          event_type: "session_welcome",
+          context: { session_id: session.id, term_id: req.id },
+        })
+      );
+    }
+    if (email) {
+      tasks.push(
+        sendEmail({
+          to: email,
+          to_name: full_name,
+          template_key: "email_session_welcome",
+          variables,
+          subject: `${full_name}, a ${session.child.full_name} chegou! Assine o termo`,
+          event_type: "session_welcome",
+          context: { session_id: session.id, term_id: req.id },
+        })
+      );
+    }
+    await Promise.all(tasks);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn("Session welcome failed:", e);
+  }
+}
+
 export default function PainelPage() {
   useTicker(1000);
   const { sessions, loading, error, registerAndStart, pause, resume, end } =
     useActiveSessions();
+
+  // Wrap pra disparar o welcome+termo logo depois do registro, sem
+  // bloquear o retorno do dialog.
+  const handleRegister = async (input: Parameters<typeof registerAndStart>[0]) => {
+    const created = await registerAndStart(input);
+    if (created) void fireSessionWelcome(created);
+    return created;
+  };
 
   const handleEnd = async (id: string) => {
     const target = sessions.find((s) => s.id === id);
@@ -130,7 +194,7 @@ export default function PainelPage() {
       <PageHeader
         title="Painel de criancas"
         description="Sessoes ativas, com tempo correndo em tempo real."
-        actions={<QuickRegisterDialog onSubmit={registerAndStart} />}
+        actions={<QuickRegisterDialog onSubmit={handleRegister} />}
       />
 
       <div className="space-y-6 p-6">
