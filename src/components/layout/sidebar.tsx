@@ -44,7 +44,7 @@ const items: Item[] = [
   { to: "/dashboard", label: "Dashboard", icon: Gauge, module: 13 },
   { to: "/fidelidade", label: "Fidelidade", icon: PartyPopper, module: 14 },
   { to: "/inventario", label: "Inventario", icon: Wrench, module: 15 },
-  { to: "/nps", label: "NPS", icon: Smile, module: 16 },
+  { to: "/crm", label: "CRM & Leads", icon: Smile, module: 16 },
   { to: "/equipe", label: "Equipe", icon: Users, module: 17 },
 ];
 

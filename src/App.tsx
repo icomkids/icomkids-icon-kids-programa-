@@ -12,6 +12,7 @@ import LoyaltyPage from "@/pages/LoyaltyPage";
 import MediaPage from "@/pages/MediaPage";
 import NpsDashboardPage from "@/pages/NpsDashboardPage";
 import NpsResponsePage from "@/pages/NpsResponsePage";
+import PublicFeedbackPage from "@/pages/PublicFeedbackPage";
 // Module 5 (Vendas online via Asaas) — pronto mas adiado para o final
 // do projeto. Ative descomentando os imports e as 3 rotas abaixo, e
 // seguindo as instrucoes em supabase/functions/create-asaas-checkout.
@@ -38,6 +39,7 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/telao" element={<TelaoPage />} />
           <Route path="/nps/:token" element={<NpsResponsePage />} />
+          <Route path="/avaliacao" element={<PublicFeedbackPage />} />
           <Route path="/termo/sign/:token" element={<TermSignPage />} />
           {/* Vendas online (Asaas) — codigo pronto, ativacao adiada para
               o final do projeto. Quando ligar: aplicar a migration de
@@ -84,6 +86,7 @@ function App() {
             <Route path="/fidelidade" element={<LoyaltyPage />} />
             <Route path="/inventario" element={<InventoryPage />} />
             <Route path="/nps" element={<NpsDashboardPage />} />
+            <Route path="/crm" element={<NpsDashboardPage />} />
             <Route path="/equipe" element={<TeamPage />} />
             <Route path="/configuracoes" element={<SettingsPage />} />
           </Route>

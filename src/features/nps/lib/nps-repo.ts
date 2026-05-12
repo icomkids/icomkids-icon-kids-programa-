@@ -18,6 +18,12 @@ export interface CreateSurveyInput {
   child_name?: string | null;
 }
 
+export interface PublicFeedbackInput extends FeedbackResponseInput {
+  guardian_name: string;
+  guardian_phone?: string;
+  child_name?: string;
+}
+
 export interface NpsRepo {
   list(limit?: number): Promise<NpsSurvey[]>;
   create(input: CreateSurveyInput): Promise<NpsSurvey>;
@@ -33,6 +39,11 @@ export interface NpsRepo {
     token: string,
     input: FeedbackResponseInput
   ): Promise<void>;
+  /**
+   * Public — formulario aberto em /avaliacao (sem token). Cria e responde
+   * de uma vez.
+   */
+  submitPublic(input: PublicFeedbackInput): Promise<void>;
   subscribe(onChange: () => void): () => void;
 }
 
@@ -109,6 +120,20 @@ export const supabaseNpsRepo: NpsRepo = {
       p_stars: input.stars,
       p_comment: input.comment ?? null,
       p_guardian_email: input.guardian_email ?? null,
+      p_q_last_car_purchase: input.q_last_car_purchase ?? null,
+      p_q_intends_trade: input.q_intends_trade ?? null,
+      p_q_offers_optin: input.q_offers_optin ?? null,
+    });
+    if (error) throw error;
+  },
+  async submitPublic(input) {
+    const { error } = await sb.rpc("submit_public_feedback", {
+      p_guardian_name: input.guardian_name,
+      p_guardian_phone: input.guardian_phone ?? null,
+      p_guardian_email: input.guardian_email ?? null,
+      p_child_name: input.child_name ?? null,
+      p_stars: input.stars,
+      p_comment: input.comment ?? null,
       p_q_last_car_purchase: input.q_last_car_purchase ?? null,
       p_q_intends_trade: input.q_intends_trade ?? null,
       p_q_offers_optin: input.q_offers_optin ?? null,

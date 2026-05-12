@@ -1,26 +1,18 @@
-import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import { CheckCircle2, Heart, Star, XCircle } from "lucide-react";
+import { useState } from "react";
+import { CheckCircle2, Star, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/common/logo";
 import { useFeedbackFormConfig } from "@/features/nps/hooks/use-form-config";
 import { npsRepo } from "@/features/nps/lib/nps-repo";
 import type {
-  PublicNpsView,
   QIntendsTrade,
   QLastCarPurchase,
   QOffersOptin,
 } from "@/features/nps/types";
 
-type Phase =
-  | "loading"
-  | "ready"
-  | "submitting"
-  | "thanks"
-  | "not_found"
-  | "already_done"
-  | "error";
+type Phase = "ready" | "submitting" | "thanks" | "error";
 
 interface RadioOption<T extends string> {
   value: T;
@@ -46,68 +38,42 @@ const OFFERS_OPTIN_OPTIONS: RadioOption<QOffersOptin>[] = [
   { value: "no", label: "Nao, obrigado" },
 ];
 
-export default function NpsResponsePage() {
-  const { token } = useParams<{ token: string }>();
-  const [phase, setPhase] = useState<Phase>("loading");
-  const [survey, setSurvey] = useState<PublicNpsView | null>(null);
+export default function PublicFeedbackPage() {
+  const { value: formConfig } = useFeedbackFormConfig();
+  const [phase, setPhase] = useState<Phase>("ready");
+  const [error, setError] = useState<string | null>(null);
+
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [child, setChild] = useState("");
   const [stars, setStars] = useState<number | null>(null);
   const [hoveredStar, setHoveredStar] = useState<number | null>(null);
   const [comment, setComment] = useState("");
-  const [email, setEmail] = useState("");
   const [qLastCar, setQLastCar] = useState<QLastCarPurchase | null>(null);
   const [qIntends, setQIntends] = useState<QIntendsTrade | null>(null);
   const [qOptin, setQOptin] = useState<QOffersOptin | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const { value: formConfig } = useFeedbackFormConfig();
 
-  useEffect(() => {
-    if (!token) {
-      setPhase("not_found");
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const s = await npsRepo.getByToken(token);
-        if (cancelled) return;
-        if (!s) {
-          setPhase("not_found");
-          return;
-        }
-        setSurvey(s);
-        if (s.guardian_email) setEmail(s.guardian_email);
-        if (s.responded_at) {
-          setPhase("already_done");
-          return;
-        }
-        setPhase("ready");
-      } catch (e) {
-        if (cancelled) return;
-        setError(e instanceof Error ? e.message : "Erro");
-        setPhase("error");
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [token]);
-
-  const submit = async () => {
-    if (!token || stars == null) return;
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || stars == null) return;
     setPhase("submitting");
     setError(null);
     try {
-      await npsRepo.submitFeedback(token, {
+      await npsRepo.submitPublic({
+        guardian_name: name.trim(),
+        guardian_phone: phone.trim() || undefined,
+        guardian_email: email.trim() || undefined,
+        child_name: child.trim() || undefined,
         stars,
         comment: comment.trim() || undefined,
-        guardian_email: email.trim() || undefined,
         q_last_car_purchase: qLastCar ?? undefined,
         q_intends_trade: qIntends ?? undefined,
         q_offers_optin: qOptin ?? undefined,
       });
       setPhase("thanks");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Erro");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao enviar.");
       setPhase("error");
     }
   };
@@ -125,65 +91,85 @@ export default function NpsResponsePage() {
           <Logo height={80} />
         </div>
 
-        {phase === "loading" ? (
-          <p className="mt-8 text-center text-sm text-muted-foreground">
-            Carregando pesquisa...
-          </p>
-        ) : null}
-
-        {phase === "not_found" ? (
-          <NoticeCard
-            icon={<XCircle className="size-8 text-[#EA4D8E]" />}
-            title="Pesquisa nao encontrada"
-            text="O link pode estar quebrado ou ja ter expirado. Entre em contato com o iCOM Kids se precisar."
-          />
-        ) : null}
-
-        {phase === "already_done" ? (
-          <NoticeCard
-            icon={<Heart className="size-8 text-[#EA4D8E]" />}
-            title="Voce ja respondeu — obrigado!"
-            text="Sua avaliacao ja foi registrada. A gente agradece."
-          />
+        {phase === "thanks" ? (
+          <div className="mt-8 flex flex-col items-center gap-3 text-center">
+            <CheckCircle2 className="size-10 text-[#5a8e10]" />
+            <p className="text-xl font-bold">Obrigado pela avaliacao!</p>
+            <p className="max-w-md text-sm text-muted-foreground">
+              {stars != null && stars >= 4
+                ? "Que bom que voces curtiram! Adoramos receber a familia de novo."
+                : "Vamos olhar com carinho o que pode melhorar. Obrigado pela honestidade."}
+            </p>
+          </div>
         ) : null}
 
         {phase === "error" ? (
-          <NoticeCard
-            icon={<XCircle className="size-8 text-[#EA4D8E]" />}
-            title="Algo deu errado"
-            text={error ?? "Tente abrir o link novamente."}
-          />
-        ) : null}
-
-        {phase === "thanks" ? (
-          <NoticeCard
-            icon={<CheckCircle2 className="size-10 text-[#5a8e10]" />}
-            title="Obrigado pela avaliacao!"
-            text={
-              stars != null && stars >= 4
-                ? "Que bom que voces curtiram! Adoramos receber a familia de novo."
-                : stars != null && stars >= 3
-                ? "Vamos seguir trabalhando pra ficar ainda melhor."
-                : "Vamos olhar com carinho o que pode melhorar. Obrigado pela honestidade."
-            }
-          />
+          <div className="mt-8 flex flex-col items-center gap-3 text-center">
+            <XCircle className="size-8 text-[#EA4D8E]" />
+            <p className="text-xl font-bold">Algo deu errado</p>
+            <p className="max-w-md text-sm text-muted-foreground">
+              {error ?? "Tente novamente."}
+            </p>
+            <Button onClick={() => setPhase("ready")} variant="outline">
+              Tentar de novo
+            </Button>
+          </div>
         ) : null}
 
         {phase === "ready" || phase === "submitting" ? (
-          <>
+          <form onSubmit={submit}>
             <h1 className="mt-6 text-center text-2xl font-bold">
-              Como foi a experiencia no iCOM Kids?
+              Como foi sua experiencia no iCOM Kids?
             </h1>
-            {survey?.child_name ? (
-              <p className="mt-1 text-center text-sm text-muted-foreground">
-                Avaliando a visita de <strong>{survey.child_name}</strong>
-              </p>
-            ) : null}
+            <p className="mt-1 text-center text-sm text-muted-foreground">
+              Sua opiniao ajuda a gente a melhorar.
+            </p>
 
-            {/* Pergunta 1 — estrelas */}
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="pf-name">Seu nome *</Label>
+                <Input
+                  id="pf-name"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="pf-child">Nome da crianca (opcional)</Label>
+                <Input
+                  id="pf-child"
+                  value={child}
+                  onChange={(e) => setChild(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="pf-phone">WhatsApp</Label>
+                <Input
+                  id="pf-phone"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="(11) 9..."
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="pf-email">Email</Label>
+                <Input
+                  id="pf-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="seu@email.com"
+                />
+              </div>
+            </div>
+
             <div className="mt-6">
               <p className="text-center text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                Sua nota de 1 a 5
+                Sua nota de 1 a 5 *
               </p>
               <div
                 className="mt-3 flex items-center justify-center gap-2"
@@ -216,32 +202,25 @@ export default function NpsResponsePage() {
 
             {stars != null ? (
               <>
-                {/* Pergunta 2 — comentario livre */}
                 <div className="mt-6 space-y-1.5">
-                  <label
-                    htmlFor="fb-comment"
-                    className="text-xs font-semibold uppercase tracking-widest text-muted-foreground"
-                  >
+                  <Label htmlFor="pf-comment">
                     Algo a nos contar? (opcional)
-                  </label>
+                  </Label>
                   <textarea
-                    id="fb-comment"
+                    id="pf-comment"
                     rows={3}
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
-                    placeholder="O que mais gostou, o que poderia melhorar..."
                     className="flex w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1E78DC]"
                   />
                 </div>
 
-                {/* Bloco iCOM Motos */}
                 <div className="mt-8 rounded-xl border-2 border-dashed border-[#7B36BF]/40 bg-[#7B36BF]/5 p-5">
                   <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-[#7B36BF]">
                     iCOM Motos · Pra te conhecer melhor
                   </p>
                   <p className="mt-2 text-xs text-slate-600">
-                    Tres perguntinhas rapidas. Se nao quiser, e so deixar em
-                    branco e enviar.
+                    Tres perguntinhas rapidas (todas opcionais).
                   </p>
 
                   <RadioGroup
@@ -250,45 +229,22 @@ export default function NpsResponsePage() {
                     value={qLastCar}
                     onChange={setQLastCar}
                   />
-
                   <RadioGroup
                     label={formConfig.q_intends_label}
                     options={INTENDS_TRADE_OPTIONS}
                     value={qIntends}
                     onChange={setQIntends}
                   />
-
                   <RadioGroup
                     label={formConfig.q_offers_label}
                     options={OFFERS_OPTIN_OPTIONS}
                     value={qOptin}
                     onChange={setQOptin}
                   />
-
-                  {qOptin && qOptin !== "no" ? (
-                    <div className="mt-3 space-y-1.5">
-                      <label
-                        htmlFor="fb-email"
-                        className="text-xs font-semibold uppercase tracking-widest text-muted-foreground"
-                      >
-                        {qOptin === "email"
-                          ? "Confirma seu email"
-                          : "Email (opcional, vai junto com WhatsApp)"}
-                      </label>
-                      <Input
-                        id="fb-email"
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="seu@email.com"
-                      />
-                    </div>
-                  ) : null}
                 </div>
 
                 <Button
-                  type="button"
-                  onClick={() => void submit()}
+                  type="submit"
                   disabled={phase === "submitting"}
                   className="mt-6 w-full bg-[#1E78DC] text-white hover:bg-[#1E78DC]/90"
                 >
@@ -300,7 +256,7 @@ export default function NpsResponsePage() {
                 Escolha de 1 a 5 estrelas pra continuar.
               </p>
             )}
-          </>
+          </form>
         ) : null}
       </div>
     </div>
@@ -340,24 +296,6 @@ function RadioGroup<T extends string>({
           );
         })}
       </div>
-    </div>
-  );
-}
-
-function NoticeCard({
-  icon,
-  title,
-  text,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  text: string;
-}) {
-  return (
-    <div className="mt-8 flex flex-col items-center gap-3 text-center">
-      {icon}
-      <p className="text-xl font-bold">{title}</p>
-      <p className="max-w-md text-sm text-muted-foreground">{text}</p>
     </div>
   );
 }
