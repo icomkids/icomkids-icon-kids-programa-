@@ -145,7 +145,15 @@ export const supabaseStaffRepo: StaffRepo = {
       { p_from: from, p_to: to }
     );
     if (error) throw error;
-    return (data ?? []).map((r) => ({
+    interface CommissionRow {
+      member_id: string;
+      full_name: string;
+      role_label: string;
+      commission_pct: number | string;
+      attributed_cents: number | string;
+      commission_cents: number | string;
+    }
+    return ((data ?? []) as CommissionRow[]).map((r) => ({
       member_id: r.member_id,
       full_name: r.full_name,
       role_label: r.role_label,
