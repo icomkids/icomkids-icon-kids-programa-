@@ -13,7 +13,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { usePartners } from "@/features/partners/hooks/use-partners";
+import { formatBRL } from "@/lib/format";
 import { uploadChildPhoto } from "../lib/child-photo-upload";
+import { usePricing } from "../hooks/use-pricing";
 import type { ChildGender, QuickRegisterInput } from "../types";
 import { WebcamCapture } from "./webcam-capture";
 
@@ -21,10 +23,9 @@ interface Props {
   onSubmit: (input: QuickRegisterInput) => Promise<unknown>;
 }
 
-const PRESETS = [30, 45, 60, 90, 120];
-
 export function QuickRegisterDialog({ onSubmit }: Props) {
   const { partners } = usePartners(true);
+  const { value: pricing } = usePricing();
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [childName, setChildName] = useState("");
@@ -33,9 +34,15 @@ export function QuickRegisterDialog({ onSubmit }: Props) {
   const [guardianName, setGuardianName] = useState("");
   const [guardianPhone, setGuardianPhone] = useState("");
   const [guardianEmail, setGuardianEmail] = useState("");
-  const [minutes, setMinutes] = useState(60);
+  const [minutes, setMinutes] = useState(30);
   const [paymentMethod, setPaymentMethod] = useState<"pix" | "dinheiro" | "cartao">("pix");
   const [amountReais, setAmountReais] = useState<string>("");
+
+  /** Quando o operador clica num preset, preenche minutos + valor sugerido. */
+  const selectTier = (tier: { minutes: number; price_cents: number }) => {
+    setMinutes(tier.minutes);
+    setAmountReais((tier.price_cents / 100).toFixed(2).replace(".", ","));
+  };
   const [partnerId, setPartnerId] = useState<string>("");
   const [photoBlob, setPhotoBlob] = useState<Blob | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -219,30 +226,56 @@ export function QuickRegisterDialog({ onSubmit }: Props) {
             </p>
           </div>
           <div className="space-y-1.5">
-            <Label>Tempo</Label>
-            <div className="flex flex-wrap gap-2">
-              {PRESETS.map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => setMinutes(m)}
-                  className={`rounded-full border px-3 py-1 text-sm font-semibold transition ${
-                    minutes === m
-                      ? "border-[#1E78DC] bg-[#1E78DC] text-white"
-                      : "border-border bg-background hover:bg-muted"
-                  }`}
-                >
-                  {m} min
-                </button>
-              ))}
+            <Label>Tempo e valor</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {pricing.tiers.map((t) => {
+                const active = minutes === t.minutes;
+                return (
+                  <button
+                    key={t.minutes}
+                    type="button"
+                    onClick={() => selectTier(t)}
+                    className={`flex flex-col items-center gap-0.5 rounded-xl border-2 px-3 py-2 transition ${
+                      active
+                        ? "border-[#1E78DC] bg-[#1E78DC]/10"
+                        : "border-border bg-card hover:border-[#1E78DC]/40"
+                    }`}
+                  >
+                    <span className="text-sm font-bold">
+                      {t.minutes < 60 ? `${t.minutes} min` : `${t.minutes / 60}h`}
+                    </span>
+                    <span
+                      className={`text-lg font-black tabular-nums ${
+                        active ? "text-[#1E78DC]" : "text-foreground"
+                      }`}
+                    >
+                      {formatBRL(t.price_cents)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex items-center gap-2 pt-1">
+              <span className="text-[11px] text-muted-foreground">
+                Outro tempo:
+              </span>
               <Input
                 type="number"
                 min={1}
                 value={minutes}
-                onChange={(e) => setMinutes(parseInt(e.target.value || "0", 10))}
-                className="w-24"
+                onChange={(e) =>
+                  setMinutes(parseInt(e.target.value || "0", 10))
+                }
+                className="w-20"
               />
+              <span className="text-[11px] text-muted-foreground">minutos</span>
             </div>
+            {pricing.overage_note ? (
+              <p className="rounded-md bg-[#F4B73F]/15 px-2 py-1 text-[11px] text-slate-700">
+                ⏰ {pricing.overage_note}
+              </p>
+            ) : null}
+          </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
