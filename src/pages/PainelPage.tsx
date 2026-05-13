@@ -7,9 +7,11 @@ import {
   useActiveSessions,
   useTicker,
 } from "@/features/crm/hooks/use-active-sessions";
+import { usePricing } from "@/features/crm/hooks/use-pricing";
 import { derivedStatus } from "@/features/crm/lib/session-timing";
 import { isUsingMockData } from "@/features/crm/lib/sessions-repo";
 import { loyaltyRepo } from "@/features/loyalty/lib/loyalty-repo";
+import { formatBRL } from "@/lib/format";
 import { sendEmail } from "@/features/messaging/lib/resend";
 import { sendWhatsApp } from "@/features/messaging/lib/uazapi";
 import { npsRepo } from "@/features/nps/lib/nps-repo";
@@ -158,10 +160,34 @@ async function fireSessionWelcome(session: ActiveSession) {
   }
 }
 
+/**
+ * Calcula quantos minutos a sessao excedeu o tempo contratado, e quanto
+ * isso da em centavos. Arredonda PRO COBRADOR (ceil) — qualquer segundo
+ * a mais conta como 1 minuto cheio, conforme aviso na tabela de preco.
+ * Considera o tempo pausado: paused_total_seconds NAO conta como excedido.
+ */
+function calculateOverage(
+  session: ActiveSession,
+  overagePerMinuteCents: number
+): { minutes: number; cents: number } {
+  const startedAt = new Date(session.started_at).getTime();
+  const elapsedSec =
+    Math.floor((Date.now() - startedAt) / 1000) - session.paused_total_seconds;
+  const contractedSec = session.contracted_minutes * 60;
+  const overageSec = Math.max(0, elapsedSec - contractedSec);
+  if (overageSec <= 0) return { minutes: 0, cents: 0 };
+  const overageMinutes = Math.ceil(overageSec / 60);
+  return {
+    minutes: overageMinutes,
+    cents: overageMinutes * overagePerMinuteCents,
+  };
+}
+
 export default function PainelPage() {
   useTicker(1000);
-  const { sessions, loading, error, registerAndStart, pause, resume, end } =
+  const { sessions, loading, error, registerAndStart, pause, resume, end, endWithExtra } =
     useActiveSessions();
+  const { value: pricing } = usePricing();
 
   // Wrap pra disparar o welcome+termo logo depois do registro, sem
   // bloquear o retorno do dialog.
@@ -173,11 +199,45 @@ export default function PainelPage() {
 
   const handleEnd = async (id: string) => {
     const target = sessions.find((s) => s.id === id);
-    await end(id);
-    if (target) {
+    if (!target) {
+      await end(id);
+      return;
+    }
+
+    const overage = calculateOverage(
+      target,
+      pricing.overage_per_minute_cents
+    );
+
+    // Sem excedente — encerra direto.
+    if (overage.cents <= 0) {
+      await end(id);
       void fireLoyaltyAccrual(target);
       void fireFeedbackFollowUp(target);
+      return;
     }
+
+    // Com excedente — operador decide.
+    const ok = confirm(
+      `${target.child.full_name} ficou ${overage.minutes} min alem do tempo contratado.\n\n` +
+        `Cobrar adicional de ${formatBRL(overage.cents)}?\n\n` +
+        `OK = encerra e cobra o extra\n` +
+        `Cancelar = encerra sem cobrar`
+    );
+
+    if (ok) {
+      await endWithExtra(id, overage.cents);
+      // Reflita o novo valor na chamada de loyalty (com o overage somado).
+      const updated: ActiveSession = {
+        ...target,
+        amount_paid_cents: (target.amount_paid_cents ?? 0) + overage.cents,
+      };
+      void fireLoyaltyAccrual(updated);
+    } else {
+      await end(id);
+      void fireLoyaltyAccrual(target);
+    }
+    void fireFeedbackFollowUp(target);
   };
 
   const counts = useMemo(() => {

@@ -15,6 +15,12 @@ export interface SessionsRepo {
   pause(sessionId: string): Promise<void>;
   resume(sessionId: string): Promise<void>;
   end(sessionId: string): Promise<void>;
+  /**
+   * Encerra somando o valor extra (cobrado de excedente) ao
+   * amount_paid_cents existente. Usado quando a sessao passou do tempo
+   * contratado e o operador concorda em cobrar o adicional.
+   */
+  endWithExtra(sessionId: string, extraCents: number): Promise<void>;
   /** Subscribe to changes; returns an unsubscribe fn. */
   subscribe(onChange: () => void): () => void;
 }
@@ -393,6 +399,19 @@ export const mockSessionsRepo: SessionsRepo = {
     );
     notify();
   },
+  async endWithExtra(sessionId, extraCents) {
+    mockSessions = mockSessions.map((s) =>
+      s.id === sessionId
+        ? {
+            ...s,
+            status: "ended",
+            ended_at: new Date().toISOString(),
+            amount_paid_cents: (s.amount_paid_cents ?? 0) + extraCents,
+          }
+        : s
+    );
+    notify();
+  },
   subscribe(onChange) {
     mockSubscribers.add(onChange);
     return () => mockSubscribers.delete(onChange);
@@ -603,6 +622,27 @@ export const supabaseSessionsRepo: SessionsRepo = {
     const { error } = await supabase
       .from("sessions")
       .update({ status: "ended", ended_at: new Date().toISOString() })
+      .eq("id", sessionId);
+    if (error) throw error;
+  },
+  async endWithExtra(sessionId, extraCents) {
+    // Soma extraCents ao amount_paid_cents existente. Buscamos primeiro
+    // pra fazer math em JS (PostgREST nao da update por expressao
+    // diretamente sem RPC).
+    const { data, error: rErr } = await supabase
+      .from("sessions")
+      .select("amount_paid_cents")
+      .eq("id", sessionId)
+      .single();
+    if (rErr) throw rErr;
+    const newAmount = (data?.amount_paid_cents ?? 0) + extraCents;
+    const { error } = await supabase
+      .from("sessions")
+      .update({
+        status: "ended",
+        ended_at: new Date().toISOString(),
+        amount_paid_cents: newAmount,
+      })
       .eq("id", sessionId);
     if (error) throw error;
   },

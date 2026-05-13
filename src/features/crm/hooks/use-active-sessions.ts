@@ -60,7 +60,25 @@ export function useActiveSessions() {
     [refresh]
   );
 
-  return { sessions, loading, error, registerAndStart, pause, resume, end, refresh };
+  const endWithExtra = useCallback(
+    async (id: string, extraCents: number) => {
+      await sessionsRepo.endWithExtra(id, extraCents);
+      await refresh();
+    },
+    [refresh]
+  );
+
+  return {
+    sessions,
+    loading,
+    error,
+    registerAndStart,
+    pause,
+    resume,
+    end,
+    endWithExtra,
+    refresh,
+  };
 }
 
 /** Re-renders every `intervalMs` so countdowns update in real time. */
