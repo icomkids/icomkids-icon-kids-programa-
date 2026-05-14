@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import {
+  CalendarRange,
   Car,
   Check,
   Copy,
@@ -59,6 +60,34 @@ const OPTIN_LABEL: Record<QOffersOptin, string> = {
 
 type Tab = "leads" | "publico" | "editor";
 type Filter = "all" | "responded" | "pending" | "hot_leads";
+type DatePreset = "all_time" | "today" | "7d" | "30d" | "month";
+
+function rangeForPreset(p: DatePreset): { from: Date | null; to: Date | null } {
+  if (p === "all_time") return { from: null, to: null };
+  const now = new Date();
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+  const startOfTomorrow = new Date(startOfToday);
+  startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+  if (p === "today") return { from: startOfToday, to: startOfTomorrow };
+  if (p === "7d") {
+    const from = new Date(startOfToday);
+    from.setDate(from.getDate() - 6);
+    return { from, to: startOfTomorrow };
+  }
+  if (p === "30d") {
+    const from = new Date(startOfToday);
+    from.setDate(from.getDate() - 29);
+    return { from, to: startOfTomorrow };
+  }
+  if (p === "month") {
+    return {
+      from: new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0),
+      to: startOfTomorrow,
+    };
+  }
+  return { from: null, to: null };
+}
 
 function exportCsv(rows: NpsSurvey[]) {
   const header = [
@@ -111,10 +140,25 @@ function exportCsv(rows: NpsSurvey[]) {
 }
 
 export default function NpsDashboardPage() {
-  const { surveys, loading, aggregate } = useNpsSurveys(200);
+  const { surveys: allSurveys, loading, aggregate } = useNpsSurveys(500);
   const [tab, setTab] = useState<Tab>("leads");
   const [filter, setFilter] = useState<Filter>("all");
+  const [datePreset, setDatePreset] = useState<DatePreset>("all_time");
   const [selected, setSelected] = useState<NpsSurvey | null>(null);
+
+  // Filtra por janela temporal antes de tudo. Usa created_at (data de
+  // criacao do contato), nao responded_at, pra incluir pendentes
+  // tambem dentro do periodo.
+  const surveys = useMemo(() => {
+    const { from, to } = rangeForPreset(datePreset);
+    if (!from || !to) return allSurveys;
+    const fromMs = from.getTime();
+    const toMs = to.getTime();
+    return allSurveys.filter((s) => {
+      const t = new Date(s.created_at).getTime();
+      return t >= fromMs && t < toMs;
+    });
+  }, [allSurveys, datePreset]);
 
   const stats = useMemo(() => {
     const responded = surveys.filter((s) => s.responded_at != null);
@@ -178,6 +222,8 @@ export default function NpsDashboardPage() {
             aggregate={aggregate}
             filter={filter}
             setFilter={setFilter}
+            datePreset={datePreset}
+            setDatePreset={setDatePreset}
             loading={loading}
             onSelect={setSelected}
           />
@@ -205,6 +251,8 @@ function LeadsTab({
   aggregate,
   filter,
   setFilter,
+  datePreset,
+  setDatePreset,
   loading,
   onSelect,
 }: {
@@ -214,11 +262,44 @@ function LeadsTab({
   aggregate: ReturnType<typeof useNpsSurveys>["aggregate"];
   filter: Filter;
   setFilter: (f: Filter) => void;
+  datePreset: DatePreset;
+  setDatePreset: (p: DatePreset) => void;
   loading: boolean;
   onSelect: (s: NpsSurvey) => void;
 }) {
   return (
     <>
+      <section className="mb-4 rounded-xl border border-border bg-card p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <CalendarRange className="size-4 text-[#1E78DC]" />
+          <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            Periodo
+          </span>
+          {(
+            [
+              { v: "all_time" as const, label: "Tudo" },
+              { v: "today" as const, label: "Hoje" },
+              { v: "7d" as const, label: "7 dias" },
+              { v: "30d" as const, label: "30 dias" },
+              { v: "month" as const, label: "Este mes" },
+            ]
+          ).map((opt) => (
+            <button
+              key={opt.v}
+              type="button"
+              onClick={() => setDatePreset(opt.v)}
+              className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                datePreset === opt.v
+                  ? "bg-[#1E78DC] text-white"
+                  : "bg-muted text-muted-foreground hover:bg-muted/70"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Kpi
           label="Nota media"

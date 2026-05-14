@@ -1,4 +1,5 @@
-import { ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { useState } from "react";
+import { ArrowDownRight, ArrowUpRight, CalendarRange } from "lucide-react";
 import { PageHeader } from "@/components/layout/header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDashboardStats } from "@/features/dashboard/hooks/use-dashboard-stats";
@@ -7,8 +8,16 @@ import { formatBRL } from "@/lib/format";
 
 const BAR_COLORS = ["#1E78DC", "#3CB4E0", "#A6CD3F", "#F4B73F", "#F39230", "#EA4D8E", "#7B36BF"];
 
+const PERIOD_PRESETS = [
+  { v: 7, label: "7 dias" },
+  { v: 14, label: "14 dias" },
+  { v: 30, label: "30 dias" },
+  { v: 90, label: "90 dias" },
+] as const;
+
 export default function DashboardPage() {
-  const { stats, loading, error } = useDashboardStats(7);
+  const [days, setDays] = useState<number>(7);
+  const { stats, loading, error } = useDashboardStats(days);
 
   const dailyMax = Math.max(1, ...stats.daily.map((d) => d.totalCents));
   const hourlyMax = Math.max(1, ...stats.hourlyToday.map((h) => h.numSessions));
@@ -21,13 +30,36 @@ export default function DashboardPage() {
     <div>
       <PageHeader
         title="Dashboard do proprietario"
-        description="Faturamento, ocupacao e indicadores chave em tempo real."
+        description={`Faturamento, ocupacao e indicadores chave · ultimos ${days} dias`}
       />
 
       <div className="space-y-6 p-6">
+        <section className="rounded-xl border border-border bg-card p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <CalendarRange className="size-4 text-[#1E78DC]" />
+            <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+              Periodo
+            </span>
+            {PERIOD_PRESETS.map((opt) => (
+              <button
+                key={opt.v}
+                type="button"
+                onClick={() => setDays(opt.v)}
+                className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                  days === opt.v
+                    ? "bg-[#1E78DC] text-white"
+                    : "bg-muted text-muted-foreground hover:bg-muted/70"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </section>
+
         {isUsingMockData ? (
           <div className="rounded-md border border-[#F4B73F] bg-[#F4B73F]/15 px-4 py-2 text-xs">
-            <strong>Modo demo:</strong> histórico simulado dos últimos 7 dias com
+            <strong>Modo demo:</strong> histórico simulado dos últimos {days} dias com
             distribuição realista (picos 14h-19h, fim de semana ~+50%).
           </div>
         ) : null}
