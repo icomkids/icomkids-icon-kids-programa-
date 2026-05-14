@@ -41,6 +41,29 @@ export function derivedStatus(session: ActiveSession, now: Date = new Date()): D
  * = 0 (sessao livre) ou amount_paid_cents = 0/null, o resultado e zero
  * porque nao da pra derivar a taxa proporcional.
  */
+/**
+ * Segundos decorridos desde que o tempo contratado terminou.
+ * Zero antes de zerar; cresce depois. Respeita pausa (congela em
+ * paused_at). Retorna zero se ja foi encerrada.
+ */
+export function elapsedSinceExpired(
+  session: ActiveSession,
+  now: Date = new Date()
+): number {
+  if (session.status === "ended") return 0;
+  if (session.contracted_minutes <= 0) return 0;
+  const startedMs = new Date(session.started_at).getTime();
+  const expectedEndMs =
+    startedMs +
+    session.contracted_minutes * 60_000 +
+    session.paused_total_seconds * 1000;
+  const effectiveNowMs =
+    session.status === "paused" && session.paused_at
+      ? new Date(session.paused_at).getTime()
+      : now.getTime();
+  return Math.max(0, Math.floor((effectiveNowMs - expectedEndMs) / 1000));
+}
+
 export function computeOverage(
   session: ActiveSession,
   graceMinutes: number,

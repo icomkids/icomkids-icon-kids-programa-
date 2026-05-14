@@ -1,11 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Volume2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/common/logo";
+import { usePricing } from "@/features/crm/hooks/use-pricing";
 import {
   useActiveSessions,
   useTicker,
 } from "@/features/crm/hooks/use-active-sessions";
 import {
   derivedStatus,
+  elapsedSinceExpired,
   remainingSeconds,
 } from "@/features/crm/lib/session-timing";
 import { useMedia } from "@/features/media/hooks/use-media";
@@ -45,12 +49,74 @@ export default function TelaoPage() {
     TELAO_CHILD_SECONDS_KEY,
     8
   );
+  const { value: pricing } = usePricing();
+
+  // ==========================================================================
+  // Alerta sonoro quando tempo de uma crianca esgota.
+  // ==========================================================================
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const alertedRef = useRef<Set<string>>(new Set());
+  const [audioReady, setAudioReady] = useState(false);
+
+  const enableAudio = () => {
+    if (audioCtxRef.current) return;
+    type AC = typeof AudioContext;
+    const Ctor =
+      window.AudioContext ??
+      ((window as unknown as { webkitAudioContext: AC }).webkitAudioContext);
+    if (!Ctor) return;
+    audioCtxRef.current = new Ctor();
+    setAudioReady(true);
+  };
+
+  const playBeep = useCallback(() => {
+    const ctx = audioCtxRef.current;
+    if (!ctx) return;
+    // 3 beeps de 0.15s em 880Hz, espacados 0.2s.
+    for (let i = 0; i < 3; i++) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sine";
+      osc.frequency.value = 880;
+      const start = ctx.currentTime + i * 0.35;
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.35, start + 0.02);
+      gain.gain.linearRampToValueAtTime(0, start + 0.18);
+      osc.start(start);
+      osc.stop(start + 0.2);
+    }
+  }, []);
+
+  useEffect(() => {
+    for (const s of sessions) {
+      if (alertedRef.current.has(s.id)) continue;
+      if (derivedStatus(s) === "expired") {
+        alertedRef.current.add(s.id);
+        playBeep();
+      }
+    }
+    // Tira da memoria sessoes que terminaram pra liberar futuro re-alerta
+    // caso a mesma criança volte com nova sessao (qualquer id seria novo).
+    for (const id of alertedRef.current) {
+      if (!sessions.find((s) => s.id === id)) {
+        alertedRef.current.delete(id);
+      }
+    }
+  }, [sessions, playBeep]);
+
+  // ==========================================================================
+  // Filtros / rotação
+  // ==========================================================================
 
   const visibleChildren = useMemo(
     () =>
       sessions.filter((s) => {
         const d = derivedStatus(s);
-        return d === "active" || d === "ending_soon" || d === "paused";
+        // Inclui expired: a tela precisa mostrar a crianca com alerta de
+        // tolerancia ate o atendente encerrar.
+        return d === "active" || d === "ending_soon" || d === "paused" || d === "expired";
       }),
     [sessions]
   );
@@ -111,7 +177,10 @@ export default function TelaoPage() {
             </p>
           </div>
         ) : currentSlide.type === "child" ? (
-          <ChildSlide session={currentSlide.session} />
+          <ChildSlide
+            session={currentSlide.session}
+            graceMinutes={pricing.grace_minutes}
+          />
         ) : (
           <MediaSlide item={currentSlide.item} />
         )}
@@ -120,21 +189,56 @@ export default function TelaoPage() {
       <footer className="px-10 pb-6 text-xs uppercase tracking-[0.4em] opacity-70">
         Diversao em movimento · {new Date().toLocaleDateString("pt-BR")}
       </footer>
+
+      {!audioReady ? (
+        <Button
+          type="button"
+          onClick={enableAudio}
+          className="fixed bottom-6 right-6 z-50 bg-white/95 text-[#7B36BF] shadow-2xl hover:bg-white"
+        >
+          <Volume2 className="size-4" /> Ativar som de alerta
+        </Button>
+      ) : null}
     </div>
   );
 }
 
-function ChildSlide({ session }: { session: ActiveSession }) {
+function ChildSlide({
+  session,
+  graceMinutes,
+}: {
+  session: ActiveSession;
+  graceMinutes: number;
+}) {
   const remaining = remainingSeconds(session);
   const status = derivedStatus(session);
-  const accent =
-    status === "ending_soon"
-      ? "#F4B73F"
-      : status === "paused"
-      ? "#3CB4E0"
-      : status === "expired"
-      ? "#EA4D8E"
-      : "#A6CD3F";
+  const overSeconds = elapsedSinceExpired(session);
+  const graceSeconds = graceMinutes * 60;
+  const graceRemaining = Math.max(0, graceSeconds - overSeconds);
+  const inGrace = status === "expired" && graceRemaining > 0;
+  const late = status === "expired" && graceRemaining <= 0;
+
+  const accent = inGrace
+    ? "#F4B73F"
+    : late
+    ? "#EA4D8E"
+    : status === "ending_soon"
+    ? "#F4B73F"
+    : status === "paused"
+    ? "#3CB4E0"
+    : "#A6CD3F";
+
+  const big = inGrace
+    ? formatCountdown(graceRemaining)
+    : late
+    ? formatCountdown(overSeconds)
+    : formatCountdown(remaining);
+
+  const label = inGrace
+    ? "Tolerancia · buscar agora"
+    : late
+    ? "Em atraso"
+    : "Tempo restante";
 
   return (
     <div className="w-full max-w-3xl text-center">
@@ -142,12 +246,16 @@ function ChildSlide({ session }: { session: ActiveSession }) {
         <img
           src={session.child.photo_url}
           alt={session.child.full_name}
-          className="mx-auto mb-6 size-48 rounded-full object-cover ring-8"
+          className={`mx-auto mb-6 size-48 rounded-full object-cover ring-8 ${
+            inGrace || late ? "animate-pulse" : ""
+          }`}
           style={{ outlineColor: accent }}
         />
       ) : (
         <div
-          className="mx-auto mb-6 flex size-48 items-center justify-center rounded-full text-7xl font-black text-slate-900 shadow-2xl"
+          className={`mx-auto mb-6 flex size-48 items-center justify-center rounded-full text-7xl font-black text-slate-900 shadow-2xl ${
+            inGrace || late ? "animate-pulse" : ""
+          }`}
           style={{ background: accent }}
         >
           {session.child.full_name.charAt(0).toUpperCase()}
@@ -159,15 +267,25 @@ function ChildSlide({ session }: { session: ActiveSession }) {
       <p className="mt-3 text-lg opacity-80">
         Resp.: {session.guardian?.full_name ?? "—"}
       </p>
-      <div className="mt-10">
+
+      {inGrace || late ? (
+        <p
+          className="mt-6 inline-block rounded-full px-6 py-2 text-2xl font-black uppercase tracking-widest"
+          style={{ background: accent, color: late ? "#fff" : "#0f172a" }}
+        >
+          {late ? "Buscar a crianca agora!" : "Tempo esgotado"}
+        </p>
+      ) : null}
+
+      <div className="mt-8">
         <p className="text-sm font-bold uppercase tracking-[0.4em] opacity-80">
-          Tempo restante
+          {label}
         </p>
         <p
           className="mt-2 font-mono text-[12rem] font-black leading-none tabular-nums drop-shadow-lg"
           style={{ color: accent }}
         >
-          {formatCountdown(remaining)}
+          {big}
         </p>
       </div>
     </div>

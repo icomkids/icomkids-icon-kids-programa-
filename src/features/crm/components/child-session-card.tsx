@@ -6,6 +6,7 @@ import { formatBRL, formatCountdown, formatTimeOfDay } from "@/lib/format";
 import {
   computeOverage,
   derivedStatus,
+  elapsedSinceExpired,
   remainingSeconds,
 } from "../lib/session-timing";
 import type { ActiveSession, DerivedSessionStatus } from "../types";
@@ -38,6 +39,7 @@ export function ChildSessionCard({
 }: Props) {
   const status = derivedStatus(session);
   const remaining = remainingSeconds(session);
+  const overSeconds = elapsedSinceExpired(session);
   const overage = computeOverage(session, graceMinutes);
   const initial = session.child.full_name.charAt(0).toUpperCase();
   const expectedEnd = new Date(
@@ -87,6 +89,17 @@ export function ChildSessionCard({
             </div>
           </div>
         </div>
+
+        {overSeconds > 0 ? (
+          <div className="rounded-lg border-2 border-[#F4B73F] bg-[#F4B73F]/10 px-4 py-3 text-center">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-[#a17400]">
+              Tempo excedido
+            </p>
+            <p className="font-mono text-3xl font-bold tabular-nums text-[#a17400]">
+              {formatCountdown(overSeconds)}
+            </p>
+          </div>
+        ) : null}
 
         {overage.cents > 0 ? (
           <div className="flex items-center justify-between gap-2 rounded-lg border-2 border-[#EA4D8E] bg-[#EA4D8E]/10 px-4 py-2">
