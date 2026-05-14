@@ -28,3 +28,46 @@ export function derivedStatus(session: ActiveSession, now: Date = new Date()): D
   if (remaining <= ENDING_SOON_THRESHOLD_SECONDS) return "ending_soon";
   return "active";
 }
+
+/**
+ * Calcula o valor de excedente proporcional ao tier escolhido:
+ *
+ *   rate_por_minuto = amount_paid_cents / contracted_minutes
+ *   minutos_cobrados = ceil( max(0, agora - fim_contratado - grace) / 60 )
+ *   total_cents = minutos_cobrados * rate_por_minuto
+ *
+ * Quando a sessao esta pausada, o relogio de excedente trava em paused_at.
+ * Quando ja foi encerrada, retorna sempre zero. Quando contracted_minutes
+ * = 0 (sessao livre) ou amount_paid_cents = 0/null, o resultado e zero
+ * porque nao da pra derivar a taxa proporcional.
+ */
+export function computeOverage(
+  session: ActiveSession,
+  graceMinutes: number,
+  now: Date = new Date()
+): { minutes: number; cents: number } {
+  if (session.status === "ended") return { minutes: 0, cents: 0 };
+  if (session.contracted_minutes <= 0) return { minutes: 0, cents: 0 };
+  if (!session.amount_paid_cents || session.amount_paid_cents <= 0) {
+    return { minutes: 0, cents: 0 };
+  }
+  const startedMs = new Date(session.started_at).getTime();
+  const expectedEndMs =
+    startedMs +
+    session.contracted_minutes * 60_000 +
+    session.paused_total_seconds * 1000;
+  const graceEndMs = expectedEndMs + graceMinutes * 60_000;
+  const effectiveNowMs =
+    session.status === "paused" && session.paused_at
+      ? new Date(session.paused_at).getTime()
+      : now.getTime();
+  const overageMs = effectiveNowMs - graceEndMs;
+  if (overageMs <= 0) return { minutes: 0, cents: 0 };
+  const overageMinutes = Math.ceil(overageMs / 60_000);
+  const ratePerMinCents =
+    session.amount_paid_cents / session.contracted_minutes;
+  return {
+    minutes: overageMinutes,
+    cents: Math.round(overageMinutes * ratePerMinCents),
+  };
+}

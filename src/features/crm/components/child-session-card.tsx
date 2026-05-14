@@ -1,15 +1,21 @@
-import { Pause, Play, Square, User } from "lucide-react";
+import { Pause, Play, Square, TrendingUp, User } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { formatCountdown, formatTimeOfDay } from "@/lib/format";
-import { derivedStatus, remainingSeconds } from "../lib/session-timing";
+import { formatBRL, formatCountdown, formatTimeOfDay } from "@/lib/format";
+import {
+  computeOverage,
+  derivedStatus,
+  remainingSeconds,
+} from "../lib/session-timing";
 import type { ActiveSession, DerivedSessionStatus } from "../types";
 import { QrCodeButton } from "./qr-code-button";
 import { SessionStatusBadge } from "./status-badge";
 
 interface Props {
   session: ActiveSession;
+  /** Tolerancia em minutos antes da cobranca de excedente comecar. */
+  graceMinutes: number;
   onPause: (id: string) => void;
   onResume: (id: string) => void;
   onEnd: (id: string) => void;
@@ -23,9 +29,16 @@ const ringColor: Record<DerivedSessionStatus, string> = {
   ended: "#94a3b8",
 };
 
-export function ChildSessionCard({ session, onPause, onResume, onEnd }: Props) {
+export function ChildSessionCard({
+  session,
+  graceMinutes,
+  onPause,
+  onResume,
+  onEnd,
+}: Props) {
   const status = derivedStatus(session);
   const remaining = remainingSeconds(session);
+  const overage = computeOverage(session, graceMinutes);
   const initial = session.child.full_name.charAt(0).toUpperCase();
   const expectedEnd = new Date(
     new Date(session.started_at).getTime() +
@@ -74,6 +87,25 @@ export function ChildSessionCard({ session, onPause, onResume, onEnd }: Props) {
             </div>
           </div>
         </div>
+
+        {overage.cents > 0 ? (
+          <div className="flex items-center justify-between gap-2 rounded-lg border-2 border-[#EA4D8E] bg-[#EA4D8E]/10 px-4 py-2">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="size-4 text-[#EA4D8E]" />
+              <div className="leading-tight">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#EA4D8E]">
+                  Excedente
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {overage.minutes} min apos tolerancia
+                </p>
+              </div>
+            </div>
+            <p className="font-mono text-xl font-black tabular-nums text-[#EA4D8E]">
+              {formatBRL(overage.cents)}
+            </p>
+          </div>
+        ) : null}
 
         <div className="rounded-lg bg-muted/40 px-4 py-3 text-center">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">

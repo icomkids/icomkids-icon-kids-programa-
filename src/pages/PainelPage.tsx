@@ -8,7 +8,10 @@ import {
   useTicker,
 } from "@/features/crm/hooks/use-active-sessions";
 import { usePricing } from "@/features/crm/hooks/use-pricing";
-import { derivedStatus } from "@/features/crm/lib/session-timing";
+import {
+  computeOverage,
+  derivedStatus,
+} from "@/features/crm/lib/session-timing";
 import { isUsingMockData } from "@/features/crm/lib/sessions-repo";
 import { loyaltyRepo } from "@/features/loyalty/lib/loyalty-repo";
 import { formatBRL } from "@/lib/format";
@@ -160,29 +163,6 @@ async function fireSessionWelcome(session: ActiveSession) {
   }
 }
 
-/**
- * Calcula quantos minutos a sessao excedeu o tempo contratado, e quanto
- * isso da em centavos. Arredonda PRO COBRADOR (ceil) — qualquer segundo
- * a mais conta como 1 minuto cheio, conforme aviso na tabela de preco.
- * Considera o tempo pausado: paused_total_seconds NAO conta como excedido.
- */
-function calculateOverage(
-  session: ActiveSession,
-  overagePerMinuteCents: number
-): { minutes: number; cents: number } {
-  const startedAt = new Date(session.started_at).getTime();
-  const elapsedSec =
-    Math.floor((Date.now() - startedAt) / 1000) - session.paused_total_seconds;
-  const contractedSec = session.contracted_minutes * 60;
-  const overageSec = Math.max(0, elapsedSec - contractedSec);
-  if (overageSec <= 0) return { minutes: 0, cents: 0 };
-  const overageMinutes = Math.ceil(overageSec / 60);
-  return {
-    minutes: overageMinutes,
-    cents: overageMinutes * overagePerMinuteCents,
-  };
-}
-
 export default function PainelPage() {
   useTicker(1000);
   const { sessions, loading, error, registerAndStart, pause, resume, end, endWithExtra } =
@@ -204,10 +184,8 @@ export default function PainelPage() {
       return;
     }
 
-    const overage = calculateOverage(
-      target,
-      pricing.overage_per_minute_cents
-    );
+    // Excedente proporcional ao valor pago. Considera o grace e a pausa.
+    const overage = computeOverage(target, pricing.grace_minutes);
 
     // Sem excedente — encerra direto.
     if (overage.cents <= 0) {
@@ -293,6 +271,7 @@ export default function PainelPage() {
               <ChildSessionCard
                 key={s.id}
                 session={s}
+                graceMinutes={pricing.grace_minutes}
                 onPause={(id) => void pause(id)}
                 onResume={(id) => void resume(id)}
                 onEnd={(id) => void handleEnd(id)}
