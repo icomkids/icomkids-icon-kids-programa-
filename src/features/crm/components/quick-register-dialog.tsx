@@ -340,9 +340,13 @@ export function QuickRegisterDialog({ onSubmit }: Props) {
                 id="qr-amount"
                 inputMode="decimal"
                 value={amountReais}
-                onChange={(e) => setAmountReais(e.target.value)}
-                placeholder="0,00"
+                readOnly
+                placeholder="—"
+                className="cursor-not-allowed bg-muted/50"
               />
+              <p className="text-[11px] text-muted-foreground">
+                Definido pelo tempo escolhido acima.
+              </p>
             </div>
             <div className="space-y-1.5">
               <Label>Pagamento</Label>
