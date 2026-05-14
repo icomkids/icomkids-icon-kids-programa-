@@ -72,9 +72,13 @@ export function QuickRegisterDialog({ onSubmit }: Props) {
     let cancelled = false;
     const t = window.setTimeout(async () => {
       try {
-        const { data } = await supabase.rpc("find_guardians_by_phone", {
-          p_phone: guardianPhone,
-        });
+        // RPC nova nao esta em database.types.ts ainda (usuario sem
+        // permissao de gen types). Cast em any pra nao quebrar build.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data } = await (supabase as any).rpc(
+          "find_guardians_by_phone",
+          { p_phone: guardianPhone }
+        );
         if (!cancelled) setPhoneMatches((data as PhoneMatch[] | null) ?? []);
       } catch {
         if (!cancelled) setPhoneMatches([]);
@@ -331,7 +335,6 @@ export function QuickRegisterDialog({ onSubmit }: Props) {
                 ⏰ {pricing.overage_note}
               </p>
             ) : null}
-          </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">

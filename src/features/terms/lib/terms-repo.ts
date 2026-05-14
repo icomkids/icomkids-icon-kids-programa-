@@ -135,7 +135,11 @@ export const supabaseTermsRepo: TermsRepo = {
     return row ?? null;
   },
   async submitSignature(token, signatureDataUrl, options) {
-    const { error } = await supabase.rpc("submit_term_signature", {
+    // Cast em any: o tipo gerado em database.types.ts (ainda nao
+    // regerado por falta de permissao do CLI) tem p_signature_data_url
+    // como `string`, mas a migration nova aceita null (checkbox flow).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any).rpc("submit_term_signature", {
       p_token: token,
       p_signature_data_url: signatureDataUrl,
       p_user_agent: options?.user_agent,
