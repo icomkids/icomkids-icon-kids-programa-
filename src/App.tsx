@@ -9,6 +9,7 @@ import DashboardPage from "@/pages/DashboardPage";
 import InventoryPage from "@/pages/InventoryPage";
 import LoginPage from "@/pages/LoginPage";
 import LoyaltyPage from "@/pages/LoyaltyPage";
+import MarketingPage from "@/pages/MarketingPage";
 import MediaPage from "@/pages/MediaPage";
 import NpsDashboardPage from "@/pages/NpsDashboardPage";
 import NpsResponsePage from "@/pages/NpsResponsePage";
@@ -87,6 +88,7 @@ function App() {
             <Route path="/inventario" element={<InventoryPage />} />
             <Route path="/nps" element={<NpsDashboardPage />} />
             <Route path="/crm" element={<NpsDashboardPage />} />
+            <Route path="/marketing" element={<MarketingPage />} />
             <Route path="/equipe" element={<TeamPage />} />
             <Route path="/configuracoes" element={<SettingsPage />} />
           </Route>

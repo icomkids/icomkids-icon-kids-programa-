@@ -18,8 +18,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { RulesList } from "@/features/automation/components/rules-list";
-import { ScheduledList } from "@/features/automation/components/scheduled-list";
 import { EmailLogTable } from "@/features/messaging/components/email-log-table";
 import { EmailTestCard } from "@/features/messaging/components/email-test-card";
 import { WhatsAppConnectionCard } from "@/features/messaging/components/whatsapp-connection-card";
@@ -238,17 +236,6 @@ export default function SettingsPage() {
         <section className="grid gap-6 lg:grid-cols-[1fr_1fr]">
           <EmailTestCard />
           <EmailLogTable />
-        </section>
-
-        <h2 className="pt-4 text-xs font-bold uppercase tracking-[0.4em] text-[#F4B73F]">
-          Automacoes
-        </h2>
-        <p className="-mt-3 text-xs text-muted-foreground">
-          Regras automaticas (gatilhos) e mensagens agendadas pra disparo unico.
-        </p>
-        <section className="grid gap-6 lg:grid-cols-2">
-          <RulesList />
-          <ScheduledList />
         </section>
       </div>
     </div>
