@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Plus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { AlertTriangle, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,12 +12,19 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { supabase } from "@/lib/supabase";
 import { usePartners } from "@/features/partners/hooks/use-partners";
 import { formatBRL } from "@/lib/format";
 import { uploadChildPhoto } from "../lib/child-photo-upload";
 import { usePricing } from "../hooks/use-pricing";
 import type { ChildGender, QuickRegisterInput } from "../types";
 import { WebcamCapture } from "./webcam-capture";
+
+interface PhoneMatch {
+  id: string;
+  full_name: string;
+  phone: string;
+}
 
 interface Props {
   onSubmit: (input: QuickRegisterInput) => Promise<unknown>;
@@ -47,6 +54,37 @@ export function QuickRegisterDialog({ onSubmit }: Props) {
   const [photoBlob, setPhotoBlob] = useState<Blob | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [phoneMatches, setPhoneMatches] = useState<PhoneMatch[]>([]);
+
+  // Debounce: 500ms apos parar de digitar o telefone, consulta a RPC
+  // pra ver se ja existe outro guardian com o mesmo numero. Se sim,
+  // mostra warning amarelo (operador pode seguir mesmo assim).
+  useEffect(() => {
+    if (!open) {
+      setPhoneMatches([]);
+      return;
+    }
+    const digits = guardianPhone.replace(/\D/g, "");
+    if (digits.length < 10) {
+      setPhoneMatches([]);
+      return;
+    }
+    let cancelled = false;
+    const t = window.setTimeout(async () => {
+      try {
+        const { data } = await supabase.rpc("find_guardians_by_phone", {
+          p_phone: guardianPhone,
+        });
+        if (!cancelled) setPhoneMatches((data as PhoneMatch[] | null) ?? []);
+      } catch {
+        if (!cancelled) setPhoneMatches([]);
+      }
+    }, 500);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
+  }, [guardianPhone, open]);
 
   const reset = () => {
     setChildName("");
@@ -212,6 +250,24 @@ export function QuickRegisterDialog({ onSubmit }: Props) {
               />
             </div>
           </div>
+          {phoneMatches.length > 0 ? (
+            <div className="flex gap-2 rounded-md border border-[#F4B73F] bg-[#F4B73F]/15 px-3 py-2 text-xs">
+              <AlertTriangle className="size-4 shrink-0 text-[#F4B73F]" />
+              <div className="min-w-0 flex-1">
+                <p className="font-bold text-slate-800">
+                  {phoneMatches.length === 1
+                    ? `Este telefone ja esta no cadastro de ${phoneMatches[0].full_name}.`
+                    : `Este telefone ja aparece em ${phoneMatches.length} cadastros: ${phoneMatches
+                        .map((m) => m.full_name)
+                        .join(", ")}.`}
+                </p>
+                <p className="mt-0.5 text-slate-600">
+                  Se for a mesma familia, segue normal. Se digitou errado,
+                  corrige antes de iniciar.
+                </p>
+              </div>
+            </div>
+          ) : null}
           <div className="space-y-1.5">
             <Label htmlFor="qr-email">Email (opcional)</Label>
             <Input
