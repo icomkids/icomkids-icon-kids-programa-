@@ -4,6 +4,7 @@ import {
   CalendarRange,
   Coffee,
   Cog,
+  ExternalLink,
   FileSignature,
   Gauge,
   GraduationCap,
@@ -27,6 +28,9 @@ interface Item {
   icon: React.ComponentType<{ className?: string }>;
   /** Badge "EM BREVE" pra modulos que ainda nao foram ativados. */
   pending?: boolean;
+  /** Quando true, abre em nova aba em vez de navegar dentro do app.
+   *  Util pro Telao, que tipicamente fica em uma TV separada. */
+  external?: boolean;
 }
 
 // Ordem por uso real do parque: visao geral primeiro, operacao principal,
@@ -36,7 +40,7 @@ const items: Item[] = [
   { to: "/dashboard", label: "Dashboard", icon: Gauge },
   { to: "/painel", label: "Painel", icon: LayoutDashboard },
   { to: "/caixa", label: "Caixa", icon: Banknote },
-  { to: "/telao", label: "Telao", icon: Tv2 },
+  { to: "/telao", label: "Telao", icon: Tv2, external: true },
   { to: "/crm", label: "CRM & Leads", icon: Smile },
   { to: "/agendamento", label: "Agendamento", icon: CalendarRange },
   { to: "/pdv", label: "PDV / Lanchonete", icon: Coffee },
@@ -66,30 +70,55 @@ export function Sidebar() {
         </p>
       </div>
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 pb-4">
-        {items.map((it) => (
-          <NavLink
-            key={it.to}
-            to={it.to}
-            className={({ isActive }) =>
-              `group flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition ${
-                isActive
-                  ? "bg-[#1E78DC] text-white"
-                  : "text-foreground hover:bg-muted"
-              }`
-            }
-          >
-            <it.icon className="size-4 shrink-0" />
-            <span className="flex-1 truncate">{it.label}</span>
-            {it.pending ? (
-              <span
-                className="rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
-                style={{ background: "#F4B73F", color: "#0f172a" }}
+        {items.map((it) => {
+          const content = (
+            <>
+              <it.icon className="size-4 shrink-0" />
+              <span className="flex-1 truncate">{it.label}</span>
+              {it.pending ? (
+                <span
+                  className="rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+                  style={{ background: "#F4B73F", color: "#0f172a" }}
+                >
+                  Em breve
+                </span>
+              ) : it.external ? (
+                <ExternalLink className="size-3.5 shrink-0 opacity-60" />
+              ) : null}
+            </>
+          );
+
+          if (it.external) {
+            return (
+              <a
+                key={it.to}
+                href={it.to}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="group flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-foreground transition hover:bg-muted"
+                title="Abre em uma nova aba (pra arrastar pra TV)"
               >
-                Em breve
-              </span>
-            ) : null}
-          </NavLink>
-        ))}
+                {content}
+              </a>
+            );
+          }
+
+          return (
+            <NavLink
+              key={it.to}
+              to={it.to}
+              className={({ isActive }) =>
+                `group flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition ${
+                  isActive
+                    ? "bg-[#1E78DC] text-white"
+                    : "text-foreground hover:bg-muted"
+                }`
+              }
+            >
+              {content}
+            </NavLink>
+          );
+        })}
         <div className="my-2 border-t border-border" />
         {utilityItems.map((it) => (
           <NavLink
