@@ -8,6 +8,8 @@ export interface SessionsRepo {
   listToday(): Promise<ActiveSession[]>;
   /** All sessions started in the last `days` days, ordered newest first. */
   listSinceDays(days: number): Promise<ActiveSession[]>;
+  /** All sessions started in `[from, to)`, ordered newest first. */
+  listInRange(from: Date, to: Date): Promise<ActiveSession[]>;
   /** Lookup an active or paused session by its QR code token. Returns null if
    *  not found or already ended. */
   findByQrToken(token: string): Promise<ActiveSession | null>;
@@ -327,6 +329,16 @@ export const mockSessionsRepo: SessionsRepo = {
       .filter((s) => new Date(s.started_at).getTime() >= sinceMs)
       .sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime());
   },
+  async listInRange(from, to) {
+    const fromMs = from.getTime();
+    const toMs = to.getTime();
+    return mockSessions
+      .filter((s) => {
+        const t = new Date(s.started_at).getTime();
+        return t >= fromMs && t < toMs;
+      })
+      .sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime());
+  },
   async findByQrToken(token) {
     return (
       mockSessions.find(
@@ -512,6 +524,16 @@ export const supabaseSessionsRepo: SessionsRepo = {
       .from("sessions")
       .select(SESSION_SELECT)
       .gte("started_at", since.toISOString())
+      .order("started_at", { ascending: false });
+    if (error) throw error;
+    return (data as unknown as SessionRow[]).map(rowToSession);
+  },
+  async listInRange(from, to) {
+    const { data, error } = await supabase
+      .from("sessions")
+      .select(SESSION_SELECT)
+      .gte("started_at", from.toISOString())
+      .lt("started_at", to.toISOString())
       .order("started_at", { ascending: false });
     if (error) throw error;
     return (data as unknown as SessionRow[]).map(rowToSession);

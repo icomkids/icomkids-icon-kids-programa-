@@ -28,24 +28,27 @@ interface Item {
   module: number;
 }
 
+// Ordem por uso real do parque: visao geral primeiro, operacao principal,
+// financeiro, display, leads, depois operacoes especializadas, gestao e
+// modulos adiados/raros no final.
 const items: Item[] = [
+  { to: "/dashboard", label: "Dashboard", icon: Gauge, module: 13 },
   { to: "/painel", label: "Painel", icon: LayoutDashboard, module: 1 },
-  { to: "/telao", label: "Telao", icon: Tv2, module: 2 },
   { to: "/caixa", label: "Caixa", icon: Banknote, module: 3 },
-  { to: "/parceiros", label: "Parceiros", icon: GraduationCap, module: 4 },
-  { to: "/vendas", label: "Vendas", icon: Tags, module: 5 },
-  { to: "/assinaturas", label: "Assinaturas", icon: Star, module: 6 },
+  { to: "/telao", label: "Telao", icon: Tv2, module: 2 },
+  { to: "/crm", label: "CRM & Leads", icon: Smile, module: 16 },
   { to: "/agendamento", label: "Agendamento", icon: CalendarRange, module: 7 },
+  { to: "/pdv", label: "PDV / Lanchonete", icon: Coffee, module: 11 },
+  { to: "/assinaturas", label: "Assinaturas", icon: Star, module: 6 },
+  { to: "/parceiros", label: "Parceiros", icon: GraduationCap, module: 4 },
+  { to: "/fidelidade", label: "Fidelidade", icon: PartyPopper, module: 14 },
+  { to: "/lista-espera", label: "Lista de espera", icon: Hourglass, module: 12 },
   { to: "/midia", label: "Midia", icon: Image, module: 8 },
   { to: "/qrcode", label: "QR Check-out", icon: QrCode, module: 9 },
   { to: "/termo", label: "Termo digital", icon: FileSignature, module: 10 },
-  { to: "/pdv", label: "PDV / Lanchonete", icon: Coffee, module: 11 },
-  { to: "/lista-espera", label: "Lista de espera", icon: Hourglass, module: 12 },
-  { to: "/dashboard", label: "Dashboard", icon: Gauge, module: 13 },
-  { to: "/fidelidade", label: "Fidelidade", icon: PartyPopper, module: 14 },
   { to: "/inventario", label: "Inventario", icon: Wrench, module: 15 },
-  { to: "/crm", label: "CRM & Leads", icon: Smile, module: 16 },
   { to: "/equipe", label: "Equipe", icon: Users, module: 17 },
+  { to: "/vendas", label: "Vendas online", icon: Tags, module: 5 },
 ];
 
 const utilityItems: Array<{ to: string; label: string; icon: React.ComponentType<{ className?: string }> }> = [

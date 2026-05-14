@@ -1,5 +1,8 @@
-import { Banknote, CreditCard, QrCode, Wallet } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Banknote, CalendarRange, CreditCard, QrCode, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/layout/header";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -11,10 +14,59 @@ import {
 } from "@/components/ui/table";
 import {
   type PaymentMethod,
-  useSalesToday,
+  useSales,
 } from "@/features/caixa/hooks/use-sales-today";
 import { isUsingMockData } from "@/features/crm/lib/sessions-repo";
 import { formatBRL, formatTimeOfDay } from "@/lib/format";
+
+type Preset = "today" | "7d" | "30d" | "month" | "custom";
+
+function rangeForPreset(preset: Preset, customFrom: string, customTo: string) {
+  const now = new Date();
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+  const startOfTomorrow = new Date(startOfToday);
+  startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+
+  switch (preset) {
+    case "today":
+      return { from: startOfToday, to: startOfTomorrow };
+    case "7d": {
+      const from = new Date(startOfToday);
+      from.setDate(from.getDate() - 6);
+      return { from, to: startOfTomorrow };
+    }
+    case "30d": {
+      const from = new Date(startOfToday);
+      from.setDate(from.getDate() - 29);
+      return { from, to: startOfTomorrow };
+    }
+    case "month": {
+      const from = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+      return { from, to: startOfTomorrow };
+    }
+    case "custom": {
+      // customFrom/customTo no formato YYYY-MM-DD.
+      const from = customFrom
+        ? new Date(`${customFrom}T00:00:00`)
+        : startOfToday;
+      const to = customTo
+        ? new Date(`${customTo}T23:59:59.999`)
+        : startOfTomorrow;
+      // Adiciona 1ms pra to ser exclusivo (listInRange usa <)
+      return { from, to: new Date(to.getTime() + 1) };
+    }
+  }
+}
+
+function formatRangeLabel(from: Date, to: Date): string {
+  const fmt = (d: Date) =>
+    d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  const dayMs = 24 * 60 * 60 * 1000;
+  const days = Math.round((to.getTime() - from.getTime()) / dayMs);
+  if (days <= 1) return `Hoje (${fmt(from)})`;
+  return `${fmt(from)} → ${fmt(new Date(to.getTime() - 1))}`;
+}
 
 const methodMeta: Record<
   PaymentMethod,
@@ -27,16 +79,83 @@ const methodMeta: Record<
 };
 
 export default function CaixaPage() {
-  const { sessions, loading, error, summary } = useSalesToday();
+  const [preset, setPreset] = useState<Preset>("today");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+  const range = useMemo(
+    () => rangeForPreset(preset, customFrom, customTo),
+    [preset, customFrom, customTo]
+  );
+  const { sessions, loading, error, summary } = useSales(range);
+  const rangeLabel = formatRangeLabel(range.from, range.to);
 
   return (
     <div>
       <PageHeader
         title="Caixa"
-        description="Vendas do dia agregadas pelas sessoes do CRM."
+        description={`Vendas agregadas pelas sessoes do CRM · ${rangeLabel}`}
       />
 
       <div className="space-y-6 p-6">
+        <section className="rounded-xl border border-border bg-card p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <CalendarRange className="size-4 text-[#1E78DC]" />
+            <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+              Periodo
+            </span>
+            {(
+              [
+                { v: "today" as const, label: "Hoje" },
+                { v: "7d" as const, label: "7 dias" },
+                { v: "30d" as const, label: "30 dias" },
+                { v: "month" as const, label: "Este mes" },
+                { v: "custom" as const, label: "Personalizado" },
+              ]
+            ).map((opt) => (
+              <button
+                key={opt.v}
+                type="button"
+                onClick={() => setPreset(opt.v)}
+                className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                  preset === opt.v
+                    ? "bg-[#1E78DC] text-white"
+                    : "bg-muted text-muted-foreground hover:bg-muted/70"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          {preset === "custom" ? (
+            <div className="mt-3 flex flex-wrap items-end gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="cx-from" className="text-[11px]">
+                  De
+                </Label>
+                <Input
+                  id="cx-from"
+                  type="date"
+                  value={customFrom}
+                  onChange={(e) => setCustomFrom(e.target.value)}
+                  className="w-40"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="cx-to" className="text-[11px]">
+                  Ate
+                </Label>
+                <Input
+                  id="cx-to"
+                  type="date"
+                  value={customTo}
+                  onChange={(e) => setCustomTo(e.target.value)}
+                  className="w-40"
+                />
+              </div>
+            </div>
+          ) : null}
+        </section>
+
         {isUsingMockData ? (
           <div className="rounded-md border border-[#F4B73F] bg-[#F4B73F]/15 px-4 py-2 text-xs">
             <strong>Modo demo:</strong> dados simulados, incluindo 3 sessoes ja
@@ -61,7 +180,7 @@ export default function CaixaPage() {
             color="#F39230"
           />
           <Kpi
-            label="Sessoes hoje"
+            label="Sessoes no periodo"
             value={loading ? "—" : sessions.length.toString()}
             color="#3CB4E0"
           />
