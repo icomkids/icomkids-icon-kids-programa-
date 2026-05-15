@@ -1,8 +1,17 @@
 import { useMemo, useState } from "react";
-import { Banknote, CalendarRange, CreditCard, QrCode, Wallet } from "lucide-react";
+import {
+  CreditCard,
+  History,
+  LockKeyhole,
+  QrCode,
+  ShieldAlert,
+  ShoppingCart,
+  Unlock,
+  Wallet,
+  XCircle,
+} from "lucide-react";
 import { PageHeader } from "@/components/layout/header";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -12,112 +21,260 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useAuth } from "@/features/auth/auth-context";
 import {
-  type PaymentMethod,
-  useSales,
-} from "@/features/caixa/hooks/use-sales-today";
-import { isUsingMockData } from "@/features/crm/lib/sessions-repo";
-import { formatBRL, formatTimeOfDay } from "@/lib/format";
+  AbrirCaixaButton,
+  CancelarMovimentoDialog,
+  FecharCaixaButton,
+  SangriaButton,
+  SuprimentoButton,
+} from "@/features/caixa/components/caixa-dialogs";
+import {
+  useCaixaAberta,
+  useSessoesFechadas,
+} from "@/features/caixa/hooks/use-caixa";
+import { formatBRL } from "@/lib/format";
+import { supabase } from "@/lib/supabase";
+import { useEffect, useState as useStateReact } from "react";
+import type {
+  CaixaMovimento,
+  CaixaMovimentoTipo,
+} from "@/features/caixa/types";
 
-type Preset = "today" | "7d" | "30d" | "month" | "custom";
+type Tab = "atual" | "historico";
 
-function rangeForPreset(preset: Preset, customFrom: string, customTo: string) {
-  const now = new Date();
-  const startOfToday = new Date(now);
-  startOfToday.setHours(0, 0, 0, 0);
-  const startOfTomorrow = new Date(startOfToday);
-  startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+const TIPO_LABEL: Record<CaixaMovimentoTipo, string> = {
+  venda: "Venda",
+  suprimento: "Suprimento",
+  sangria: "Sangria",
+  ajuste: "Ajuste",
+};
 
-  switch (preset) {
-    case "today":
-      return { from: startOfToday, to: startOfTomorrow };
-    case "7d": {
-      const from = new Date(startOfToday);
-      from.setDate(from.getDate() - 6);
-      return { from, to: startOfTomorrow };
-    }
-    case "30d": {
-      const from = new Date(startOfToday);
-      from.setDate(from.getDate() - 29);
-      return { from, to: startOfTomorrow };
-    }
-    case "month": {
-      const from = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-      return { from, to: startOfTomorrow };
-    }
-    case "custom": {
-      // customFrom/customTo no formato YYYY-MM-DD.
-      const from = customFrom
-        ? new Date(`${customFrom}T00:00:00`)
-        : startOfToday;
-      const to = customTo
-        ? new Date(`${customTo}T23:59:59.999`)
-        : startOfTomorrow;
-      // Adiciona 1ms pra to ser exclusivo (listInRange usa <)
-      return { from, to: new Date(to.getTime() + 1) };
-    }
-  }
-}
+const TIPO_COLOR: Record<CaixaMovimentoTipo, string> = {
+  venda: "#A6CD3F",
+  suprimento: "#1E78DC",
+  sangria: "#EA4D8E",
+  ajuste: "#7B36BF",
+};
 
-function formatRangeLabel(from: Date, to: Date): string {
-  const fmt = (d: Date) =>
-    d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
-  const dayMs = 24 * 60 * 60 * 1000;
-  const days = Math.round((to.getTime() - from.getTime()) / dayMs);
-  if (days <= 1) return `Hoje (${fmt(from)})`;
-  return `${fmt(from)} → ${fmt(new Date(to.getTime() - 1))}`;
-}
-
-const methodMeta: Record<
-  PaymentMethod,
-  { label: string; color: string; icon: React.ComponentType<{ className?: string }> }
-> = {
+const PAY_META: Record<string, { label: string; color: string; icon: React.ComponentType<{ className?: string }> }> = {
   pix: { label: "PIX", color: "#A6CD3F", icon: QrCode },
   dinheiro: { label: "Dinheiro", color: "#F4B73F", icon: Wallet },
   cartao: { label: "Cartao", color: "#1E78DC", icon: CreditCard },
-  outro: { label: "Outro", color: "#7B36BF", icon: Banknote },
 };
 
+function useIsOwner() {
+  const auth = useAuth();
+  const [isOwner, setIsOwner] = useStateReact(false);
+  useEffect(() => {
+    if (!auth.session?.user?.id) {
+      setIsOwner(false);
+      return;
+    }
+    let cancelled = false;
+    supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", auth.session.user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) setIsOwner((data?.role ?? null) === "owner");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [auth.session?.user?.id]);
+  return isOwner;
+}
+
 export default function CaixaPage() {
-  const [preset, setPreset] = useState<Preset>("today");
-  const [customFrom, setCustomFrom] = useState("");
-  const [customTo, setCustomTo] = useState("");
-  const range = useMemo(
-    () => rangeForPreset(preset, customFrom, customTo),
-    [preset, customFrom, customTo]
-  );
-  const { sessions, loading, error, summary } = useSales(range);
-  const rangeLabel = formatRangeLabel(range.from, range.to);
+  const [tab, setTab] = useState<Tab>("atual");
+  const { sessao, movimentos, resumo, loading } = useCaixaAberta();
 
   return (
     <div>
       <PageHeader
         title="Caixa"
-        description={`Vendas agregadas pelas sessoes do CRM · ${rangeLabel}`}
+        description="Abertura, movimentacao, sangria, suprimento e fechamento com auditoria."
       />
 
       <div className="space-y-6 p-6">
-        <section className="rounded-xl border border-border bg-card p-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <CalendarRange className="size-4 text-[#1E78DC]" />
-            <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-              Periodo
-            </span>
+        <div className="flex w-fit gap-1 rounded-lg bg-muted p-1 text-sm font-semibold">
+          <button
+            type="button"
+            onClick={() => setTab("atual")}
+            className={`flex items-center gap-1.5 rounded-md px-4 py-2 transition ${
+              tab === "atual"
+                ? "bg-card text-foreground shadow"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <ShoppingCart className="size-4" /> Caixa atual
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("historico")}
+            className={`flex items-center gap-1.5 rounded-md px-4 py-2 transition ${
+              tab === "historico"
+                ? "bg-card text-foreground shadow"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <History className="size-4" /> Historico
+          </button>
+        </div>
+
+        {tab === "atual" ? (
+          loading ? (
+            <Skeleton className="h-64 w-full rounded-xl" />
+          ) : !sessao ? (
+            <CaixaFechadoView />
+          ) : (
+            <CaixaAbertoView
+              sessao={sessao}
+              movimentos={movimentos}
+              resumo={resumo}
+            />
+          )
+        ) : (
+          <HistoricoView />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CaixaFechadoView() {
+  return (
+    <div className="flex flex-col items-center gap-4 rounded-xl border-2 border-dashed border-border bg-card p-12 text-center">
+      <div className="flex size-16 items-center justify-center rounded-full bg-muted">
+        <LockKeyhole className="size-7 text-muted-foreground" />
+      </div>
+      <div>
+        <h2 className="text-lg font-bold">Caixa fechado</h2>
+        <p className="mt-1 max-w-md text-sm text-muted-foreground">
+          Antes de cadastrar criancas, vender no PDV ou registrar qualquer
+          pagamento, abra o caixa informando o troco inicial. O sistema cria
+          uma sessao e numera cada movimento sequencialmente.
+        </p>
+      </div>
+      <AbrirCaixaButton />
+    </div>
+  );
+}
+
+function CaixaAbertoView({
+  sessao,
+  movimentos,
+  resumo,
+}: {
+  sessao: import("@/features/caixa/types").CaixaSessao;
+  movimentos: CaixaMovimento[];
+  resumo: import("@/features/caixa/types").CaixaResumo;
+}) {
+  const isOwner = useIsOwner();
+  const [filter, setFilter] = useState<CaixaMovimentoTipo | "all">("all");
+  const filtered = useMemo(
+    () => (filter === "all" ? movimentos : movimentos.filter((m) => m.tipo === filter)),
+    [filter, movimentos]
+  );
+
+  return (
+    <>
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border-2 border-[#A6CD3F] bg-[#A6CD3F]/5 p-4">
+        <div className="flex items-center gap-3">
+          <div className="flex size-10 items-center justify-center rounded-full bg-[#A6CD3F]">
+            <Unlock className="size-5 text-slate-900" />
+          </div>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-[#5a8e10]">
+              Caixa aberto
+            </p>
+            <p className="text-sm">
+              Desde{" "}
+              {new Date(sessao.aberto_em).toLocaleString("pt-BR", {
+                day: "2-digit",
+                month: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}{" "}
+              · Troco inicial:{" "}
+              <strong>{formatBRL(sessao.valor_abertura_cents)}</strong>
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <SuprimentoButton />
+          <SangriaButton />
+          <FecharCaixaButton resumo={resumo} />
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Kpi
+          label="Faturamento (todos meios)"
+          value={formatBRL(resumo.vendas_total_cents)}
+          color="#A6CD3F"
+          sub={`${resumo.num_vendas} vendas`}
+        />
+        <Kpi
+          label="Dinheiro fisico esperado"
+          value={formatBRL(resumo.esperado_em_caixa_cents)}
+          color="#F4B73F"
+          sub="No caixa fisico agora"
+        />
+        <Kpi
+          label="Sangrias"
+          value={formatBRL(resumo.sangrias_cents)}
+          color="#EA4D8E"
+          sub="Dinheiro que saiu"
+        />
+        <Kpi
+          label="Suprimentos"
+          value={formatBRL(resumo.suprimentos_cents)}
+          color="#1E78DC"
+          sub="Reforco de troco"
+        />
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Kpi
+          label="PIX"
+          value={formatBRL(resumo.vendas_pix_cents)}
+          color="#A6CD3F"
+          icon={<QrCode className="size-4 text-[#A6CD3F]" />}
+        />
+        <Kpi
+          label="Dinheiro"
+          value={formatBRL(resumo.vendas_dinheiro_cents)}
+          color="#F4B73F"
+          icon={<Wallet className="size-4 text-[#F4B73F]" />}
+        />
+        <Kpi
+          label="Cartao"
+          value={formatBRL(resumo.vendas_cartao_cents)}
+          color="#1E78DC"
+          icon={<CreditCard className="size-4 text-[#1E78DC]" />}
+        />
+      </div>
+
+      <section className="rounded-xl border border-border bg-card">
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3">
+          <div className="flex flex-wrap items-center gap-1">
             {(
               [
-                { v: "today" as const, label: "Hoje" },
-                { v: "7d" as const, label: "7 dias" },
-                { v: "30d" as const, label: "30 dias" },
-                { v: "month" as const, label: "Este mes" },
-                { v: "custom" as const, label: "Personalizado" },
+                { v: "all" as const, label: `Todos · ${movimentos.length}` },
+                { v: "venda" as const, label: `Vendas · ${movimentos.filter((m) => m.tipo === "venda").length}` },
+                { v: "sangria" as const, label: `Sangrias · ${movimentos.filter((m) => m.tipo === "sangria").length}` },
+                { v: "suprimento" as const, label: `Suprimentos · ${movimentos.filter((m) => m.tipo === "suprimento").length}` },
               ]
             ).map((opt) => (
               <button
                 key={opt.v}
                 type="button"
-                onClick={() => setPreset(opt.v)}
+                onClick={() => setFilter(opt.v)}
                 className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
-                  preset === opt.v
+                  filter === opt.v
                     ? "bg-[#1E78DC] text-white"
                     : "bg-muted text-muted-foreground hover:bg-muted/70"
                 }`}
@@ -126,235 +283,230 @@ export default function CaixaPage() {
               </button>
             ))}
           </div>
-          {preset === "custom" ? (
-            <div className="mt-3 flex flex-wrap items-end gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="cx-from" className="text-[11px]">
-                  De
-                </Label>
-                <Input
-                  id="cx-from"
-                  type="date"
-                  value={customFrom}
-                  onChange={(e) => setCustomFrom(e.target.value)}
-                  className="w-40"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="cx-to" className="text-[11px]">
-                  Ate
-                </Label>
-                <Input
-                  id="cx-to"
-                  type="date"
-                  value={customTo}
-                  onChange={(e) => setCustomTo(e.target.value)}
-                  className="w-40"
-                />
-              </div>
-            </div>
-          ) : null}
-        </section>
+        </header>
 
-        {isUsingMockData ? (
-          <div className="rounded-md border border-[#F4B73F] bg-[#F4B73F]/15 px-4 py-2 text-xs">
-            <strong>Modo demo:</strong> dados simulados, incluindo 3 sessoes ja
-            encerradas hoje.
+        {filtered.length === 0 ? (
+          <div className="px-5 py-12 text-center text-sm text-muted-foreground">
+            Nenhum movimento ainda.
           </div>
-        ) : null}
-
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Kpi
-            label="Faturamento"
-            value={loading ? "—" : formatBRL(summary.faturamentoCents)}
-            color="#A6CD3F"
-          />
-          <Kpi
-            label="Criancas atendidas"
-            value={loading ? "—" : summary.numCriancas.toString()}
-            color="#1E78DC"
-          />
-          <Kpi
-            label="Ticket medio"
-            value={loading ? "—" : formatBRL(summary.ticketMedioCents)}
-            color="#F39230"
-          />
-          <Kpi
-            label="Sessoes no periodo"
-            value={loading ? "—" : sessions.length.toString()}
-            color="#3CB4E0"
-          />
-        </div>
-
-        {error ? (
-          <div className="rounded-md border border-[#EA4D8E] bg-[#EA4D8E]/10 px-4 py-3 text-sm text-[#EA4D8E]">
-            {error}
-          </div>
-        ) : null}
-
-        <section className="rounded-xl border border-border bg-card">
-          <header className="border-b border-border px-5 py-3">
-            <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-              Por forma de pagamento
-            </h2>
-          </header>
-          <ul className="grid gap-0 sm:grid-cols-2 lg:grid-cols-4">
-            {(Object.keys(methodMeta) as PaymentMethod[]).map((m, i) => {
-              const meta = methodMeta[m];
-              const data = summary.byMethod[m];
-              const Icon = meta.icon;
-              return (
-                <li
-                  key={m}
-                  className={`flex items-center gap-3 px-5 py-4 ${
-                    i < 2 ? "lg:border-r" : ""
-                  } ${i === 0 || i === 2 ? "sm:border-r" : ""} ${
-                    i < 2 ? "border-b sm:border-b-0 lg:border-b-0" : ""
-                  } ${i === 0 ? "sm:border-b lg:border-b-0" : ""} border-border`}
-                >
-                  <div
-                    className="flex size-10 items-center justify-center rounded-lg text-white"
-                    style={{ background: meta.color }}
-                  >
-                    <Icon className="size-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      {meta.label}
-                    </p>
-                    <p className="text-base font-bold tabular-nums">
-                      {formatBRL(data.cents)}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {data.count} {data.count === 1 ? "venda" : "vendas"}
-                    </p>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-
-        <section className="rounded-xl border border-border bg-card">
-          <header className="flex items-center justify-between border-b border-border px-5 py-3">
-            <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-              Sessoes de hoje
-            </h2>
-            <p className="text-xs text-muted-foreground">
-              {sessions.length} no total
-            </p>
-          </header>
-          {loading ? (
-            <div className="space-y-2 p-5">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-10 w-full" />
-              ))}
-            </div>
-          ) : sessions.length === 0 ? (
-            <div className="px-5 py-12 text-center text-sm text-muted-foreground">
-              Nenhuma venda registrada hoje.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Crianca</TableHead>
-                    <TableHead>Responsavel</TableHead>
-                    <TableHead>Parceiro</TableHead>
-                    <TableHead className="text-right">Tempo</TableHead>
-                    <TableHead>Inicio</TableHead>
-                    <TableHead>Pagamento</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Valor</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sessions.map((s) => (
-                    <TableRow key={s.id}>
-                      <TableCell className="font-medium">
-                        {s.child.full_name}
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12">#</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Pagamento</TableHead>
+                  <TableHead>Descricao</TableHead>
+                  <TableHead>Quando</TableHead>
+                  <TableHead className="text-right">Valor</TableHead>
+                  <TableHead></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((m) => {
+                  const isCanceled = m.cancelado_em != null;
+                  const pay = m.forma_pagamento
+                    ? PAY_META[m.forma_pagamento]
+                    : null;
+                  return (
+                    <TableRow
+                      key={m.id}
+                      className={isCanceled ? "opacity-50 line-through" : ""}
+                    >
+                      <TableCell className="font-mono text-xs text-muted-foreground">
+                        {m.numero_seq}
                       </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {s.guardian?.full_name ?? "—"}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {s.partner_name ? (
-                          <span className="rounded-full bg-[#1E78DC]/10 px-2 py-0.5 text-[11px] font-semibold text-[#1E78DC]">
-                            {s.partner_name}
-                          </span>
-                        ) : (
-                          <span className="text-[11px]">Direto</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {s.contracted_minutes} min
-                      </TableCell>
-                      <TableCell>{formatTimeOfDay(s.started_at)}</TableCell>
                       <TableCell>
-                        {s.payment_method ? (
+                        <span
+                          className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase"
+                          style={{
+                            background: TIPO_COLOR[m.tipo],
+                            color: m.tipo === "venda" || m.tipo === "ajuste" ? "#0f172a" : "#fff",
+                          }}
+                        >
+                          {TIPO_LABEL[m.tipo]}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        {pay ? (
                           <span
-                            className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase text-white"
-                            style={{
-                              background:
-                                methodMeta[
-                                  (s.payment_method as PaymentMethod) in methodMeta
-                                    ? (s.payment_method as PaymentMethod)
-                                    : "outro"
-                                ].color,
-                            }}
+                            className="inline-flex items-center gap-1 text-xs"
+                            style={{ color: pay.color }}
                           >
-                            {s.payment_method}
+                            <pay.icon className="size-3" />
+                            <span className="text-foreground">{pay.label}</span>
                           </span>
                         ) : (
-                          <span className="text-muted-foreground">—</span>
+                          <span className="text-xs text-muted-foreground">—</span>
                         )}
                       </TableCell>
-                      <TableCell>
-                        <StatusPill status={s.status} />
+                      <TableCell className="max-w-[280px] truncate text-xs">
+                        {m.descricao ?? "—"}
+                        {isCanceled ? (
+                          <span className="ml-2 inline-flex items-center gap-1 rounded bg-[#EA4D8E]/15 px-1.5 py-0.5 text-[10px] font-bold uppercase text-[#EA4D8E]">
+                            <ShieldAlert className="size-3" />
+                            Cancelado: {m.motivo_cancelamento}
+                          </span>
+                        ) : null}
                       </TableCell>
-                      <TableCell className="text-right font-semibold tabular-nums">
-                        {formatBRL(s.amount_paid_cents)}
+                      <TableCell className="text-xs tabular-nums text-muted-foreground">
+                        {new Date(m.criado_em).toLocaleTimeString("pt-BR", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </TableCell>
+                      <TableCell
+                        className="text-right font-mono font-bold tabular-nums"
+                        style={{
+                          color:
+                            m.tipo === "sangria" ? "#EA4D8E" : "#0f172a",
+                        }}
+                      >
+                        {m.tipo === "sangria" ? "-" : ""}
+                        {formatBRL(m.valor_cents)}
+                      </TableCell>
+                      <TableCell>
+                        {!isCanceled && isOwner ? (
+                          <CancelarMovimentoDialog
+                            movimentoId={m.id}
+                            trigger={
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                aria-label="Cancelar movimento"
+                                className="text-[#EA4D8E]"
+                              >
+                                <XCircle className="size-4" />
+                              </Button>
+                            }
+                          />
+                        ) : null}
                       </TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </section>
-      </div>
-    </div>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </section>
+    </>
   );
 }
 
-function Kpi({ label, value, color }: { label: string; value: string; color: string }) {
+function HistoricoView() {
+  const { sessoes, loading } = useSessoesFechadas(50);
+
+  if (loading) return <Skeleton className="h-64 w-full rounded-xl" />;
+  if (sessoes.length === 0) {
+    return (
+      <div className="rounded-xl border-2 border-dashed border-border bg-card p-12 text-center text-sm text-muted-foreground">
+        Nenhuma sessao fechada ainda.
+      </div>
+    );
+  }
+
+  return (
+    <section className="rounded-xl border border-border bg-card">
+      <header className="border-b border-border px-5 py-3">
+        <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+          Sessoes anteriores
+        </h2>
+      </header>
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Aberto em</TableHead>
+              <TableHead>Fechado em</TableHead>
+              <TableHead className="text-right">Abertura</TableHead>
+              <TableHead className="text-right">Esperado</TableHead>
+              <TableHead className="text-right">Contado</TableHead>
+              <TableHead className="text-right">Diferenca</TableHead>
+              <TableHead>Observacao</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sessoes.map((s) => {
+              const dif = s.diferenca_cents ?? 0;
+              const absdif = Math.abs(dif);
+              const color = dif === 0 ? "#A6CD3F" : absdif > 500 ? "#EA4D8E" : "#F4B73F";
+              return (
+                <TableRow key={s.id}>
+                  <TableCell className="text-xs">
+                    {new Date(s.aberto_em).toLocaleString("pt-BR", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </TableCell>
+                  <TableCell className="text-xs">
+                    {s.fechado_em
+                      ? new Date(s.fechado_em).toLocaleString("pt-BR", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : "—"}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-xs tabular-nums">
+                    {formatBRL(s.valor_abertura_cents)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-xs tabular-nums">
+                    {formatBRL(s.valor_esperado_cents ?? 0)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-xs tabular-nums">
+                    {formatBRL(s.valor_contado_cents ?? 0)}
+                  </TableCell>
+                  <TableCell
+                    className="text-right font-mono text-sm font-bold tabular-nums"
+                    style={{ color }}
+                  >
+                    {dif > 0 ? "+" : ""}
+                    {formatBRL(dif)}
+                  </TableCell>
+                  <TableCell className="max-w-[260px] truncate text-xs text-muted-foreground">
+                    {s.observacoes ?? "—"}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+    </section>
+  );
+}
+
+function Kpi({
+  label,
+  value,
+  color,
+  sub,
+  icon,
+}: {
+  label: string;
+  value: string;
+  color: string;
+  sub?: string;
+  icon?: React.ReactNode;
+}) {
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card">
       <div className="h-1.5" style={{ background: color }} />
       <div className="px-5 py-4">
-        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+        <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+          {icon}
           {label}
         </p>
         <p className="mt-1 text-2xl font-bold tabular-nums">{value}</p>
+        {sub ? (
+          <p className="mt-1 text-[11px] text-muted-foreground">{sub}</p>
+        ) : null}
       </div>
     </div>
-  );
-}
-
-function StatusPill({ status }: { status: "active" | "paused" | "ended" }) {
-  const map = {
-    active: { label: "Ativo", color: "#A6CD3F", text: "#0f172a" },
-    paused: { label: "Pausado", color: "#3CB4E0", text: "#0f172a" },
-    ended: { label: "Encerrado", color: "#94a3b8", text: "#ffffff" },
-  };
-  const s = map[status];
-  return (
-    <span
-      className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
-      style={{ background: s.color, color: s.text }}
-    >
-      {s.label}
-    </span>
   );
 }
