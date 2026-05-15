@@ -2,6 +2,10 @@ import { useMemo } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/layout/header";
 import { ChildSessionCard } from "@/features/crm/components/child-session-card";
+import { Link } from "react-router-dom";
+import { LockKeyhole } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useCaixaAberta } from "@/features/caixa/hooks/use-caixa";
 import { QuickRegisterDialog } from "@/features/crm/components/quick-register-dialog";
 import {
   useActiveSessions,
@@ -168,6 +172,8 @@ export default function PainelPage() {
   const { sessions, loading, error, registerAndStart, pause, resume, end, endWithExtra } =
     useActiveSessions();
   const { value: pricing } = usePricing();
+  const { sessao: caixaAberto } = useCaixaAberta();
+  const canRegister = caixaAberto != null;
 
   // Wrap pra disparar o welcome+termo logo depois do registro, sem
   // bloquear o retorno do dialog.
@@ -232,10 +238,38 @@ export default function PainelPage() {
       <PageHeader
         title="Painel de criancas"
         description="Sessoes ativas, com tempo correndo em tempo real."
-        actions={<QuickRegisterDialog onSubmit={handleRegister} />}
+        actions={
+          canRegister ? (
+            <QuickRegisterDialog onSubmit={handleRegister} />
+          ) : (
+            <Button disabled variant="outline" title="Abra o caixa antes">
+              Novo cadastro
+            </Button>
+          )
+        }
       />
 
       <div className="space-y-6 p-6">
+        {!canRegister ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border-2 border-[#F4B73F] bg-[#F4B73F]/15 p-4">
+            <div className="flex items-center gap-3">
+              <LockKeyhole className="size-5 text-[#a17400]" />
+              <div>
+                <p className="text-sm font-bold text-slate-900">
+                  Caixa fechado — cadastros bloqueados
+                </p>
+                <p className="text-xs text-slate-700">
+                  Para registrar pagamento de criancas, abra o caixa
+                  informando o troco inicial.
+                </p>
+              </div>
+            </div>
+            <Button asChild className="bg-[#A6CD3F] text-slate-900 hover:bg-[#A6CD3F]/90">
+              <Link to="/caixa">Abrir caixa</Link>
+            </Button>
+          </div>
+        ) : null}
+
         {isUsingMockData ? (
           <div className="rounded-md border border-[#F4B73F] bg-[#F4B73F]/15 px-4 py-2 text-xs">
             <strong>Modo demo:</strong> dados simulados. Aplique a migration no Supabase

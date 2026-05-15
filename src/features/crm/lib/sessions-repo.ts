@@ -550,6 +550,23 @@ export const supabaseSessionsRepo: SessionsRepo = {
     return rowToSession(data as unknown as SessionRow);
   },
   async registerAndStart(input) {
+    // Pre-flight: se vai cobrar (amount > 0), confirma que ha caixa
+    // aberto. Trigger no banco bloquearia depois, mas a essa altura
+    // ja teriamos criado children + guardians orfaos.
+    if ((input.amount_paid_cents ?? 0) > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: caixa } = await (supabase as any)
+        .from("caixa_sessao")
+        .select("id")
+        .eq("status", "open")
+        .maybeSingle();
+      if (!caixa) {
+        throw new Error(
+          "Caixa nao esta aberto. Abra o caixa em /caixa antes de cadastrar."
+        );
+      }
+    }
+
     const { data: childRow, error: cErr } = await supabase
       .from("children")
       .insert({
@@ -562,6 +579,14 @@ export const supabaseSessionsRepo: SessionsRepo = {
       .single();
     if (cErr) throw cErr;
 
+    const cleanupChild = async () => {
+      try {
+        await supabase.from("children").delete().eq("id", childRow.id);
+      } catch {
+        // best-effort
+      }
+    };
+
     const { data: guardianRow, error: gErr } = await supabase
       .from("guardians")
       .insert({
@@ -571,13 +596,29 @@ export const supabaseSessionsRepo: SessionsRepo = {
       })
       .select("id, full_name, phone, email")
       .single();
-    if (gErr) throw gErr;
+    if (gErr) {
+      await cleanupChild();
+      throw gErr;
+    }
 
-    await supabase.from("child_guardians").insert({
+    const cleanupBoth = async () => {
+      try {
+        await supabase.from("guardians").delete().eq("id", guardianRow.id);
+      } catch {
+        // best-effort
+      }
+      await cleanupChild();
+    };
+
+    const { error: linkErr } = await supabase.from("child_guardians").insert({
       child_id: childRow.id,
       guardian_id: guardianRow.id,
       is_primary: true,
     });
+    if (linkErr) {
+      await cleanupBoth();
+      throw linkErr;
+    }
 
     let partnerRow: { id: string; name: string } | null = null;
     if (input.partner_id) {
@@ -604,7 +645,10 @@ export const supabaseSessionsRepo: SessionsRepo = {
         "id, child_id, guardian_id, partner_id, contracted_minutes, started_at, paused_at, paused_total_seconds, ended_at, status, amount_paid_cents, payment_method, qr_code_token"
       )
       .single();
-    if (sErr) throw sErr;
+    if (sErr) {
+      await cleanupBoth();
+      throw sErr;
+    }
 
     return rowToSession({
       ...(sessionRow as Omit<SessionRow, "children" | "guardians" | "partners">),
