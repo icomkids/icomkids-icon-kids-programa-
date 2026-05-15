@@ -21,7 +21,7 @@ export const DEFAULT_PRICING: PricingConfig = {
   tiers: [
     { minutes: 20, price_cents: 3500 },
     { minutes: 30, price_cents: 4000 },
-    { minutes: 60, price_cents: 5000 },
+    { minutes: 60, price_cents: 6000 },
   ],
   overage_per_minute_cents: 100,
   grace_minutes: 2,
