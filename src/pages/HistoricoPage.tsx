@@ -53,12 +53,54 @@ type SortKey =
   | "total_spent_desc"
   | "name_asc";
 
-type PeriodFilter = "all" | "7d" | "30d" | "90d" | "no_visits";
+type PeriodFilter =
+  | "all"
+  | "today"
+  | "7d"
+  | "month"
+  | "custom"
+  | "no_visits";
+
+/** Calcula o intervalo [from, to] em ms epoch pro PeriodFilter. */
+function periodRange(
+  period: PeriodFilter,
+  customFrom: string,
+  customTo: string
+): { from: number; to: number } | null {
+  if (period === "all" || period === "no_visits") return null;
+  const now = new Date();
+  if (period === "today") {
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    return { from: start.getTime(), to: end.getTime() };
+  }
+  if (period === "7d") {
+    return { from: Date.now() - 7 * 24 * 60 * 60 * 1000, to: Date.now() };
+  }
+  if (period === "month") {
+    // Mes corrente (1 ate hoje).
+    const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    return { from: start.getTime(), to: Date.now() };
+  }
+  if (period === "custom") {
+    if (!customFrom && !customTo) return null;
+    const from = customFrom
+      ? new Date(`${customFrom}T00:00:00`).getTime()
+      : 0;
+    const to = customTo
+      ? new Date(`${customTo}T23:59:59`).getTime()
+      : Date.now();
+    return { from, to };
+  }
+  return null;
+}
 
 export default function HistoricoPage() {
   const { rows, loading, error, refresh } = useChildrenHistory();
   const [query, setQuery] = useState("");
   const [period, setPeriod] = useState<PeriodFilter>("all");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
   const [sortBy, setSortBy] = useState<SortKey>("last_visit_desc");
   const [selected, setSelected] = useState<ChildHistoryRow | null>(null);
 
@@ -79,17 +121,15 @@ export default function HistoricoPage() {
         return false;
       });
     }
-    if (period !== "all") {
-      const now = Date.now();
-      const days =
-        period === "7d" ? 7 : period === "30d" ? 30 : period === "90d" ? 90 : 0;
-      if (period === "no_visits") {
-        list = list.filter((r) => r.total_sessions === 0);
-      } else {
-        const cutoff = now - days * 24 * 60 * 60 * 1000;
+    if (period === "no_visits") {
+      list = list.filter((r) => r.total_sessions === 0);
+    } else {
+      const range = periodRange(period, customFrom, customTo);
+      if (range) {
         list = list.filter((r) => {
           if (!r.last_visit) return false;
-          return new Date(r.last_visit).getTime() >= cutoff;
+          const t = new Date(r.last_visit).getTime();
+          return t >= range.from && t <= range.to;
         });
       }
     }
@@ -105,7 +145,7 @@ export default function HistoricoPage() {
       return sortBy === "last_visit_asc" ? av - bv : bv - av;
     });
     return sorted;
-  }, [rows, query, period, sortBy]);
+  }, [rows, query, period, customFrom, customTo, sortBy]);
 
   const stats = useMemo(() => {
     const totalChildren = rows.length;
@@ -219,9 +259,10 @@ export default function HistoricoPage() {
             </div>
             <div className="flex flex-wrap gap-1.5">
               <FilterPill active={period === "all"} onClick={() => setPeriod("all")}>Tudo</FilterPill>
+              <FilterPill active={period === "today"} onClick={() => setPeriod("today")}>Hoje</FilterPill>
               <FilterPill active={period === "7d"} onClick={() => setPeriod("7d")}>7 dias</FilterPill>
-              <FilterPill active={period === "30d"} onClick={() => setPeriod("30d")}>30 dias</FilterPill>
-              <FilterPill active={period === "90d"} onClick={() => setPeriod("90d")}>90 dias</FilterPill>
+              <FilterPill active={period === "month"} onClick={() => setPeriod("month")}>Mensal</FilterPill>
+              <FilterPill active={period === "custom"} onClick={() => setPeriod("custom")}>Personalizado</FilterPill>
               <FilterPill active={period === "no_visits"} onClick={() => setPeriod("no_visits")}>
                 Sem visitas
               </FilterPill>
@@ -238,6 +279,60 @@ export default function HistoricoPage() {
               <option value="name_asc">Nome A-Z</option>
             </select>
           </div>
+          {/* Campos de data quando "Personalizado" estiver ativo */}
+          {period === "custom" ? (
+            <div className="mt-3 flex flex-wrap items-end gap-3 rounded-lg border border-dashed border-[#1E78DC]/40 bg-[#1E78DC]/5 p-3">
+              <div className="flex flex-col gap-1">
+                <label
+                  htmlFor="custom-from"
+                  className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground"
+                >
+                  De
+                </label>
+                <input
+                  id="custom-from"
+                  type="date"
+                  value={customFrom}
+                  onChange={(e) => setCustomFrom(e.target.value)}
+                  max={customTo || undefined}
+                  className="rounded-md border border-border bg-background px-3 py-1.5 text-xs"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label
+                  htmlFor="custom-to"
+                  className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground"
+                >
+                  Ate
+                </label>
+                <input
+                  id="custom-to"
+                  type="date"
+                  value={customTo}
+                  onChange={(e) => setCustomTo(e.target.value)}
+                  min={customFrom || undefined}
+                  className="rounded-md border border-border bg-background px-3 py-1.5 text-xs"
+                />
+              </div>
+              {customFrom || customTo ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomFrom("");
+                    setCustomTo("");
+                  }}
+                  className="text-[11px] font-semibold text-[#EA4D8E] underline-offset-2 hover:underline"
+                >
+                  Limpar datas
+                </button>
+              ) : (
+                <p className="text-[11px] text-muted-foreground">
+                  Escolha pelo menos uma data
+                </p>
+              )}
+            </div>
+          ) : null}
+
           {filtered.length !== rows.length ? (
             <p className="mt-2 text-xs text-muted-foreground">
               Mostrando <strong>{filtered.length}</strong> de <strong>{rows.length}</strong> criancas
