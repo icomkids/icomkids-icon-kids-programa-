@@ -176,31 +176,48 @@ Deno.serve(async (req) => {
   }
 
   if (input.action === "disconnect") {
-    let { status, data } = await callUazapi(
-      baseUrl,
-      token,
-      "/instance/logout",
-      "POST"
+    // Diferentes builds da uazapi expoem o logout em paths diferentes.
+    // Tenta na ordem: /instance/disconnect (mais comum hoje), depois
+    // /instance/logout, depois /instance/restart, alternando POST/GET.
+    // Se qualquer um retornar 2xx, considera sucesso.
+    const candidates: Array<{ path: string; method: "POST" | "GET" }> = [
+      { path: "/instance/disconnect", method: "POST" },
+      { path: "/instance/disconnect", method: "GET" },
+      { path: "/instance/logout", method: "POST" },
+      { path: "/instance/logout", method: "GET" },
+      { path: "/instance/restart", method: "POST" },
+      { path: "/instance/restart", method: "GET" },
+    ];
+
+    const attempts: Array<{
+      path: string;
+      method: string;
+      status: number;
+      body: unknown;
+    }> = [];
+
+    for (const c of candidates) {
+      const r = await callUazapi(baseUrl, token, c.path, c.method);
+      attempts.push({
+        path: c.path,
+        method: c.method,
+        status: r.status,
+        body: r.data,
+      });
+      if (r.status >= 200 && r.status < 300) {
+        return jsonResponse({ ok: true, used: c, attempts });
+      }
+    }
+
+    // Nenhum endpoint funcionou — devolve detalhes pra debug.
+    return jsonResponse(
+      {
+        error:
+          "Nenhum endpoint de logout da uazapi funcionou. Verifique se o token tem permissao ou tente fazer logout manual em free.uazapi.com.",
+        attempts,
+      },
+      502
     );
-    if (status === 405) {
-      ({ status, data } = await callUazapi(
-        baseUrl,
-        token,
-        "/instance/logout",
-        "GET"
-      ));
-    }
-    if (status >= 400) {
-      return jsonResponse(
-        {
-          error: data?.message ?? "uazapi error",
-          provider_status: status,
-          provider_response: data,
-        },
-        502
-      );
-    }
-    return jsonResponse({ ok: true });
   }
 
   return jsonResponse({ error: "unknown action" }, 400);
