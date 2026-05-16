@@ -8,6 +8,7 @@ import {
   Clock,
   Crown,
   Download,
+  Heart,
   Mail,
   Phone,
   RefreshCcw,
@@ -347,7 +348,15 @@ function ChildCard({
       className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card text-left transition hover:border-[#1E78DC] hover:shadow-md"
     >
       {/* Header com foto */}
-      <div className="relative h-32 overflow-hidden bg-gradient-to-br from-[#1E78DC]/20 via-[#7B36BF]/15 to-[#EA4D8E]/20">
+      <div
+        className={`relative h-32 overflow-hidden ${
+          row.gender === "boy"
+            ? "bg-gradient-to-br from-[#1E78DC]/30 via-[#3CB4E0]/20 to-[#1E78DC]/40"
+            : row.gender === "girl"
+              ? "bg-gradient-to-br from-[#EA4D8E]/30 via-[#F4B73F]/15 to-[#EA4D8E]/40"
+              : "bg-gradient-to-br from-[#1E78DC]/20 via-[#7B36BF]/15 to-[#EA4D8E]/20"
+        }`}
+      >
         {row.photo_url ? (
           <img
             src={row.photo_url}
@@ -356,19 +365,21 @@ function ChildCard({
           />
         ) : (
           <div className="flex size-full items-center justify-center">
-            <Baby
-              className="size-12 text-white/70"
-              style={{
-                filter:
-                  row.gender === "girl"
-                    ? "drop-shadow(0 2px 4px rgba(234, 77, 142, 0.5))"
-                    : row.gender === "boy"
-                      ? "drop-shadow(0 2px 4px rgba(30, 120, 220, 0.5))"
-                      : undefined,
-              }}
-            />
+            <Baby className="size-12 text-white/80" />
           </div>
         )}
+        {/* Coracao no canto: azul se menino, rosa se menina */}
+        {row.gender ? (
+          <div
+            className="absolute left-2 top-2 flex size-8 items-center justify-center rounded-full shadow-md"
+            style={{
+              background: row.gender === "boy" ? "#1E78DC" : "#EA4D8E",
+            }}
+            title={row.gender === "boy" ? "Menino" : "Menina"}
+          >
+            <Heart className="size-4 fill-white text-white" />
+          </div>
+        ) : null}
         {isVip ? (
           <div className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-[#F4B73F] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-900 shadow-md">
             <Crown className="size-3" /> VIP
@@ -379,19 +390,24 @@ function ChildCard({
       {/* Body */}
       <div className="flex-1 space-y-2 p-3">
         <div>
-          <p className="line-clamp-1 font-bold text-slate-900">{row.full_name}</p>
-          <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
-            {age != null ? (
-              <span className="inline-flex items-center gap-0.5">
-                <Cake className="size-3" /> {age} {age === 1 ? "ano" : "anos"}
-              </span>
-            ) : null}
-            {row.gender ? (
-              <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider">
-                {row.gender === "boy" ? "Menino" : "Menina"}
-              </span>
-            ) : null}
-          </div>
+          <p
+            className="line-clamp-1 font-bold"
+            style={{
+              color:
+                row.gender === "boy"
+                  ? "#1E78DC"
+                  : row.gender === "girl"
+                    ? "#EA4D8E"
+                    : "#0f172a",
+            }}
+          >
+            {row.full_name}
+          </p>
+          {age != null ? (
+            <p className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground">
+              <Cake className="size-3" /> {age} {age === 1 ? "ano" : "anos"}
+            </p>
+          ) : null}
         </div>
 
         {row.primary_guardian ? (
@@ -482,7 +498,15 @@ function ChildDetailDialog({
 
         {/* Hero com foto */}
         <div className="-mt-6 mb-4 -mx-6">
-          <div className="relative h-40 overflow-hidden bg-gradient-to-br from-[#1E78DC]/30 via-[#7B36BF]/20 to-[#EA4D8E]/30">
+          <div
+            className={`relative h-40 overflow-hidden ${
+              row.gender === "boy"
+                ? "bg-gradient-to-br from-[#1E78DC]/40 via-[#3CB4E0]/30 to-[#1E78DC]/50"
+                : row.gender === "girl"
+                  ? "bg-gradient-to-br from-[#EA4D8E]/40 via-[#F4B73F]/20 to-[#EA4D8E]/50"
+                  : "bg-gradient-to-br from-[#1E78DC]/30 via-[#7B36BF]/20 to-[#EA4D8E]/30"
+            }`}
+          >
             {row.photo_url ? (
               <img
                 src={row.photo_url}
@@ -491,9 +515,21 @@ function ChildDetailDialog({
               />
             ) : (
               <div className="flex size-full items-center justify-center">
-                <Baby className="size-20 text-white/70" />
+                <Baby className="size-20 text-white/80" />
               </div>
             )}
+            {/* Coracao no canto do hero */}
+            {row.gender ? (
+              <div
+                className="absolute left-4 top-4 flex size-12 items-center justify-center rounded-full shadow-lg"
+                style={{
+                  background: row.gender === "boy" ? "#1E78DC" : "#EA4D8E",
+                }}
+                title={row.gender === "boy" ? "Menino" : "Menina"}
+              >
+                <Heart className="size-6 fill-white text-white" />
+              </div>
+            ) : null}
             <button
               onClick={onClose}
               className="absolute right-3 top-3 flex size-8 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur transition hover:bg-black/60"
@@ -502,7 +538,19 @@ function ChildDetailDialog({
             </button>
           </div>
           <div className="px-6">
-            <h2 className="mt-3 text-2xl font-bold">{row.full_name}</h2>
+            <h2
+              className="mt-3 text-2xl font-bold"
+              style={{
+                color:
+                  row.gender === "boy"
+                    ? "#1E78DC"
+                    : row.gender === "girl"
+                      ? "#EA4D8E"
+                      : "#0f172a",
+              }}
+            >
+              {row.full_name}
+            </h2>
             <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
               {age != null ? (
                 <span className="inline-flex items-center gap-1">
@@ -510,7 +558,13 @@ function ChildDetailDialog({
                 </span>
               ) : null}
               {row.gender ? (
-                <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider">
+                <span
+                  className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white"
+                  style={{
+                    background: row.gender === "boy" ? "#1E78DC" : "#EA4D8E",
+                  }}
+                >
+                  <Heart className="size-2.5 fill-white" />
                   {row.gender === "boy" ? "Menino" : "Menina"}
                 </span>
               ) : null}
