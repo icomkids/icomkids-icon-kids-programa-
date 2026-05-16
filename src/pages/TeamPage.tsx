@@ -27,6 +27,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ProfilesPermissionsSection } from "@/features/auth/components/profiles-permissions-section";
 import { useStaff, useShifts } from "@/features/staff/hooks/use-staff";
 import { formatBRL } from "@/lib/format";
 import type {
@@ -211,6 +212,8 @@ export default function TeamPage() {
             </div>
           )}
         </section>
+
+        <ProfilesPermissionsSection />
 
         <section className="rounded-xl border border-border bg-card">
           <header className="flex items-center justify-between gap-3 border-b border-border px-5 py-3">

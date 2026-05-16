@@ -24,6 +24,8 @@ import {
   Wrench,
 } from "lucide-react";
 import { Logo } from "@/components/common/logo";
+import { usePermissions } from "@/features/auth/use-permissions";
+import type { PermissionKey } from "@/features/auth/permissions";
 
 interface Item {
   to: string;
@@ -34,39 +36,66 @@ interface Item {
   /** Quando true, abre em nova aba em vez de navegar dentro do app.
    *  Util pro Telao, que tipicamente fica em uma TV separada. */
   external?: boolean;
+  /** Permissoes que liberam o acesso. Se omitido, todos veem. Owner sempre ve. */
+  needAny?: PermissionKey[];
 }
 
 // Ordem por uso real do parque: visao geral primeiro, operacao principal,
 // financeiro, display, leads, depois operacoes especializadas, gestao e
 // modulos adiados/raros no final.
 const items: Item[] = [
-  { to: "/dashboard", label: "Dashboard", icon: Gauge },
-  { to: "/painel", label: "Painel", icon: LayoutDashboard },
-  { to: "/caixa", label: "Caixa", icon: Banknote },
+  { to: "/dashboard", label: "Dashboard", icon: Gauge, needAny: ["dashboard.ver"] },
+  { to: "/painel", label: "Painel", icon: LayoutDashboard, needAny: ["painel.ver"] },
+  { to: "/caixa", label: "Caixa", icon: Banknote, needAny: ["caixa.ver_dia", "caixa.ver_semana", "caixa.ver_mes"] },
   { to: "/telao", label: "Telao", icon: Tv2, external: true },
-  { to: "/historico", label: "Historico de criancas", icon: ClipboardList },
-  { to: "/crm", label: "Feedback (NPS)", icon: Smile },
-  { to: "/marketing", label: "Marketing", icon: Megaphone },
-  { to: "/agendamento", label: "Agendamento", icon: CalendarRange },
-  { to: "/pdv", label: "PDV / Lanchonete", icon: Coffee },
-  { to: "/assinaturas", label: "Assinaturas", icon: Star },
-  { to: "/parceiros", label: "Parceiros", icon: GraduationCap },
-  { to: "/fidelidade", label: "Fidelidade", icon: PartyPopper },
-  { to: "/lista-espera", label: "Lista de espera", icon: Hourglass },
-  { to: "/midia", label: "Midia", icon: Image },
-  { to: "/qrcode", label: "QR Check-out", icon: QrCode },
-  { to: "/termo", label: "Termo digital", icon: FileSignature },
-  { to: "/inventario", label: "Inventario", icon: Wrench },
-  { to: "/equipe", label: "Equipe", icon: Users },
+  { to: "/historico", label: "Historico de criancas", icon: ClipboardList, needAny: ["historico.ver"] },
+  { to: "/crm", label: "Feedback (NPS)", icon: Smile, needAny: ["crm_nps.ver"] },
+  { to: "/marketing", label: "Marketing", icon: Megaphone, needAny: ["marketing.ver"] },
+  { to: "/agendamento", label: "Agendamento", icon: CalendarRange, needAny: ["agendamento.ver"] },
+  { to: "/pdv", label: "PDV / Lanchonete", icon: Coffee, needAny: ["pdv.ver"] },
+  { to: "/assinaturas", label: "Assinaturas", icon: Star, needAny: ["assinaturas.ver"] },
+  { to: "/parceiros", label: "Parceiros", icon: GraduationCap, needAny: ["parceiros.ver"] },
+  { to: "/fidelidade", label: "Fidelidade", icon: PartyPopper, needAny: ["fidelidade.ver"] },
+  { to: "/lista-espera", label: "Lista de espera", icon: Hourglass, needAny: ["lista_espera.ver"] },
+  { to: "/midia", label: "Midia", icon: Image, needAny: ["midia.ver"] },
+  { to: "/qrcode", label: "QR Check-out", icon: QrCode, needAny: ["qr_checkout.ver"] },
+  { to: "/termo", label: "Termo digital", icon: FileSignature, needAny: ["termo.ver"] },
+  { to: "/inventario", label: "Inventario", icon: Wrench, needAny: ["inventario.ver"] },
+  { to: "/equipe", label: "Equipe", icon: Users, needAny: ["equipe.ver"] },
   { to: "/vendas", label: "Vendas online", icon: Tags, pending: true },
 ];
 
-const utilityItems: Array<{ to: string; label: string; icon: React.ComponentType<{ className?: string }> }> = [
-  { to: "/tutorial", label: "Tutorial", icon: BookOpen },
-  { to: "/configuracoes", label: "Configuracoes", icon: Cog },
+interface UtilityItem {
+  to: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  needAny?: PermissionKey[];
+}
+
+const utilityItems: UtilityItem[] = [
+  { to: "/tutorial", label: "Tutorial", icon: BookOpen, needAny: ["tutorial.ver"] },
+  { to: "/configuracoes", label: "Configuracoes", icon: Cog, needAny: ["configuracoes.ver"] },
 ];
 
 export function Sidebar() {
+  const { canAny, isOwner, loading } = usePermissions();
+
+  // Filtra items pelo que o usuario pode ver. Owner ve tudo.
+  // Itens sem needAny (ex: Telao, Vendas pending) ficam pra todos.
+  const visibleItems = items.filter((it) => {
+    if (loading) return true; // mostra tudo enquanto carrega pra evitar flicker
+    if (isOwner) return true;
+    if (!it.needAny) return true;
+    return canAny(it.needAny);
+  });
+
+  const visibleUtility = utilityItems.filter((it) => {
+    if (loading) return true;
+    if (isOwner) return true;
+    if (!it.needAny) return true;
+    return canAny(it.needAny);
+  });
+
   return (
     <aside className="hidden h-svh w-64 shrink-0 flex-col border-r border-border bg-card md:flex">
       <div className="flex flex-col items-center gap-1 border-b border-border px-4 pt-5 pb-4">
@@ -76,7 +105,7 @@ export function Sidebar() {
         </p>
       </div>
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 pb-4">
-        {items.map((it) => {
+        {visibleItems.map((it) => {
           const content = (
             <>
               <it.icon className="size-4 shrink-0" />
@@ -126,7 +155,7 @@ export function Sidebar() {
           );
         })}
         <div className="my-2 border-t border-border" />
-        {utilityItems.map((it) => (
+        {visibleUtility.map((it) => (
           <NavLink
             key={it.to}
             to={it.to}

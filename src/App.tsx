@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "@/components/layout/app-shell";
 import { AuthProvider } from "@/features/auth/auth-context";
 import { RequireAuth } from "@/features/auth/require-auth";
+import { RouteGate } from "@/features/auth/route-gate";
 import AppointmentsPage from "@/pages/AppointmentsPage";
 import CaixaPage from "@/pages/CaixaPage";
 import CheckoutPage from "@/pages/CheckoutPage";
@@ -59,9 +60,9 @@ function App() {
             }
           >
             <Route index element={<Navigate to="/painel" replace />} />
-            <Route path="/painel" element={<PainelPage />} />
-            <Route path="/caixa" element={<CaixaPage />} />
-            <Route path="/parceiros" element={<PartnersPage />} />
+            <Route path="/painel" element={<RouteGate needAny={["painel.ver"]} resource="Painel"><PainelPage /></RouteGate>} />
+            <Route path="/caixa" element={<RouteGate needAny={["caixa.ver_dia","caixa.ver_semana","caixa.ver_mes"]} resource="Caixa"><CaixaPage /></RouteGate>} />
+            <Route path="/parceiros" element={<RouteGate needAny={["parceiros.ver"]} resource="Parceiros"><PartnersPage /></RouteGate>} />
             <Route
               path="/vendas"
               element={
@@ -78,23 +79,23 @@ function App() {
                 />
               }
             />
-            <Route path="/assinaturas" element={<SubscriptionsPage />} />
-            <Route path="/agendamento" element={<AppointmentsPage />} />
-            <Route path="/midia" element={<MediaPage />} />
-            <Route path="/qrcode" element={<CheckoutPage />} />
-            <Route path="/termo" element={<TermsPage />} />
-            <Route path="/pdv" element={<PDVPage />} />
-            <Route path="/lista-espera" element={<WaitlistPage />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/fidelidade" element={<LoyaltyPage />} />
-            <Route path="/inventario" element={<InventoryPage />} />
-            <Route path="/nps" element={<NpsDashboardPage />} />
-            <Route path="/crm" element={<NpsDashboardPage />} />
-            <Route path="/historico" element={<HistoricoPage />} />
-            <Route path="/marketing" element={<MarketingPage />} />
-            <Route path="/equipe" element={<TeamPage />} />
+            <Route path="/assinaturas" element={<RouteGate needAny={["assinaturas.ver"]} resource="Assinaturas"><SubscriptionsPage /></RouteGate>} />
+            <Route path="/agendamento" element={<RouteGate needAny={["agendamento.ver"]} resource="Agendamento"><AppointmentsPage /></RouteGate>} />
+            <Route path="/midia" element={<RouteGate needAny={["midia.ver"]} resource="Midia"><MediaPage /></RouteGate>} />
+            <Route path="/qrcode" element={<RouteGate needAny={["qr_checkout.ver"]} resource="QR Check-out"><CheckoutPage /></RouteGate>} />
+            <Route path="/termo" element={<RouteGate needAny={["termo.ver"]} resource="Termo digital"><TermsPage /></RouteGate>} />
+            <Route path="/pdv" element={<RouteGate needAny={["pdv.ver"]} resource="PDV"><PDVPage /></RouteGate>} />
+            <Route path="/lista-espera" element={<RouteGate needAny={["lista_espera.ver"]} resource="Lista de espera"><WaitlistPage /></RouteGate>} />
+            <Route path="/dashboard" element={<RouteGate needAny={["dashboard.ver"]} resource="Dashboard"><DashboardPage /></RouteGate>} />
+            <Route path="/fidelidade" element={<RouteGate needAny={["fidelidade.ver"]} resource="Fidelidade"><LoyaltyPage /></RouteGate>} />
+            <Route path="/inventario" element={<RouteGate needAny={["inventario.ver"]} resource="Inventario"><InventoryPage /></RouteGate>} />
+            <Route path="/nps" element={<RouteGate needAny={["crm_nps.ver"]} resource="NPS"><NpsDashboardPage /></RouteGate>} />
+            <Route path="/crm" element={<RouteGate needAny={["crm_nps.ver"]} resource="Feedback"><NpsDashboardPage /></RouteGate>} />
+            <Route path="/historico" element={<RouteGate needAny={["historico.ver"]} resource="Historico"><HistoricoPage /></RouteGate>} />
+            <Route path="/marketing" element={<RouteGate needAny={["marketing.ver"]} resource="Marketing"><MarketingPage /></RouteGate>} />
+            <Route path="/equipe" element={<RouteGate needAny={["equipe.ver"]} resource="Equipe"><TeamPage /></RouteGate>} />
             <Route path="/tutorial" element={<TutorialPage />} />
-            <Route path="/configuracoes" element={<SettingsPage />} />
+            <Route path="/configuracoes" element={<RouteGate needAny={["configuracoes.ver"]} resource="Configuracoes"><SettingsPage /></RouteGate>} />
           </Route>
           <Route path="*" element={<Navigate to="/painel" replace />} />
         </Routes>
