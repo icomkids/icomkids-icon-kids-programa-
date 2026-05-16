@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/table";
 import { EmailLogTable } from "@/features/messaging/components/email-log-table";
 import { EmailTestCard } from "@/features/messaging/components/email-test-card";
+import { MessageTemplatesCard } from "@/features/messaging/components/message-templates-card";
 import { WhatsAppConnectionCard } from "@/features/messaging/components/whatsapp-connection-card";
 import { TelaoSettingsCard } from "@/features/settings/components/telao-settings-card";
 import { useMessagesLog } from "@/features/messaging/hooks/use-messages-log";
@@ -229,6 +230,16 @@ export default function SettingsPage() {
             </div>
           )}
         </section>
+
+        <h2 className="pt-4 text-xs font-bold uppercase tracking-[0.4em] text-[#7B36BF]">
+          Templates de mensagem
+        </h2>
+        <p className="-mt-3 text-xs text-muted-foreground">
+          Personalize os textos enviados por WhatsApp e Email — mude emojis,
+          tom, formato. Variaveis tipo <code>{"{{nome}}"}</code> sao
+          substituidas automaticamente no envio.
+        </p>
+        <MessageTemplatesCard />
 
         <h2 className="pt-4 text-xs font-bold uppercase tracking-[0.4em] text-[#EA4D8E]">
           Email
