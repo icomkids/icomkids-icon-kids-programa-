@@ -31,22 +31,25 @@ export interface PermissionAuditRow {
   at: string;
 }
 
-/** Lista perfis que importam pro RBAC (staff + owner, ordenados). */
+/** Lista perfis que importam pro RBAC (staff + owner, ordenados).
+ *  O email vem de staff_members (replica do auth.users) — profiles
+ *  nao tem coluna email. Quando nao houver staff_member, mostra "—". */
 export async function listStaffProfiles(): Promise<StaffProfile[]> {
   const sb = supabase as unknown as {
     from: (t: string) => {
       select: (c: string) => {
-        in: (col: string, vals: string[]) => {
+        in?: (col: string, vals: string[]) => {
           order: (col: string) => Promise<{ data: unknown; error: unknown }>;
         };
+        order: (col: string) => Promise<{ data: unknown; error: unknown }>;
       };
     };
   };
 
   const res = await sb
     .from("profiles")
-    .select("id, email, full_name, role")
-    .in("role", ["owner", "staff"])
+    .select("id, full_name, role")
+    .in!("role", ["owner", "staff"])
     .order("full_name");
 
   if (res.error) {
@@ -55,15 +58,32 @@ export async function listStaffProfiles(): Promise<StaffProfile[]> {
 
   const profiles = ((res.data ?? []) as Array<{
     id: string;
-    email: string;
     full_name: string | null;
     role: StaffProfile["role"];
   }>);
 
+  // Busca staff_members pra ter email (denormalizado de auth.users).
+  const staffRes = await sb
+    .from("staff_members")
+    .select("profile_id, email")
+    .order("created_at");
+  const emailByProfile: Record<string, string> = {};
+  for (const row of ((staffRes.data ?? []) as Array<{
+    profile_id: string | null;
+    email: string | null;
+  }>)) {
+    if (row.profile_id && row.email) {
+      emailByProfile[row.profile_id] = row.email;
+    }
+  }
+
   // Conta permissoes por usuario.
   const counts = await getPermissionCounts(profiles.map((p) => p.id));
   return profiles.map((p) => ({
-    ...p,
+    id: p.id,
+    full_name: p.full_name,
+    role: p.role,
+    email: emailByProfile[p.id] ?? "—",
     permission_count: counts[p.id] ?? 0,
   }));
 }

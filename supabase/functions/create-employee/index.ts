@@ -150,13 +150,13 @@ async function handleCreate(
 
   // 2) Garante profile com role=staff
   // (a trigger handle_new_user ja cria com role=customer por padrao;
-  //  aqui forcamos staff)
+  //  aqui forcamos staff. Note: profiles nao tem coluna email — o email
+  //  fica em auth.users e e replicado em staff_members.email)
   const { error: profErr } = await admin
     .from("profiles")
     .upsert(
       {
         id: newUserId,
-        email: input.email,
         full_name: input.full_name,
         role: "staff",
       },
