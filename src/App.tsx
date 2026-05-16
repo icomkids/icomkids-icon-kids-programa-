@@ -6,6 +6,7 @@ import AppointmentsPage from "@/pages/AppointmentsPage";
 import CaixaPage from "@/pages/CaixaPage";
 import CheckoutPage from "@/pages/CheckoutPage";
 import DashboardPage from "@/pages/DashboardPage";
+import HistoricoPage from "@/pages/HistoricoPage";
 import InventoryPage from "@/pages/InventoryPage";
 import LoginPage from "@/pages/LoginPage";
 import LoyaltyPage from "@/pages/LoyaltyPage";
@@ -89,6 +90,7 @@ function App() {
             <Route path="/inventario" element={<InventoryPage />} />
             <Route path="/nps" element={<NpsDashboardPage />} />
             <Route path="/crm" element={<NpsDashboardPage />} />
+            <Route path="/historico" element={<HistoricoPage />} />
             <Route path="/marketing" element={<MarketingPage />} />
             <Route path="/equipe" element={<TeamPage />} />
             <Route path="/tutorial" element={<TutorialPage />} />
