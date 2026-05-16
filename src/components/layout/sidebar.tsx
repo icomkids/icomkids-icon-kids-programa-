@@ -1,6 +1,7 @@
 import { NavLink } from "react-router-dom";
 import {
   Banknote,
+  BookOpen,
   CalendarRange,
   Coffee,
   Cog,
@@ -59,6 +60,7 @@ const items: Item[] = [
 ];
 
 const utilityItems: Array<{ to: string; label: string; icon: React.ComponentType<{ className?: string }> }> = [
+  { to: "/tutorial", label: "Tutorial", icon: BookOpen },
   { to: "/configuracoes", label: "Configuracoes", icon: Cog },
 ];
 

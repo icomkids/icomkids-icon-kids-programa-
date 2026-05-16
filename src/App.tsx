@@ -30,6 +30,7 @@ import TeamPage from "@/pages/TeamPage";
 import TelaoPage from "@/pages/TelaoPage";
 import TermsPage from "@/pages/TermsPage";
 import TermSignPage from "@/pages/TermSignPage";
+import TutorialPage from "@/pages/TutorialPage";
 import WaitlistPage from "@/pages/WaitlistPage";
 
 function App() {
@@ -90,6 +91,7 @@ function App() {
             <Route path="/crm" element={<NpsDashboardPage />} />
             <Route path="/marketing" element={<MarketingPage />} />
             <Route path="/equipe" element={<TeamPage />} />
+            <Route path="/tutorial" element={<TutorialPage />} />
             <Route path="/configuracoes" element={<SettingsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/painel" replace />} />
