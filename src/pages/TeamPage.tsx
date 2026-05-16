@@ -3,6 +3,7 @@ import {
   CalendarDays,
   Plus,
   Trash2,
+  UserCog,
   Users,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/header";
@@ -27,12 +28,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ProfilesPermissionsSection } from "@/features/auth/components/profiles-permissions-section";
+import { EmployeeDialog } from "@/features/staff/components/employee-dialog";
 import { useStaff, useShifts } from "@/features/staff/hooks/use-staff";
 import { formatBRL } from "@/lib/format";
 import type {
   StaffMember,
-  StaffMemberInput,
   StaffShiftInput,
 } from "@/features/staff/types";
 
@@ -54,7 +54,8 @@ function formatTime(t: string): string {
 }
 
 export default function TeamPage() {
-  const { members, commissions, loading, create, setActive } = useStaff();
+  const { members, commissions, loading, refresh, setActive } = useStaff();
+  const [editing, setEditing] = useState<StaffMember | null>(null);
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek());
   const weekEnd = new Date(weekStart);
   weekEnd.setDate(weekStart.getDate() + 6);
@@ -92,7 +93,7 @@ export default function TeamPage() {
       <PageHeader
         title="Equipe"
         description="Funcionarios, escalas e comissoes do mes corrente."
-        actions={<NewStaffDialog onSubmit={create} />}
+        actions={<EmployeeDialog onSaved={() => void refresh()} />}
       />
 
       <div className="space-y-6 p-6">
@@ -195,14 +196,26 @@ export default function TeamPage() {
                           </span>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-xs"
-                            onClick={() => void setActive(m.id, !m.active)}
-                          >
-                            {m.active ? "Desativar" : "Reativar"}
-                          </Button>
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-xs"
+                              onClick={() => setEditing(m)}
+                              title="Editar dados e permissoes"
+                            >
+                              <UserCog className="size-3.5" />
+                              Editar
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-xs"
+                              onClick={() => void setActive(m.id, !m.active)}
+                            >
+                              {m.active ? "Desativar" : "Reativar"}
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -212,8 +225,6 @@ export default function TeamPage() {
             </div>
           )}
         </section>
-
-        <ProfilesPermissionsSection />
 
         <section className="rounded-xl border border-border bg-card">
           <header className="flex items-center justify-between gap-3 border-b border-border px-5 py-3">
@@ -328,6 +339,19 @@ export default function TeamPage() {
           )}
         </section>
       </div>
+
+      {/* Dialog de edicao (acionado pelo botao "Editar" em cada linha) */}
+      {editing ? (
+        <EmployeeDialog
+          member={editing}
+          open={!!editing}
+          onOpenChange={(o) => !o && setEditing(null)}
+          onSaved={() => {
+            void refresh();
+            setEditing(null);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
@@ -359,138 +383,7 @@ function Kpi({
   );
 }
 
-function NewStaffDialog({
-  onSubmit,
-}: {
-  onSubmit: (input: StaffMemberInput) => Promise<unknown>;
-}) {
-  const [open, setOpen] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [name, setName] = useState("");
-  const [role, setRole] = useState("Atendente");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [commission, setCommission] = useState("0");
-
-  const reset = () => {
-    setName("");
-    setRole("Atendente");
-    setPhone("");
-    setEmail("");
-    setCommission("0");
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) return;
-    setSubmitting(true);
-    try {
-      const pct = parseFloat(commission.replace(",", ".")) || 0;
-      await onSubmit({
-        full_name: name.trim(),
-        role_label: role.trim() || undefined,
-        phone: phone.trim() || undefined,
-        email: email.trim() || undefined,
-        commission_pct: pct,
-        active: true,
-      });
-      reset();
-      setOpen(false);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className="bg-[#F39230] text-slate-900 hover:bg-[#F39230]/90">
-          <Plus className="size-4" /> Novo funcionario
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Cadastrar funcionario</DialogTitle>
-          <DialogDescription>
-            Membro da equipe que opera o parque ou faz vendas.
-          </DialogDescription>
-        </DialogHeader>
-        <form className="space-y-3" onSubmit={handleSubmit}>
-          <div className="space-y-1.5">
-            <Label htmlFor="ns-name">Nome completo</Label>
-            <Input
-              id="ns-name"
-              required
-              autoFocus
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="ns-role">Funcao</Label>
-              <Input
-                id="ns-role"
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                placeholder="Atendente, Caixa, Supervisor..."
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="ns-comm">Comissao (%)</Label>
-              <Input
-                id="ns-comm"
-                inputMode="decimal"
-                value={commission}
-                onChange={(e) => setCommission(e.target.value)}
-                placeholder="0"
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="ns-phone">WhatsApp</Label>
-              <Input
-                id="ns-phone"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="(11) 9..."
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="ns-email">Email</Label>
-              <Input
-                id="ns-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="opcional"
-              />
-            </div>
-          </div>
-          <DialogFooter className="pt-2">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setOpen(false)}
-              disabled={submitting}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              className="bg-[#1E78DC] text-white hover:bg-[#1E78DC]/90"
-              disabled={submitting}
-            >
-              {submitting ? "Salvando..." : "Cadastrar"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
+// NewStaffDialog antigo removido em favor de EmployeeDialog (login + permissoes).
 function NewShiftDialog({
   members,
   onSubmit,
