@@ -658,58 +658,37 @@ export const supabaseSessionsRepo: SessionsRepo = {
     } as SessionRow);
   },
   async pause(sessionId) {
-    const { error } = await supabase
-      .from("sessions")
-      .update({ status: "paused", paused_at: new Date().toISOString() })
-      .eq("id", sessionId);
+    // Usa RPC server-side: paused_at = now() do PostgreSQL.
+    // Imune a relogio errado do PC do operador.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any).rpc("session_pause", {
+      p_session_id: sessionId,
+    });
     if (error) throw error;
   },
   async resume(sessionId) {
-    const { data, error } = await supabase
-      .from("sessions")
-      .select("paused_at, paused_total_seconds")
-      .eq("id", sessionId)
-      .single();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any).rpc("session_resume", {
+      p_session_id: sessionId,
+    });
     if (error) throw error;
-    const additionalPaused = data.paused_at
-      ? Math.floor((Date.now() - new Date(data.paused_at).getTime()) / 1000)
-      : 0;
-    const { error: uErr } = await supabase
-      .from("sessions")
-      .update({
-        status: "active",
-        paused_at: null,
-        paused_total_seconds: data.paused_total_seconds + additionalPaused,
-      })
-      .eq("id", sessionId);
-    if (uErr) throw uErr;
   },
   async end(sessionId) {
-    const { error } = await supabase
-      .from("sessions")
-      .update({ status: "ended", ended_at: new Date().toISOString() })
-      .eq("id", sessionId);
+    // RPC server-side: ended_at = now() do PostgreSQL.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any).rpc("session_end", {
+      p_session_id: sessionId,
+    });
     if (error) throw error;
   },
   async endWithExtra(sessionId, extraCents) {
-    // Soma extraCents ao amount_paid_cents existente. Buscamos primeiro
-    // pra fazer math em JS (PostgREST nao da update por expressao
-    // diretamente sem RPC).
-    const { data, error: rErr } = await supabase
-      .from("sessions")
-      .select("amount_paid_cents")
-      .eq("id", sessionId)
-      .single();
-    if (rErr) throw rErr;
-    const newAmount = (data?.amount_paid_cents ?? 0) + extraCents;
-    const { error } = await supabase
-      .from("sessions")
-      .update({
-        status: "ended",
-        ended_at: new Date().toISOString(),
-        amount_paid_cents: newAmount,
-      })
-      .eq("id", sessionId);
+    // RPC server-side: faz soma do excedente e ended_at = now() em
+    // uma transacao atomica.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any).rpc("session_end_with_extra", {
+      p_session_id: sessionId,
+      p_extra_cents: extraCents,
+    });
     if (error) throw error;
   },
   subscribe(onChange) {
