@@ -1,10 +1,15 @@
 import type { ActiveSession, DerivedSessionStatus } from "../types";
+import { serverNow } from "@/lib/server-time";
 
 /**
  * Compute remaining seconds for a session given current time.
  * Accounts for pause: while paused, the timer effectively stops.
+ *
+ * O default `now` usa serverNow() (hora corrigida pro relogio do
+ * servidor) em vez de new Date() local — assim o cronometro fica
+ * correto mesmo se o PC do operador estiver com a hora errada.
  */
-export function remainingSeconds(session: ActiveSession, now: Date = new Date()): number {
+export function remainingSeconds(session: ActiveSession, now: Date = serverNow()): number {
   const startedAt = new Date(session.started_at).getTime();
   const expectedEnd = startedAt + session.contracted_minutes * 60_000 + session.paused_total_seconds * 1000;
 
@@ -20,7 +25,7 @@ export function remainingSeconds(session: ActiveSession, now: Date = new Date())
 
 const ENDING_SOON_THRESHOLD_SECONDS = 5 * 60;
 
-export function derivedStatus(session: ActiveSession, now: Date = new Date()): DerivedSessionStatus {
+export function derivedStatus(session: ActiveSession, now: Date = serverNow()): DerivedSessionStatus {
   if (session.status === "ended") return "ended";
   if (session.status === "paused") return "paused";
   const remaining = remainingSeconds(session, now);
@@ -48,7 +53,7 @@ export function derivedStatus(session: ActiveSession, now: Date = new Date()): D
  */
 export function elapsedSinceExpired(
   session: ActiveSession,
-  now: Date = new Date()
+  now: Date = serverNow()
 ): number {
   if (session.status === "ended") return 0;
   if (session.contracted_minutes <= 0) return 0;
@@ -67,7 +72,7 @@ export function elapsedSinceExpired(
 export function computeOverage(
   session: ActiveSession,
   graceMinutes: number,
-  now: Date = new Date()
+  now: Date = serverNow()
 ): { minutes: number; cents: number } {
   if (session.status === "ended") return { minutes: 0, cents: 0 };
   if (session.contracted_minutes <= 0) return { minutes: 0, cents: 0 };
