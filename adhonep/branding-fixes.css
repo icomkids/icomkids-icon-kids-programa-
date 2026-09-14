@@ -56,6 +56,15 @@
   max-width: 720px;
 }
 
+/* Vídeo temporariamente oculto; estrutura preservada para reativação futura. */
+[hidden] {
+  display: none !important;
+}
+
+.hero-video-disabled .hero-content {
+  padding-top: 8rem;
+}
+
 @media (max-width: 900px) {
   .topbar {
     padding-inline: 1.25rem;
@@ -86,6 +95,18 @@
 
   .hero-with-video .hero-shade {
     background: linear-gradient(180deg, rgb(8 26 44 / 48%) 0%, #081a2c 53%, #081a2c 100%);
+  }
+
+  .hero-video-disabled {
+    min-height: 760px;
+  }
+
+  .hero-video-disabled .hero-content {
+    padding-top: 13rem;
+  }
+
+  .hero-video-disabled .trust {
+    margin-bottom: 0;
   }
 }
 
