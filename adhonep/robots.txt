@@ -3,4 +3,4 @@ Allow: /
 Disallow: /admin.html
 Disallow: /membros.html
 
-Sitemap: https://adhonepexpansao.com.br/sitemap.xml
+Sitemap: https://adhonepexpansão.com.br/sitemap.xml
