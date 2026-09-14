@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /admin.html
+Disallow: /membros.html
+
+Sitemap: https://adhonepexpansão.com.br/sitemap.xml

@@ -1,0 +1,173 @@
+.sponsors-hero {
+  min-height: 690px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background-image:
+    linear-gradient(90deg, rgb(4 19 36 / 98%) 0%, rgb(4 19 36 / 86%) 48%, rgb(4 19 36 / 16%) 78%),
+    url("assets/patrocinadores/arte-conexoes-premium.webp");
+  background-size: cover;
+  background-position: center;
+}
+
+.sponsors-hero::after { display: none; }
+.sponsors-hero h1 { text-shadow: 0 8px 35px rgb(0 0 0 / 38%); }
+.sponsors-hero > p { max-width: 610px; }
+
+.hero-brand-row a {
+  position: relative;
+  background: #fff;
+  border: 2px solid rgb(212 173 101 / 62%);
+}
+
+.hero-brand-row a::after {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border: 1px solid rgb(255 255 255 / 25%);
+  pointer-events: none;
+}
+
+.sponsor-profile {
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.sponsor-profile::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 22px -22px -22px 22px;
+  border: 1px solid rgb(178 131 57 / 36%);
+  border-radius: 16px;
+}
+
+.sponsor-visual,
+.sponsor-story {
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 28px 65px rgb(7 27 48 / 16%);
+}
+
+.sponsor-visual {
+  border-radius: 14px 0 0 14px;
+  isolation: isolate;
+}
+
+.sponsor-profile:nth-of-type(even) .sponsor-visual { border-radius: 0 14px 14px 0; }
+.sponsor-story { border-radius: 0 14px 14px 0; }
+.sponsor-profile:nth-of-type(even) .sponsor-story { border-radius: 14px 0 0 14px; }
+
+.sponsor-visual::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background:
+    linear-gradient(145deg, rgb(3 20 39 / 18%), rgb(3 20 39 / 82%)),
+    url("assets/patrocinadores/arte-conexoes-premium.webp") center/cover;
+  opacity: .68;
+}
+
+.sponsor-visual::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 7%;
+  border: 1px solid rgb(226 184 105 / 68%);
+  clip-path: polygon(0 0, 30% 0, 30% 1px, 70% 1px, 70% 0, 100% 0, 100% 30%, calc(100% - 1px) 30%, calc(100% - 1px) 70%, 100% 70%, 100% 100%, 70% 100%, 70% calc(100% - 1px), 30% calc(100% - 1px), 30% 100%, 0 100%, 0 70%, 1px 70%, 1px 30%, 0 30%);
+  pointer-events: none;
+}
+
+.sponsor-visual .profile-square-logo {
+  position: relative;
+  z-index: 2;
+  width: min(76%, 470px);
+  border: 9px solid rgb(255 255 255 / 9%);
+  outline: 1px solid rgb(226 184 105 / 55%);
+  box-shadow: 0 32px 65px rgb(0 0 0 / 58%);
+}
+
+.sponsor-visual > span,
+.floating-product,
+.icom-road,
+.logos-strip { z-index: 3; }
+
+.sponsor-story::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 110px;
+  height: 110px;
+  background: linear-gradient(135deg, transparent 49%, rgb(201 155 77 / 20%) 50%, rgb(201 155 77 / 20%) 51%, transparent 52%);
+}
+
+.sponsor-story::after {
+  content: "PARCEIRO ADHONEP TAUBATÉ";
+  position: absolute;
+  right: -38px;
+  bottom: 75px;
+  transform: rotate(-90deg);
+  color: rgb(7 27 48 / 18%);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .22em;
+}
+
+.sponsor-story h2 { color: #071b30; }
+.sponsor-story h3 { max-width: 520px; }
+
+.sponsor-contact a {
+  position: relative;
+  overflow: hidden;
+}
+
+.sponsor-contact a::after {
+  content: "→";
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #bd8d40;
+}
+
+.sponsor-contact a b { padding-right: 20px; }
+
+.become-sponsor {
+  background-image:
+    linear-gradient(90deg, rgb(4 19 36 / 96%), rgb(4 19 36 / 65%)),
+    url("assets/patrocinadores/arte-conexoes-premium.webp");
+  background-size: cover;
+  background-position: center;
+  color: #fff;
+}
+
+.become-sponsor h2 em { color: #e4b965; }
+.become-sponsor > p { color: #d5dde3; }
+.become-sponsor > a { background: #d0a052; color: #071b30; }
+
+@media (max-width: 900px) {
+  .sponsors-hero { min-height: 620px; background-position: 62% center; }
+  .sponsor-profile::before { inset: 12px -8px -12px 8px; }
+  .sponsor-visual,
+  .sponsor-profile:nth-of-type(even) .sponsor-visual { border-radius: 12px 12px 0 0; }
+  .sponsor-story,
+  .sponsor-profile:nth-of-type(even) .sponsor-story { border-radius: 0 0 12px 12px; }
+}
+
+@media (max-width: 560px) {
+  .sponsors-hero {
+    min-height: 590px;
+    background-image:
+      linear-gradient(180deg, rgb(4 19 36 / 76%) 0%, rgb(4 19 36 / 98%) 76%),
+      url("assets/patrocinadores/arte-conexoes-premium.webp");
+    background-position: 68% center;
+  }
+  .hero-brand-row { padding-bottom: 5px; overflow-x: auto; }
+  .sponsor-profile::before { display: none; }
+  .sponsor-visual .profile-square-logo { width: 82%; border-width: 5px; }
+  .sponsor-story::after { display: none; }
+}

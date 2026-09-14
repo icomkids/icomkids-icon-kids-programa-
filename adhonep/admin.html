@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>Área administrativa — ADHONEP Taubaté</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="enhancements.css" />
+</head>
+<body class="admin-page">
+  <main class="admin-access" id="admin-access">
+    <section class="login-card" aria-labelledby="login-title">
+      <img src="assets/logo-adhonep-expansao-branca.png" alt="ADHONEP Taubaté" />
+      <span class="secure-label">ÁREA RESTRITA</span>
+      <h1 id="login-title">Acesso administrativo</h1>
+      <p>Somente administradores autorizados podem acessar empresas, patrocinadores, leads, eventos e conteúdos.</p>
+      <form id="admin-login">
+        <label>Perfil da demonstração<select id="admin-role"><option value="general">Administrador geral</option><option value="chapter">Administrador de capítulo</option></select></label>
+        <label>E-mail<input type="email" placeholder="seu@email.com" value="admin@demonstracao.com" required /></label>
+        <label>Senha<input type="password" placeholder="••••••••" value="demonstracao" required /></label>
+        <button class="primary navy" type="submit">Entrar com segurança <b>→</b></button>
+      </form>
+      <small>Demonstração visual — nenhuma autenticação ou dado real é utilizado.</small>
+    </section>
+  </main>
+
+  <section class="admin-shell" id="admin-shell" hidden>
+    <aside class="admin-sidebar">
+      <img src="assets/logo-adhonep-expansao-branca.png" alt="ADHONEP Taubaté" />
+      <nav aria-label="Navegação administrativa">
+        <button class="active">Visão geral</button>
+        <button class="general-only">Administradores</button>
+        <button class="general-only">Capítulos</button>
+        <button>Empresários</button>
+        <button>Patrocinadores</button>
+        <button>Leads <i>12</i></button>
+        <button>Eventos</button>
+        <button>Conteúdos <i>5</i></button>
+        <button>Calendário</button>
+        <button>Métricas</button>
+        <button>Feedback privado <i>3</i></button>
+      </nav>
+      <button class="admin-exit" id="admin-exit">Sair da demonstração</button>
+    </aside>
+    <main class="admin-workspace">
+      <div class="dash-title"><div><small id="admin-scope">ADMINISTRAÇÃO GERAL • TODOS OS CAPÍTULOS</small><h1 id="admin-greeting">Bom dia, administrador geral.</h1><p id="admin-description">Você pode administrar capítulos, gestores, empresários e conteúdos de toda a rede.</p></div><button>+ Novo evento</button></div>
+      <div class="metrics"><article><span>NOVOS LEADS</span><strong>12</strong><small>↑ 20% este mês</small></article><article><span>PRÓXIMO EVENTO</span><strong>38</strong><small>inscritos de 60 vagas</small></article><article><span>PATROCINADORES</span><strong>9</strong><small>ativos neste mês</small></article></div>
+      <div class="attention"><h2>Precisa da sua atenção <b>8 pendências</b></h2><div><span class="status amber">1</span><p><strong>Encontro de hoje • Capítulo Taubaté</strong><small>Edilene de Andrade Barbosa • 14 de setembro de 2026 • 19h às 21h • HITT</small></p><button>Revisar encontro →</button></div><div><span class="status amber">5</span><p><strong>Conteúdos aguardando aprovação</strong><small>Pacotes gerados para parceiros</small></p><button>Aprovar conteúdos →</button></div><div><span class="status blue">2</span><p><strong>Cadastros de parceiros recebidos</strong><small>Revise antes de publicar</small></p><button>Revisar cadastros →</button></div></div>
+    </main>
+  </section>
+  <script src="admin.js"></script>
+</body>
+</html>
