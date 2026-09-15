@@ -8,6 +8,7 @@ let profile;
 let chapters = [];
 let managedChapterIds = [];
 const MEDIA_BUCKET = 'adhonep-business-media';
+const EVENT_MEDIA_BUCKET = 'adhonep-event-media';
 
 function options(items) { return items.map((x) => `<option value="${x.id}">${x.name} — ${x.city}</option>`).join(''); }
 function setBusy(form, busy) { form.querySelector('button[type="submit"],button:not([type])').disabled = busy; }
@@ -33,6 +34,14 @@ async function uploadBusinessFile(businessId, kind, file) {
   const { error } = await supabase.storage.from(MEDIA_BUCKET).upload(path, file, { contentType: file.type, upsert: false, cacheControl: '3600' });
   if (error) throw error;
   return supabase.storage.from(MEDIA_BUCKET).getPublicUrl(path).data.publicUrl;
+}
+async function uploadEventImage(eventId, file) {
+  if (!file) return null;
+  if (!file.type.startsWith('image/') || file.size > 6 * 1024 * 1024) throw new Error('A arte deve ser JPG, PNG ou WebP e ter no máximo 6 MB.');
+  const path = `${eventId}/speaker-${Date.now()}.${fileExtension(file)}`;
+  const { error } = await supabase.storage.from(EVENT_MEDIA_BUCKET).upload(path, file, { contentType: file.type, cacheControl: '3600', upsert: false });
+  if (error) throw error;
+  return supabase.storage.from(EVENT_MEDIA_BUCKET).getPublicUrl(path).data.publicUrl;
 }
 
 async function loadAdmin(user) {
@@ -108,7 +117,8 @@ document.querySelector('#business-form').addEventListener('submit', async (event
   const video = document.querySelector('#business-video-file').files[0];
   try {
     await validateMedia(logo, cover, video);
-    const payload = { chapter_id: document.querySelector('#business-chapter').value, name: value('#business-name'), segment: value('#business-segment'), short_description: value('#business-short'), description: value('#business-description'), whatsapp: value('#business-whatsapp') || null, contact_email: value('#business-contact-email') || null, website_url: value('#business-website') || null, instagram_url: value('#business-instagram') || null, facebook_url: value('#business-facebook') || null, linkedin_url: value('#business-linkedin') || null, paid_until: value('#business-paid-until'), status: 'active', created_by: profile.id };
+    const lines = selector => value(selector).split(/\r?\n/).map(item => item.trim()).filter(Boolean);
+    const payload = { chapter_id: document.querySelector('#business-chapter').value, name: value('#business-name'), segment: value('#business-segment'), headline: value('#business-headline') || null, short_description: value('#business-short'), description: value('#business-description'), offerings: lines('#business-offerings'), differentials: lines('#business-differentials'), service_area: value('#business-service-area') || null, whatsapp: value('#business-whatsapp') || null, contact_email: value('#business-contact-email') || null, website_url: value('#business-website') || null, instagram_url: value('#business-instagram') || null, facebook_url: value('#business-facebook') || null, linkedin_url: value('#business-linkedin') || null, paid_until: value('#business-paid-until'), status: 'active', created_by: profile.id };
     const { data: business, error } = await supabase.from('adh_businesses').insert(payload).select().single();
     if (error) throw error;
     const [logoUrl, coverUrl, videoUrl] = await Promise.all([uploadBusinessFile(business.id, 'logo', logo), uploadBusinessFile(business.id, 'cover', cover), uploadBusinessFile(business.id, 'video', video)]);
@@ -127,11 +137,20 @@ document.querySelector('#business-form').addEventListener('submit', async (event
 });
 
 document.querySelector('#event-form').addEventListener('submit', async (event) => {
-  event.preventDefault(); setBusy(event.currentTarget, true);
-  const end = document.querySelector('#event-end').value;
-  const { error } = await supabase.from('adh_events').insert({ chapter_id: document.querySelector('#event-chapter').value, title: document.querySelector('#event-title').value.trim(), description: document.querySelector('#event-description').value.trim(), starts_at: new Date(document.querySelector('#event-start').value).toISOString(), ends_at: end ? new Date(end).toISOString() : null, image_url: document.querySelector('#event-image').value.trim() || null, registration_url: document.querySelector('#event-registration').value.trim() || null, published: true, created_by: profile.id });
-  setBusy(event.currentTarget, false); showMessage(statusMessage, error ? error.message : 'Evento publicado na agenda.', error ? 'error' : 'success'); if (!error) { event.currentTarget.reset(); await refreshData(); }
+  event.preventDefault(); setBusy(event.currentTarget, true); showMessage(statusMessage, 'Enviando a arte e publicando o evento...');
+  try {
+    const payload = { chapter_id: value('#event-chapter'), title: value('#event-title'), description: value('#event-description'), speaker_name: value('#event-speaker') || null, location_name: value('#event-location'), address: value('#event-address'), starts_at: new Date(document.querySelector('#event-start').value).toISOString(), ends_at: new Date(document.querySelector('#event-end').value).toISOString(), registration_url: value('#event-registration') || null, published: true, created_by: profile.id };
+    const { data: created, error } = await supabase.from('adh_events').insert(payload).select().single();
+    if (error) throw error;
+    const imageUrl = await uploadEventImage(created.id, document.querySelector('#event-image-file').files[0]);
+    const { error: updateError } = await supabase.from('adh_events').update({ image_url: imageUrl }).eq('id', created.id);
+    if (updateError) throw updateError;
+    showMessage(statusMessage, 'Evento publicado. A página pública mostrará este evento na data correta.', 'success'); event.currentTarget.reset(); await refreshData();
+  } catch (error) { showMessage(statusMessage, error.message, 'error'); }
+  finally { setBusy(event.currentTarget, false); }
 });
+
+document.querySelectorAll('[data-scroll-to]').forEach((button) => button.addEventListener('click', () => document.getElementById(button.dataset.scrollTo)?.scrollIntoView({ behavior: 'smooth', block: 'start' })));
 
 document.querySelector('#admin-exit').addEventListener('click', async () => { await supabase.auth.signOut(); shell.hidden = true; access.hidden = false; });
 const { data: { session } } = await supabase.auth.getSession();
