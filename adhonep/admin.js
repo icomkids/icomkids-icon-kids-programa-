@@ -1,26 +1,138 @@
+import { supabase, showMessage } from './supabase-client.js';
+
 const access = document.querySelector('#admin-access');
 const shell = document.querySelector('#admin-shell');
+const loginMessage = document.querySelector('#admin-message');
+const statusMessage = document.querySelector('#admin-status');
+let profile;
+let chapters = [];
+let managedChapterIds = [];
+const MEDIA_BUCKET = 'adhonep-business-media';
 
-document.querySelector('#admin-login').addEventListener('submit', (event) => {
-  event.preventDefault();
-  const chapterMode = document.querySelector('#admin-role').value === 'chapter';
-  document.querySelector('#admin-scope').textContent = chapterMode
-    ? 'ADMINISTRAÇÃO DO CAPÍTULO • TAUBATÉ'
-    : 'ADMINISTRAÇÃO GERAL • TODOS OS CAPÍTULOS';
-  document.querySelector('#admin-greeting').textContent = chapterMode
-    ? 'Bom dia, líder do capítulo.'
-    : 'Bom dia, administrador geral.';
-  document.querySelector('#admin-description').textContent = chapterMode
-    ? 'Você visualiza somente empresários, atividades e avaliações privadas do seu capítulo.'
-    : 'Você pode administrar capítulos, gestores, empresários e conteúdos de toda a rede.';
-  document.querySelectorAll('.general-only').forEach((item) => {
-    item.hidden = chapterMode;
+function options(items) { return items.map((x) => `<option value="${x.id}">${x.name} — ${x.city}</option>`).join(''); }
+function setBusy(form, busy) { form.querySelector('button[type="submit"],button:not([type])').disabled = busy; }
+function value(id) { return document.querySelector(id).value.trim(); }
+function fileExtension(file) { return (file.name.split('.').pop() || (file.type.startsWith('video/') ? 'mp4' : 'webp')).toLowerCase(); }
+async function videoDuration(file) {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video'); const url = URL.createObjectURL(file);
+    video.preload = 'metadata'; video.onloadedmetadata = () => { URL.revokeObjectURL(url); resolve(video.duration); };
+    video.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Não foi possível validar o vídeo.')); }; video.src = url;
   });
-  access.hidden = true;
-  shell.hidden = false;
+}
+async function validateMedia(logo, cover, video) {
+  for (const image of [logo, cover].filter(Boolean)) if (image.size > 5 * 1024 * 1024) throw new Error(`${image.name}: imagem maior que 5 MB.`);
+  if (video) {
+    if (video.size > 30 * 1024 * 1024) throw new Error('O vídeo deve ter no máximo 30 MB.');
+    if (await videoDuration(video) > 60.5) throw new Error('O vídeo deve ter no máximo 60 segundos.');
+  }
+}
+async function uploadBusinessFile(businessId, kind, file) {
+  if (!file) return null;
+  const path = `${businessId}/${kind}-${Date.now()}.${fileExtension(file)}`;
+  const { error } = await supabase.storage.from(MEDIA_BUCKET).upload(path, file, { contentType: file.type, upsert: false, cacheControl: '3600' });
+  if (error) throw error;
+  return supabase.storage.from(MEDIA_BUCKET).getPublicUrl(path).data.publicUrl;
+}
+
+async function loadAdmin(user) {
+  const { data, error } = await supabase.from('adh_profiles').select('*').eq('id', user.id).maybeSingle();
+  if (error) throw error;
+  if (!data || !['super_admin', 'chapter_admin'].includes(data.role)) throw new Error('Seu usuário ainda não possui permissão administrativa na ADHONEP.');
+  profile = data;
+  const isGeneral = profile.role === 'super_admin';
+  if (!isGeneral) {
+    const { data: links, error: linkError } = await supabase.from('adh_chapter_admins').select('chapter_id').eq('user_id', user.id);
+    if (linkError) throw linkError;
+    managedChapterIds = (links || []).map((item) => item.chapter_id);
+    if (!managedChapterIds.length) throw new Error('Seu acesso ainda não foi vinculado a um capítulo.');
+  }
+  document.querySelectorAll('.general-only').forEach((item) => { item.hidden = !isGeneral; });
+  document.querySelector('#admin-scope').textContent = isGeneral ? 'ADMINISTRAÇÃO GERAL • TODOS OS CAPÍTULOS' : 'ADMINISTRAÇÃO DO MEU CAPÍTULO';
+  document.querySelector('#admin-greeting').textContent = `Olá, ${profile.full_name.split(' ')[0] || 'administrador'}.`;
+  document.querySelector('#admin-description').textContent = isGeneral ? 'Você pode administrar toda a rede ADHONEP.' : 'Você administra empresários, agenda e avaliações do seu capítulo.';
+  access.hidden = true; shell.hidden = false;
+  await refreshData();
+}
+
+async function refreshData() {
+  let chapterQuery = supabase.from('adh_chapters').select('*').order('city');
+  let businessQuery = supabase.from('adh_businesses').select('id,chapter_id,name,segment,status,adh_chapters(city)').order('created_at', { ascending: false });
+  let eventQuery = supabase.from('adh_events').select('id,chapter_id,title,starts_at,published,adh_chapters(city)').order('starts_at', { ascending: true });
+  if (profile.role !== 'super_admin') {
+    chapterQuery = chapterQuery.in('id', managedChapterIds);
+    businessQuery = businessQuery.in('chapter_id', managedChapterIds);
+    eventQuery = eventQuery.in('chapter_id', managedChapterIds);
+  }
+  const [{ data: chapterRows, error: chapterError }, { data: businesses, error: businessError }, { data: events, error: eventError }] = await Promise.all([chapterQuery, businessQuery, eventQuery]);
+  const error = chapterError || businessError || eventError; if (error) throw error;
+  chapters = chapterRows || [];
+  document.querySelector('#business-chapter').innerHTML = options(chapters);
+  document.querySelector('#event-chapter').innerHTML = options(chapters);
+  document.querySelector('#leader-chapter').innerHTML = options(chapters);
+  document.querySelector('#admin-chapters-count').textContent = chapters.length;
+  document.querySelector('#admin-business-count').textContent = (businesses || []).length;
+  document.querySelector('#admin-events-count').textContent = (events || []).length;
+  const records = document.querySelector('#admin-records'); records.innerHTML = '';
+  [...(events || []).map((x) => ({ title: x.title, detail: `Evento • ${x.adh_chapters?.city || ''}` })), ...(businesses || []).map((x) => ({ title: x.name, detail: `${x.segment} • ${x.adh_chapters?.city || ''} • ${x.status}` }))].slice(0, 12).forEach((x) => {
+    const row = document.createElement('div'); row.className = 'admin-list-item'; row.innerHTML = '<b></b><small></small>'; row.querySelector('b').textContent = x.title; row.querySelector('small').textContent = x.detail; records.append(row);
+  });
+}
+
+document.querySelector('#admin-login').addEventListener('submit', async (event) => {
+  event.preventDefault(); showMessage(loginMessage, 'Validando acesso...');
+  const { data, error } = await supabase.auth.signInWithPassword({ email: document.querySelector('#admin-email').value.trim(), password: document.querySelector('#admin-password').value });
+  if (error) return showMessage(loginMessage, error.message, 'error');
+  try { await loadAdmin(data.user); } catch (loadError) { await supabase.auth.signOut(); showMessage(loginMessage, loadError.message, 'error'); }
 });
 
-document.querySelector('#admin-exit').addEventListener('click', () => {
-  shell.hidden = true;
-  access.hidden = false;
+document.querySelector('#chapter-form').addEventListener('submit', async (event) => {
+  event.preventDefault(); setBusy(event.currentTarget, true);
+  const { error } = await supabase.from('adh_chapters').insert({ name: document.querySelector('#chapter-name').value.trim(), city: document.querySelector('#chapter-city').value.trim(), state: document.querySelector('#chapter-state').value.trim().toUpperCase(), leader_name: document.querySelector('#chapter-leader').value.trim() || null });
+  setBusy(event.currentTarget, false); showMessage(statusMessage, error ? error.message : 'Capítulo cadastrado.', error ? 'error' : 'success'); if (!error) { event.currentTarget.reset(); await refreshData(); }
 });
+
+document.querySelector('#leader-form').addEventListener('submit', async (event) => {
+  event.preventDefault(); setBusy(event.currentTarget, true);
+  const { data, error } = await supabase.functions.invoke('manage-adhonep-user', { body: { role: 'chapter_admin', chapter_id: document.querySelector('#leader-chapter').value, full_name: value('#leader-name'), email: value('#leader-email') } });
+  setBusy(event.currentTarget, false);
+  const failure = error?.message || data?.error;
+  showMessage(statusMessage, failure || (data.invited ? 'Líder cadastrado e convite enviado por e-mail.' : 'Líder existente vinculado ao capítulo.'), failure ? 'error' : 'success');
+  if (!failure) event.currentTarget.reset();
+});
+
+document.querySelector('#business-form').addEventListener('submit', async (event) => {
+  event.preventDefault(); setBusy(event.currentTarget, true); showMessage(statusMessage, 'Validando e enviando os arquivos...');
+  const logo = document.querySelector('#business-logo-file').files[0];
+  const cover = document.querySelector('#business-cover-file').files[0];
+  const video = document.querySelector('#business-video-file').files[0];
+  try {
+    await validateMedia(logo, cover, video);
+    const payload = { chapter_id: document.querySelector('#business-chapter').value, name: value('#business-name'), segment: value('#business-segment'), short_description: value('#business-short'), description: value('#business-description'), whatsapp: value('#business-whatsapp') || null, contact_email: value('#business-contact-email') || null, website_url: value('#business-website') || null, instagram_url: value('#business-instagram') || null, facebook_url: value('#business-facebook') || null, linkedin_url: value('#business-linkedin') || null, paid_until: value('#business-paid-until'), status: 'active', created_by: profile.id };
+    const { data: business, error } = await supabase.from('adh_businesses').insert(payload).select().single();
+    if (error) throw error;
+    const [logoUrl, coverUrl, videoUrl] = await Promise.all([uploadBusinessFile(business.id, 'logo', logo), uploadBusinessFile(business.id, 'cover', cover), uploadBusinessFile(business.id, 'video', video)]);
+    const { error: mediaError } = await supabase.from('adh_businesses').update({ logo_url: logoUrl, cover_url: coverUrl, video_url: videoUrl }).eq('id', business.id);
+    if (mediaError) throw mediaError;
+    const ownerEmail = value('#business-owner-email');
+    if (ownerEmail) {
+      const { data: owner, error: ownerError } = await supabase.functions.invoke('manage-adhonep-user', { body: { role: 'business', chapter_id: payload.chapter_id, full_name: value('#business-owner-name') || payload.name, email: ownerEmail } });
+      if (ownerError || owner?.error) throw new Error(owner?.error || ownerError.message);
+      const { error: linkError } = await supabase.from('adh_businesses').update({ owner_id: owner.user_id }).eq('id', business.id);
+      if (linkError) throw linkError;
+    }
+    showMessage(statusMessage, 'Empresário publicado no marketplace com sucesso.', 'success'); event.currentTarget.reset(); await refreshData();
+  } catch (error) { showMessage(statusMessage, error.message, 'error'); }
+  finally { setBusy(event.currentTarget, false); }
+});
+
+document.querySelector('#event-form').addEventListener('submit', async (event) => {
+  event.preventDefault(); setBusy(event.currentTarget, true);
+  const end = document.querySelector('#event-end').value;
+  const { error } = await supabase.from('adh_events').insert({ chapter_id: document.querySelector('#event-chapter').value, title: document.querySelector('#event-title').value.trim(), description: document.querySelector('#event-description').value.trim(), starts_at: new Date(document.querySelector('#event-start').value).toISOString(), ends_at: end ? new Date(end).toISOString() : null, image_url: document.querySelector('#event-image').value.trim() || null, registration_url: document.querySelector('#event-registration').value.trim() || null, published: true, created_by: profile.id });
+  setBusy(event.currentTarget, false); showMessage(statusMessage, error ? error.message : 'Evento publicado na agenda.', error ? 'error' : 'success'); if (!error) { event.currentTarget.reset(); await refreshData(); }
+});
+
+document.querySelector('#admin-exit').addEventListener('click', async () => { await supabase.auth.signOut(); shell.hidden = true; access.hidden = false; });
+const { data: { session } } = await supabase.auth.getSession();
+if (session) { try { await loadAdmin(session.user); } catch { await supabase.auth.signOut(); } }

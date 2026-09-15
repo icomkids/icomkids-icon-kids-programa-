@@ -9,9 +9,10 @@
   <link rel="stylesheet" href="enhancements.css" />
   <link rel="stylesheet" href="branding-fixes.css" />
   <link rel="stylesheet" href="members.css" />
+  <link rel="stylesheet" href="portal-live.css" />
 </head>
 <body class="members-page">
-  <header class="members-top"><a href="index.html"><img src="assets/logo-adhonep-expansao.png" alt="ADHONEP Taubaté" /></a><div><a href="index.html">Voltar ao site</a><span>AMBIENTE DE DEMONSTRAÇÃO</span></div></header>
+  <header class="members-top"><a href="index.html"><img src="assets/logo-adhonep-expansao.png" alt="ADHONEP Taubaté" /></a><div><a href="index.html">Voltar ao site</a><span>AMBIENTE SEGURO</span></div></header>
   <main class="members-wrap">
     <section class="member-login" id="member-login">
       <div class="login-art">
@@ -19,21 +20,21 @@
         <div class="login-proof"><b>Capítulo oficial • Taubaté</b><span>Relacionamento, excelência e valores que nos unem.</span></div>
       </div>
       <div class="login-panel">
-        <div class="login-heading"><span class="secure-mark">✦</span><small>ACESSO EXCLUSIVO</small><h2>Bem-vindo à comunidade.</h2><p>Escolha seu perfil e entre no ambiente de demonstração.</p></div>
-        <form id="member-access"><label>Visualizar como<select id="member-role"><option value="member">Membro indicador</option><option value="business">Empresário associado</option></select></label><label>E-mail<input type="email" value="membro@demonstracao.com" required /></label><label>Senha<input type="password" value="demonstracao" required /></label><div class="form-support"><label><input type="checkbox" checked /> Lembrar meu acesso</label><a href="#">Esqueci minha senha</a></div><button class="primary navy">Entrar na comunidade <span>→</span></button></form>
+        <div class="login-heading"><span class="secure-mark">✦</span><small>ACESSO EXCLUSIVO</small><h2>Bem-vindo à comunidade.</h2><p>Entre com sua conta ou crie gratuitamente seu perfil de membro indicador.</p></div>
+        <form id="member-access"><label>Nome completo<input id="member-name" autocomplete="name" /></label><label>E-mail<input id="member-email" type="email" autocomplete="email" required /></label><label>Senha<input id="member-password" type="password" autocomplete="current-password" minlength="8" required /></label><div class="form-support"><label><input type="checkbox" checked /> Lembrar meu acesso</label><button class="link-button" id="member-reset" type="button">Esqueci minha senha</button></div><button class="primary navy" id="member-submit">Entrar na comunidade <span>→</span></button><button class="outline-dark account-switch" id="member-signup" type="button">Criar minha conta gratuita</button><p class="auth-message" id="member-message" hidden></p></form>
         <div class="subscription"><div><b>Quer apresentar sua empresa?</b><p>Solicite a ativação do perfil empresarial ao líder do capítulo.</p></div><a href="https://wa.me/5512999999999" target="_blank" rel="noreferrer">Falar com o capítulo →</a></div>
-        <p class="demo-note">Demonstração visual. O acesso definitivo será protegido por autenticação.</p>
+        <p class="demo-note">Acesso protegido pelo Supabase. Seus dados são exibidos conforme seu perfil.</p>
       </div>
     </section>
     <section class="member-dashboard" id="member-dashboard" hidden>
       <aside><img src="assets/logo-adhonep-expansao-branca.png" alt="ADHONEP Taubaté" /><button class="active">Visão geral</button><button>Encontrar empresas</button><button>Minhas indicações</button><button class="business-only">Minha empresa</button><button class="business-only">Contatos recebidos</button><button class="business-only">Avaliações</button><button id="member-exit">Sair</button></aside>
       <div class="member-content"><div class="dashboard-head"><div><span class="eyebrow" id="member-label">PAINEL DO MEMBRO</span><h1 id="member-title">Olá, André.</h1><p id="member-copy">Acompanhe as pessoas e oportunidades que chegaram através das suas indicações.</p></div><div class="member-avatar"><span>AN</span><div><b>André Nogueira</b><small>Membro • Taubaté</small></div></div></div>
-        <div class="member-metrics"><article><small>CLIQUES NO MEU LINK</small><b>48</b><span>últimos 30 dias</span></article><article><small>CADASTROS INDICADOS</small><b>9</b><span>3 neste mês</span></article><article><small>NEGÓCIOS REGISTRADOS</small><b>2</b><span>aguardando validação</span></article><article class="business-only"><small>CONTATOS RECEBIDOS</small><b>14</b><span>WhatsApp e site</span></article></div>
+        <div class="member-metrics"><article><small>CLIQUES NO MEU LINK</small><b id="metric-clicks">0</b><span>registrados</span></article><article><small>CADASTROS INDICADOS</small><b id="metric-registrations">0</b><span>pela sua indicação</span></article><article><small>NEGÓCIOS CONVERTIDOS</small><b id="metric-conversions">0</b><span>validados</span></article><article><small>MEUS PONTOS</small><b id="metric-points">0</b><span>saldo atual</span></article></div>
         <section class="referral-card"><div class="referral-icon">↗</div><div><small>SEU LINK DE INDICAÇÃO</small><strong>adhonepexpansao.com/convite/ANDRE12</strong><p>Cadastros e negócios iniciados por este endereço serão atribuídos a você.</p></div><button data-copy>Copiar link</button></section>
-        <section class="member-grid"><article><h2>Encontre negócios</h2><input placeholder="Busque por segmento, serviço, cidade ou empresa" /><div class="business-result"><b>Nexo Digital</b><span>Tecnologia • Taubaté</span><button>Ver empresa →</button></div><div class="business-result"><b>Vértice Gestão</b><span>Consultoria • Vale do Paraíba</span><button>Ver empresa →</button></div></article><article><h2>Qualidade da comunidade</h2><p>Após uma experiência, dê uma nota anônima e envie um relato privado. O empresário vê apenas a nota consolidada; o líder do capítulo identifica o autor e trata o feedback.</p><div class="stars" aria-label="Avaliação demonstrativa">★★★★★</div><button class="outline-dark">Registrar experiência</button></article></section>
+        <section class="member-grid"><article><h2>Encontre negócios</h2><input id="business-search" placeholder="Busque por segmento, cidade ou empresa" /><div id="business-list" class="data-list"><p>Carregando empresas...</p></div></article><article><h2>Qualidade da comunidade</h2><p>Após uma experiência, dê uma nota anônima e envie um relato privado. O empresário não vê quem avaliou; o líder responsável pode identificar o autor e tratar o caso.</p><form id="feedback-form"><label>Empresa<select id="feedback-business" required></select></label><label>Nota<select id="feedback-rating" required><option value="5">★★★★★ Excelente</option><option value="4">★★★★ Muito bom</option><option value="3">★★★ Regular</option><option value="2">★★ Ruim</option><option value="1">★ Muito ruim</option></select></label><label>Relato privado<textarea id="feedback-message" rows="4"></textarea></label><button class="outline-dark">Enviar avaliação</button><p class="auth-message" id="feedback-status" hidden></p></form></article></section>
       </div>
     </section>
   </main>
-  <script src="members.js"></script>
+  <script type="module" src="members.js"></script>
 </body>
 </html>

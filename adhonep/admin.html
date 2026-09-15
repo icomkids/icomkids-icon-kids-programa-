@@ -7,6 +7,7 @@
   <title>Área administrativa — ADHONEP Taubaté</title>
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="enhancements.css" />
+  <link rel="stylesheet" href="portal-live.css" />
 </head>
 <body class="admin-page">
   <main class="admin-access" id="admin-access">
@@ -16,12 +17,12 @@
       <h1 id="login-title">Acesso administrativo</h1>
       <p>Somente administradores autorizados podem acessar empresas, patrocinadores, leads, eventos e conteúdos.</p>
       <form id="admin-login">
-        <label>Perfil da demonstração<select id="admin-role"><option value="general">Administrador geral</option><option value="chapter">Administrador de capítulo</option></select></label>
-        <label>E-mail<input type="email" placeholder="seu@email.com" value="admin@demonstracao.com" required /></label>
-        <label>Senha<input type="password" placeholder="••••••••" value="demonstracao" required /></label>
+        <label>E-mail<input id="admin-email" type="email" placeholder="seu@email.com" autocomplete="email" required /></label>
+        <label>Senha<input id="admin-password" type="password" placeholder="••••••••" autocomplete="current-password" required /></label>
         <button class="primary navy" type="submit">Entrar com segurança <b>→</b></button>
+        <p class="auth-message" id="admin-message" hidden></p>
       </form>
-      <small>Demonstração visual — nenhuma autenticação ou dado real é utilizado.</small>
+      <small>Acesso real protegido pelo Supabase e pelas permissões do seu capítulo.</small>
     </section>
   </main>
 
@@ -45,10 +46,17 @@
     </aside>
     <main class="admin-workspace">
       <div class="dash-title"><div><small id="admin-scope">ADMINISTRAÇÃO GERAL • TODOS OS CAPÍTULOS</small><h1 id="admin-greeting">Bom dia, administrador geral.</h1><p id="admin-description">Você pode administrar capítulos, gestores, empresários e conteúdos de toda a rede.</p></div><button>+ Novo evento</button></div>
-      <div class="metrics"><article><span>NOVOS LEADS</span><strong>12</strong><small>↑ 20% este mês</small></article><article><span>PRÓXIMO EVENTO</span><strong>38</strong><small>inscritos de 60 vagas</small></article><article><span>PATROCINADORES</span><strong>9</strong><small>ativos neste mês</small></article></div>
-      <div class="attention"><h2>Precisa da sua atenção <b>8 pendências</b></h2><div><span class="status amber">1</span><p><strong>Encontro de hoje • Capítulo Taubaté</strong><small>Edilene de Andrade Barbosa • 14 de setembro de 2026 • 19h às 21h • HITT</small></p><button>Revisar encontro →</button></div><div><span class="status amber">5</span><p><strong>Conteúdos aguardando aprovação</strong><small>Pacotes gerados para parceiros</small></p><button>Aprovar conteúdos →</button></div><div><span class="status blue">2</span><p><strong>Cadastros de parceiros recebidos</strong><small>Revise antes de publicar</small></p><button>Revisar cadastros →</button></div></div>
+      <div class="metrics"><article><span>CAPÍTULOS</span><strong id="admin-chapters-count">0</strong><small>no meu acesso</small></article><article><span>EMPRESÁRIOS</span><strong id="admin-business-count">0</strong><small>cadastrados</small></article><article><span>EVENTOS</span><strong id="admin-events-count">0</strong><small>na agenda</small></article></div>
+      <p class="auth-message admin-status" id="admin-status" hidden></p>
+      <section class="admin-panels">
+        <article class="admin-panel general-only"><h2>Novo capítulo</h2><form id="chapter-form"><label>Nome<input id="chapter-name" required /></label><div class="two"><label>Cidade<input id="chapter-city" required /></label><label>Estado<input id="chapter-state" value="SP" maxlength="2" required /></label></div><label>Nome do líder<input id="chapter-leader" /></label><button class="primary navy">Cadastrar capítulo</button></form></article>
+        <article class="admin-panel general-only"><h2>Adicionar líder de capítulo</h2><form id="leader-form"><label>Capítulo<select id="leader-chapter" required></select></label><label>Nome completo<input id="leader-name" required /></label><label>E-mail de acesso<input id="leader-email" type="email" required /></label><p class="field-note">O líder receberá um convite por e-mail e administrará somente o capítulo escolhido.</p><button class="primary navy">Convidar administrador</button></form></article>
+        <article class="admin-panel business-editor"><h2>Novo empresário pagante</h2><form id="business-form"><label>Capítulo<select id="business-chapter" required></select></label><div class="two"><label>Empresa<input id="business-name" required /></label><label>Segmento<input id="business-segment" required /></label></div><label>Nome do responsável<input id="business-owner-name" /></label><label>E-mail do responsável<input id="business-owner-email" type="email" /></label><label>Resumo para o cartão<input id="business-short" maxlength="180" required /></label><label>Descrição completa<textarea id="business-description" rows="5" required></textarea></label><div class="two"><label>WhatsApp<input id="business-whatsapp" placeholder="5512999999999" /></label><label>E-mail comercial<input id="business-contact-email" type="email" /></label></div><div class="two"><label>Site<input id="business-website" type="url" /></label><label>Instagram<input id="business-instagram" type="url" /></label></div><div class="two"><label>Facebook<input id="business-facebook" type="url" /></label><label>LinkedIn<input id="business-linkedin" type="url" /></label></div><label>Assinatura válida até<input id="business-paid-until" type="date" required /></label><div class="media-fields"><label>Logo da empresa <small>JPG, PNG ou WebP • até 5 MB</small><input id="business-logo-file" type="file" accept="image/jpeg,image/png,image/webp" required /></label><label>Imagem de capa <small>JPG, PNG ou WebP • até 5 MB</small><input id="business-cover-file" type="file" accept="image/jpeg,image/png,image/webp" /></label><label>Vídeo de apresentação <small>MP4 ou WebM • até 60 segundos e 30 MB</small><input id="business-video-file" type="file" accept="video/mp4,video/webm" /></label></div><button class="primary navy">Cadastrar e publicar no marketplace</button></form></article>
+        <article class="admin-panel"><h2>Novo evento da agenda</h2><form id="event-form"><label>Capítulo<select id="event-chapter" required></select></label><label>Título<input id="event-title" required /></label><label>Descrição<textarea id="event-description" rows="3"></textarea></label><div class="two"><label>Início<input id="event-start" type="datetime-local" required /></label><label>Término<input id="event-end" type="datetime-local" /></label></div><label>Imagem (URL)<input id="event-image" type="url" /></label><label>Link de inscrição<input id="event-registration" type="url" /></label><button class="primary navy">Publicar na agenda</button></form></article>
+        <article class="admin-panel"><h2>Dados cadastrados</h2><div id="admin-records" class="data-list"></div></article>
+      </section>
     </main>
   </section>
-  <script src="admin.js"></script>
+  <script type="module" src="admin.js"></script>
 </body>
 </html>
