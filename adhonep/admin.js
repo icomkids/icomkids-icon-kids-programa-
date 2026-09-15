@@ -159,7 +159,12 @@ document.querySelector('#business-form').addEventListener('submit', async (event
 document.querySelector('#event-form').addEventListener('submit', async (event) => {
   event.preventDefault(); setBusy(event.currentTarget, true); showMessage(statusMessage, 'Enviando a arte e publicando o evento...');
   try {
-    const payload = { chapter_id: value('#event-chapter'), title: value('#event-title'), description: value('#event-description'), speaker_name: value('#event-speaker') || null, location_name: value('#event-location'), address: value('#event-address'), starts_at: new Date(document.querySelector('#event-start').value).toISOString(), ends_at: new Date(document.querySelector('#event-end').value).toISOString(), registration_url: value('#event-registration') || null, published: true, created_by: profile.id };
+    const eventDate = value('#event-date'); const startTime = value('#event-start-time'); const endTime = value('#event-end-time');
+    const startsAt = new Date(`${eventDate}T${startTime}:00`); const endsAt = new Date(`${eventDate}T${endTime}:00`);
+    const durationMinutes = (endsAt - startsAt) / 60000;
+    if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) throw new Error('A hora de término deve ser posterior à hora de início, no mesmo dia.');
+    if (durationMinutes > 180) throw new Error('O evento pode ter duração máxima de três horas.');
+    const payload = { chapter_id: value('#event-chapter'), title: value('#event-title'), description: value('#event-description'), speaker_name: value('#event-speaker') || null, location_name: value('#event-location'), address: value('#event-address'), starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString(), registration_url: value('#event-registration') || null, published: true, created_by: profile.id };
     const { data: created, error } = await supabase.from('adh_events').insert(payload).select().single();
     if (error) throw error;
     const imageUrl = await uploadEventImage(created.id, document.querySelector('#event-image-file').files[0]);
