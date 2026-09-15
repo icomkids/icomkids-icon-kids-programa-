@@ -64,16 +64,6 @@ form.addEventListener('submit', async (event) => {
   try { await loadDashboard(data.user); } catch (loadError) { showMessage(message, loadError.message, 'error'); }
 });
 
-document.querySelector('#member-signup').addEventListener('click', async () => {
-  const email = document.querySelector('#member-email').value.trim();
-  const password = document.querySelector('#member-password').value;
-  const fullName = document.querySelector('#member-name').value.trim();
-  if (!fullName || !email || password.length < 8) return showMessage(message, 'Informe nome, e-mail e uma senha com pelo menos 8 caracteres.', 'error');
-  const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName }, emailRedirectTo: `${location.origin}/membros.html` } });
-  if (error) return showMessage(message, error.message, 'error');
-  if (data.session) await loadDashboard(data.user); else showMessage(message, 'Conta criada. Confira seu e-mail para confirmar o acesso.', 'success');
-});
-
 document.querySelector('#member-reset').addEventListener('click', async () => {
   const email = document.querySelector('#member-email').value.trim();
   if (!email) return showMessage(message, 'Informe seu e-mail primeiro.', 'error');
