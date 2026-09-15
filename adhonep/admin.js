@@ -11,6 +11,11 @@ const MEDIA_BUCKET = 'adhonep-business-media';
 const EVENT_MEDIA_BUCKET = 'adhonep-event-media';
 
 function options(items) { return items.map((x) => `<option value="${x.id}">${x.name} — ${x.city}</option>`).join(''); }
+function renderRows(target, rows, empty = 'Nenhum registro cadastrado.') {
+  target.replaceChildren();
+  if (!rows.length) { const item = document.createElement('p'); item.className = 'empty-admin-list'; item.textContent = empty; target.append(item); return; }
+  rows.forEach(({ title, detail, status }) => { const row = document.createElement('div'); row.className = 'admin-list-item'; const content = document.createElement('div'); const name = document.createElement('b'); const description = document.createElement('small'); name.textContent = title; description.textContent = detail; content.append(name, description); row.append(content); if (status) { const badge = document.createElement('span'); badge.className = `admin-badge ${status === 'Ativo' || status === 'Publicado' ? 'is-active' : ''}`; badge.textContent = status; row.append(badge); } target.append(row); });
+}
 function setBusy(form, busy) { form.querySelector('button[type="submit"],button:not([type])').disabled = busy; }
 function value(id) { return document.querySelector(id).value.trim(); }
 function fileExtension(file) { return (file.name.split('.').pop() || (file.type.startsWith('video/') ? 'mp4' : 'webp')).toLowerCase(); }
@@ -62,6 +67,7 @@ async function loadAdmin(user) {
   document.querySelector('#admin-description').textContent = isGeneral ? 'Você pode administrar toda a rede ADHONEP.' : 'Você administra empresários, agenda e avaliações do seu capítulo.';
   access.hidden = true; shell.hidden = false;
   await refreshData();
+  showAdminView('overview');
 }
 
 async function refreshData() {
@@ -73,8 +79,9 @@ async function refreshData() {
     businessQuery = businessQuery.in('chapter_id', managedChapterIds);
     eventQuery = eventQuery.in('chapter_id', managedChapterIds);
   }
-  const [{ data: chapterRows, error: chapterError }, { data: businesses, error: businessError }, { data: events, error: eventError }] = await Promise.all([chapterQuery, businessQuery, eventQuery]);
-  const error = chapterError || businessError || eventError; if (error) throw error;
+  let adminQuery = supabase.from('adh_profiles').select('id,full_name,phone,role').in('role', ['super_admin', 'chapter_admin']).order('full_name');
+  const [{ data: chapterRows, error: chapterError }, { data: businesses, error: businessError }, { data: events, error: eventError }, { data: admins, error: adminError }] = await Promise.all([chapterQuery, businessQuery, eventQuery, adminQuery]);
+  const error = chapterError || businessError || eventError || adminError; if (error) throw error;
   chapters = chapterRows || [];
   document.querySelector('#business-chapter').innerHTML = options(chapters);
   document.querySelector('#event-chapter').innerHTML = options(chapters);
@@ -86,6 +93,19 @@ async function refreshData() {
   [...(events || []).map((x) => ({ title: x.title, detail: `Evento • ${x.adh_chapters?.city || ''}` })), ...(businesses || []).map((x) => ({ title: x.name, detail: `${x.segment} • ${x.adh_chapters?.city || ''} • ${x.status}` }))].slice(0, 12).forEach((x) => {
     const row = document.createElement('div'); row.className = 'admin-list-item'; row.innerHTML = '<b></b><small></small>'; row.querySelector('b').textContent = x.title; row.querySelector('small').textContent = x.detail; records.append(row);
   });
+  renderRows(document.querySelector('#admin-chapters-list'), chapters.map((x) => ({ title: x.name, detail: `${x.city}/${x.state} • Líder: ${x.leader_name || 'a definir'}`, status: x.active ? 'Ativo' : 'Inativo' })), 'Nenhum capítulo cadastrado.');
+  renderRows(document.querySelector('#admin-leaders-list'), (admins || []).map((x) => ({ title: x.full_name || 'Administrador', detail: `${x.role === 'super_admin' ? 'Administrador geral' : 'Líder de capítulo'}${x.phone ? ` • ${x.phone}` : ''}`, status: 'Ativo' })), 'Nenhum administrador cadastrado.');
+  renderRows(document.querySelector('#admin-business-list'), (businesses || []).map((x) => ({ title: x.name, detail: `${x.segment} • ${x.adh_chapters?.city || ''}`, status: x.status === 'active' ? 'Ativo' : x.status })), 'Nenhum empresário cadastrado.');
+  renderRows(document.querySelector('#admin-events-list'), (events || []).map((x) => ({ title: x.title, detail: `${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(x.starts_at))} • ${x.adh_chapters?.city || ''}`, status: x.published ? 'Publicado' : 'Rascunho' })), 'Nenhum evento cadastrado. Use “Agenda e eventos” para publicar o próximo.');
+}
+
+function showAdminView(view) {
+  document.querySelectorAll('[data-panel-view]').forEach((panel) => { panel.hidden = !panel.dataset.panelView.split(' ').includes(view); });
+  document.querySelectorAll('[data-admin-view]').forEach((button) => button.classList.toggle('active', button.dataset.adminView === view));
+  const titles = { overview: 'Visão geral', administrators: 'Administradores', chapters: 'Capítulos', businesses: 'Empresários', sponsors: 'Patrocinadores', events: 'Agenda e eventos', calendar: 'Calendário' };
+  document.querySelector('#admin-section-title').textContent = titles[view] || 'Visão geral';
+  const listTitle = document.querySelector('#business-list-title'); if (listTitle) listTitle.textContent = view === 'sponsors' ? 'Patrocinadores em destaque' : 'Empresários publicados';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 document.querySelector('#admin-login').addEventListener('submit', async (event) => {
@@ -150,7 +170,8 @@ document.querySelector('#event-form').addEventListener('submit', async (event) =
   finally { setBusy(event.currentTarget, false); }
 });
 
-document.querySelectorAll('[data-scroll-to]').forEach((button) => button.addEventListener('click', () => document.getElementById(button.dataset.scrollTo)?.scrollIntoView({ behavior: 'smooth', block: 'start' })));
+document.querySelectorAll('[data-admin-view]').forEach((button) => button.addEventListener('click', () => showAdminView(button.dataset.adminView)));
+document.querySelectorAll('[data-scroll-to]').forEach((button) => button.addEventListener('click', () => showAdminView('events')));
 
 document.querySelector('#admin-exit').addEventListener('click', async () => { await supabase.auth.signOut(); shell.hidden = true; access.hidden = false; });
 const { data: { session } } = await supabase.auth.getSession();
