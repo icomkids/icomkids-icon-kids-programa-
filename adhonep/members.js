@@ -2,6 +2,7 @@ import { supabase, showMessage } from './supabase-client.js';
 
 const login = document.querySelector('#member-login');
 const dashboard = document.querySelector('#member-dashboard');
+const memberHeader = document.querySelector('.members-top');
 const form = document.querySelector('#member-access');
 const message = document.querySelector('#member-message');
 const businessList = document.querySelector('#business-list');
@@ -54,7 +55,7 @@ async function loadDashboard(user) {
   document.querySelector('.member-avatar > span').textContent = currentProfile.full_name.split(' ').map((x) => x[0]).join('').slice(0, 2).toUpperCase();
   document.querySelectorAll('.business-only').forEach((item) => { item.hidden = currentProfile.role !== 'business'; });
   document.querySelector('#feedback-business').innerHTML = businesses.map((x) => `<option value="${x.id}">${x.name}</option>`).join('');
-  login.hidden = true; dashboard.hidden = false;
+  login.hidden = true; dashboard.hidden = false; memberHeader.hidden = true;
 }
 
 form.addEventListener('submit', async (event) => {
@@ -71,7 +72,7 @@ document.querySelector('#member-reset').addEventListener('click', async () => {
   showMessage(message, error ? error.message : 'Enviamos as instruções para seu e-mail.', error ? 'error' : 'success');
 });
 
-document.querySelector('#member-exit').addEventListener('click', async () => { await supabase.auth.signOut(); dashboard.hidden = true; login.hidden = false; });
+document.querySelector('#member-exit').addEventListener('click', async () => { await supabase.auth.signOut(); dashboard.hidden = true; login.hidden = false; memberHeader.hidden = false; });
 document.querySelector('[data-copy]').addEventListener('click', async (event) => { await navigator.clipboard.writeText(document.querySelector('.referral-card strong').textContent); event.currentTarget.textContent = 'Link copiado ✓'; });
 document.querySelector('#business-search').addEventListener('input', (event) => { const term = event.target.value.toLocaleLowerCase('pt-BR'); renderBusinesses(businesses.filter((x) => `${x.name} ${x.segment} ${x.adh_chapters?.city || ''}`.toLocaleLowerCase('pt-BR').includes(term))); });
 document.querySelector('#feedback-form').addEventListener('submit', async (event) => {
