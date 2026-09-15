@@ -24,3 +24,14 @@ html{overflow-x:hidden;-webkit-text-size-adjust:100%}body{overflow-x:hidden}img,
 @media (max-width:430px){
   :root{--mobile-pad:16px}.topbar{grid-template-columns:1fr auto;padding-inline:16px}.topbar .site-logo{width:145px}.topbar>.outline{font-size:9px}.hero-content{padding-top:195px}.hero h1{font-size:45px}.hero p{font-size:14px}.trust{font-size:10px}.trust span{font-size:18px}.vale-photo-wall{grid-template-columns:1fr!important}.vale-photo-wall .featured-authority{grid-column:auto!important}.vale-photo-wall figure{aspect-ratio:4/3}.member-metrics{grid-template-columns:1fr 1fr}.member-metrics article{padding:16px 12px}.member-metrics b{font-size:31px}.admin-sidebar{grid-template-columns:95px 1fr auto}.admin-sidebar>img{width:95px}.admin-workspace .metrics{grid-template-columns:1fr}.metrics article{display:grid;grid-template-columns:1fr auto;align-items:center}.metrics strong{grid-row:1/3;grid-column:2}.event-time-fields{grid-template-columns:1fr 1fr}.sponsor-visual{min-height:360px!important}.hero-numbers{grid-template-columns:1fr!important}.hero-numbers>div:last-child{grid-column:auto}.sponsors-header nav a:nth-child(2){display:none}
 }
+/* Hierarquia institucional: título, vídeo, headline e conteúdo. */
+.about-adhonep{display:flex;flex-direction:column;align-items:stretch;gap:clamp(30px,4vw,56px)}
+.about-adhonep-title,.about-adhonep-copy,.about-adhonep-media{position:relative;z-index:1;width:100%;max-width:1120px;margin-left:auto;margin-right:auto}
+.about-adhonep-title{text-align:center}
+.about-adhonep-title .eyebrow{justify-content:center}
+.about-adhonep-title h2{line-height:.88}
+.about-adhonep-media{margin-top:0;max-width:1040px}
+.about-adhonep-copy{max-width:940px}
+.about-adhonep-copy>h3{margin:0 auto 30px;text-align:center}
+.about-adhonep-copy>p{max-width:840px;margin:14px auto;text-align:center}
+.about-principles{max-width:940px;margin:34px auto 0}
