@@ -59,4 +59,7 @@ else {
   businesses = businessRows || [];
   chapter.innerHTML += [...(chapterRows || [])].map(x => `<option value="${x.id}">${x.name}</option>`).join('');
   render();
+  const requested = new URLSearchParams(location.search).get('empresa');
+  const selected = businesses.find(item => item.slug === requested || item.id === requested);
+  if (selected) openDetail(selected);
 }

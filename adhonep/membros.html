@@ -3,6 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#061827" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="manifest" href="manifest.webmanifest" />
   <meta name="robots" content="noindex,nofollow" />
   <title>Área de membros — ADHONEP Taubaté</title>
   <link rel="stylesheet" href="styles.css" />
@@ -12,6 +17,7 @@
   <link rel="stylesheet" href="portal-live.css" />
   <link rel="stylesheet" href="members-actions.css" />
   <link rel="stylesheet" href="mobile-optimization.css" />
+  <link rel="stylesheet" href="member-functionality.css" />
 </head>
 <body class="members-page">
   <header class="members-top"><a href="index.html"><img src="assets/logo-adhonep-fundo-branco.png" alt="ADHONEP Taubaté" /></a><div><a href="index.html">Voltar ao site</a><span>AMBIENTE SEGURO</span></div></header>
@@ -29,11 +35,25 @@
       </div>
     </section>
     <section class="member-dashboard" id="member-dashboard" hidden>
-      <aside><img src="assets/logo-adhonep-expansao-branca.png" alt="ADHONEP Taubaté" /><button class="active">Visão geral</button><button>Encontrar empresas</button><button>Minhas indicações</button><button class="business-only">Minha empresa</button><button class="business-only">Contatos recebidos</button><button class="business-only">Avaliações</button><button id="member-exit">Sair</button></aside>
-      <div class="member-content"><div class="dashboard-head"><div><span class="eyebrow" id="member-label">PAINEL DO MEMBRO</span><h1 id="member-title">Olá, André.</h1><p id="member-copy">Acompanhe as pessoas e oportunidades que chegaram através das suas indicações.</p></div><div class="member-avatar"><span>AN</span><div><b>André Nogueira</b><small>Membro • Taubaté</small></div></div></div>
-        <div class="member-metrics"><article><small>CLIQUES NO MEU LINK</small><b id="metric-clicks">0</b><span>registrados</span></article><article><small>CADASTROS INDICADOS</small><b id="metric-registrations">0</b><span>pela sua indicação</span></article><article><small>NEGÓCIOS CONVERTIDOS</small><b id="metric-conversions">0</b><span>validados</span></article><article><small>MEUS PONTOS</small><b id="metric-points">0</b><span>saldo atual</span></article></div>
-        <section class="referral-card"><div class="referral-icon">↗</div><div><small>SEU LINK DE INDICAÇÃO</small><strong>adhonepexpansao.com/convite/ANDRE12</strong><p>Cadastros e negócios iniciados por este endereço serão atribuídos a você.</p></div><button data-copy>Copiar link</button></section>
-        <section class="member-grid"><article><h2>Encontre negócios</h2><input id="business-search" placeholder="Busque por segmento, cidade ou empresa" /><div id="business-list" class="data-list"><p>Carregando empresas...</p></div></article><article><h2>Qualidade da comunidade</h2><p>Após uma experiência, dê uma nota anônima e envie um relato privado. O empresário não vê quem avaliou; o líder responsável pode identificar o autor e tratar o caso.</p><form id="feedback-form"><label>Empresa<select id="feedback-business" required></select></label><label>Nota<select id="feedback-rating" required><option value="5">★★★★★ Excelente</option><option value="4">★★★★ Muito bom</option><option value="3">★★★ Regular</option><option value="2">★★ Ruim</option><option value="1">★ Muito ruim</option></select></label><label>Relato privado<textarea id="feedback-message" rows="4"></textarea></label><button class="outline-dark">Enviar avaliação</button><p class="auth-message" id="feedback-status" hidden></p></form></article></section>
+      <aside><img src="assets/logo-adhonep-expansao-branca.png" alt="ADHONEP Taubaté" /><button class="active" data-member-view="overview">Visão geral</button><button data-member-view="businesses">Empresas</button><button data-member-view="referrals">Indicações</button><button class="business-only" data-member-view="company">Minha empresa</button><button class="business-only" data-member-view="contacts">Contatos</button><button data-member-view="reviews">Avaliações</button><button id="member-exit">Sair</button></aside>
+      <div class="member-content">
+        <div class="dashboard-head"><div><span class="eyebrow" id="member-label">PAINEL DO MEMBRO</span><h1 id="member-title">Bem-vindo.</h1><p id="member-copy">Acompanhe suas indicações e encontre negócios da comunidade.</p></div><div class="member-avatar"><span>AD</span><div><b>Membro ADHONEP</b><small id="member-role-label">Membro • Taubaté</small></div></div></div>
+
+        <section class="member-view active" data-member-panel="overview">
+          <div class="member-metrics"><article><small>CLIQUES NO MEU LINK</small><b id="metric-clicks">0</b><span>registrados</span></article><article><small>CADASTROS INDICADOS</small><b id="metric-registrations">0</b><span>pela sua indicação</span></article><article><small>NEGÓCIOS CONVERTIDOS</small><b id="metric-conversions">0</b><span>validados</span></article><article><small>MEUS PONTOS</small><b id="metric-points">0</b><span>saldo atual</span></article></div>
+          <section class="referral-card"><div class="referral-icon">↗</div><div><small>SEU LINK DE INDICAÇÃO</small><strong id="member-referral-link">Carregando...</strong><p>Compartilhe este endereço. Os acessos e negócios iniciados por ele serão atribuídos a você.</p></div><button type="button" data-copy>Copiar link</button></section>
+          <div class="member-welcome-grid"><article><span>01</span><h2>Encontre uma empresa</h2><p>Pesquise por segmento ou cidade e indique soluções confiáveis para sua rede.</p><button type="button" data-go-member-view="businesses">Ver empresas →</button></article><article><span>02</span><h2>Acompanhe resultados</h2><p>Consulte cliques, contatos e conversões originados pelas suas indicações.</p><button type="button" data-go-member-view="referrals">Minhas indicações →</button></article></div>
+        </section>
+
+        <section class="member-view" data-member-panel="businesses" hidden><div class="member-section-head"><span>EMPRESÁRIOS DA COMUNIDADE</span><h2>Encontre e indique negócios.</h2><p>Escolha uma empresa, conheça sua apresentação completa e compartilhe usando o seu código de indicação.</p></div><input class="member-search" id="business-search" placeholder="Busque por empresa, segmento ou cidade" /><div id="business-list" class="member-business-grid"><p>Carregando empresas...</p></div></section>
+
+        <section class="member-view" data-member-panel="referrals" hidden><div class="member-section-head"><span>MINHAS INDICAÇÕES</span><h2>Acompanhe cada oportunidade.</h2><p>Veja quais empresas receberam suas indicações e o estágio de cada contato.</p></div><div id="member-referrals-list" class="member-timeline"><p>Carregando indicações...</p></div></section>
+
+        <section class="member-view business-only" data-member-panel="company" hidden><div class="member-section-head"><span>PERFIL EMPRESARIAL</span><h2>Minha empresa na comunidade.</h2><p>Acompanhe como seu negócio aparece no marketplace. Alterações de conteúdo podem ser solicitadas ao líder do capítulo.</p></div><div id="member-company-list" class="member-company-list"><p>Carregando perfil empresarial...</p></div></section>
+
+        <section class="member-view business-only" data-member-panel="contacts" hidden><div class="member-section-head"><span>OPORTUNIDADES RECEBIDAS</span><h2>Contatos enviados ao seu negócio.</h2><p>Consulte os pedidos e acompanhe cada oportunidade até a conversão.</p></div><div id="member-contacts-list" class="member-timeline"><p>Carregando contatos...</p></div></section>
+
+        <section class="member-view" data-member-panel="reviews" hidden><div class="member-section-head"><span>QUALIDADE DA COMUNIDADE</span><h2>Avalie uma experiência.</h2><p>Sua identidade não aparece para o empresário. O líder do capítulo pode identificá-la para tratar elogios, problemas ou denúncias com responsabilidade.</p></div><div class="member-review-layout"><form id="feedback-form"><label>Empresa<select id="feedback-business" required></select></label><label>Nota<select id="feedback-rating" required><option value="5">★★★★★ Excelente</option><option value="4">★★★★ Muito bom</option><option value="3">★★★ Regular</option><option value="2">★★ Ruim</option><option value="1">★ Muito ruim</option></select></label><label>Relato privado<textarea id="feedback-message" rows="5" placeholder="Conte como foi sua experiência"></textarea></label><label class="attention-check"><input id="feedback-attention" type="checkbox" /> Este relato precisa da atenção do líder do capítulo</label><button class="primary navy">Enviar avaliação privada</button><p class="auth-message" id="feedback-status" hidden></p></form><div><h3>Minhas avaliações</h3><div id="member-feedback-list" class="member-timeline"><p>Carregando avaliações...</p></div></div></div></section>
       </div>
     </section>
   </main>
