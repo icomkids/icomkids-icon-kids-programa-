@@ -30,12 +30,12 @@ html{overflow-x:hidden;-webkit-text-size-adjust:100%}body{overflow-x:hidden}img,
 .about-adhonep-title{text-align:center}
 .about-adhonep-title .eyebrow{justify-content:center}
 .about-adhonep-title h2{line-height:.88}
-.about-adhonep-media{margin-top:0;max-width:780px;padding:16px 16px 12px}
-.about-adhonep-media .video-frame{aspect-ratio:16/9;max-height:430px}
+.about-adhonep-media{width:min(90%,560px);margin-top:0;padding:10px 10px 8px}
+.about-adhonep-media .video-frame{aspect-ratio:16/9;max-height:304px}
 .about-adhonep-media .video-caption{padding-top:14px}
 .about-adhonep-copy{max-width:940px}
 .about-adhonep-copy>h3{margin:0 auto 30px;text-align:center}
 .about-adhonep-copy>p{max-width:840px;margin:14px auto;text-align:center}
 .about-principles{max-width:940px;margin:34px auto 0}
 .members-top[hidden]{display:none!important}
-@media(max-width:650px){.about-adhonep-media{width:100%;max-width:560px;padding:7px 7px 11px}.about-adhonep-media .video-frame{max-height:none}.about-adhonep-media .video-caption{padding-top:11px}}
+@media(max-width:650px){.about-adhonep-media{width:86%;max-width:440px;padding:5px 5px 8px}.about-adhonep-media .video-frame{max-height:none}.about-adhonep-media .video-caption{padding-top:8px}}
