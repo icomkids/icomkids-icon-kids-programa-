@@ -138,15 +138,15 @@ document.querySelector('#member-reset').addEventListener('click', async () => {
   showMessage(message, error ? error.message : 'Enviamos as instruções para seu e-mail.', error ? 'error' : 'success');
 });
 document.querySelector('#member-exit').addEventListener('click', async () => { await supabase.auth.signOut(); dashboard.hidden = true; login.hidden = false; memberHeader.hidden = false; });
-document.querySelector('[data-copy]').addEventListener('click', async (event) => { await navigator.clipboard.writeText(document.querySelector('#member-referral-link').textContent); event.currentTarget.textContent = 'Link copiado ✓'; });
+document.querySelector('[data-copy]').addEventListener('click', async (event) => { const button = event.currentTarget; await navigator.clipboard.writeText(document.querySelector('#member-referral-link').textContent); button.textContent = 'Link copiado ✓'; });
 document.querySelector('#business-search').addEventListener('input', (event) => { const term = event.target.value.toLocaleLowerCase('pt-BR'); renderBusinesses(businesses.filter((business) => `${business.name} ${business.segment} ${business.adh_chapters?.city || ''}`.toLocaleLowerCase('pt-BR').includes(term))); });
 businessList.addEventListener('click', async (event) => { const link = event.target.closest('[data-refer-business]'); if (!link) return; event.preventDefault(); await recordReferral(link.dataset.referBusiness); location.href = link.href; });
 document.querySelector('#feedback-form').addEventListener('submit', async (event) => {
-  event.preventDefault(); const status = document.querySelector('#feedback-status');
+  event.preventDefault(); const form = event.currentTarget; const status = document.querySelector('#feedback-status');
   const payload = { business_id: document.querySelector('#feedback-business').value, author_id: currentProfile.id, rating: Number(document.querySelector('#feedback-rating').value), message: document.querySelector('#feedback-message').value.trim() || null, requires_attention: document.querySelector('#feedback-attention').checked };
   const { error } = await supabase.from('adh_feedback').upsert(payload, { onConflict: 'business_id,author_id' });
   showMessage(status, error ? error.message : 'Avaliação registrada de forma privada.', error ? 'error' : 'success');
-  if (!error) { event.currentTarget.reset(); await loadFeedbackHistory(); }
+  if (!error) { form.reset(); await loadFeedbackHistory(); }
 });
 
 const { data: { user }, error: authError } = await supabase.auth.getUser();

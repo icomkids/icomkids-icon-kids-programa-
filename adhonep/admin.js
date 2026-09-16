@@ -16,7 +16,10 @@ function renderRows(target, rows, empty = 'Nenhum registro cadastrado.') {
   if (!rows.length) { const item = document.createElement('p'); item.className = 'empty-admin-list'; item.textContent = empty; target.append(item); return; }
   rows.forEach(({ title, detail, status }) => { const row = document.createElement('div'); row.className = 'admin-list-item'; const content = document.createElement('div'); const name = document.createElement('b'); const description = document.createElement('small'); name.textContent = title; description.textContent = detail; content.append(name, description); row.append(content); if (status) { const badge = document.createElement('span'); badge.className = `admin-badge ${status === 'Ativo' || status === 'Publicado' ? 'is-active' : ''}`; badge.textContent = status; row.append(badge); } target.append(row); });
 }
-function setBusy(form, busy) { form.querySelector('button[type="submit"],button:not([type])').disabled = busy; }
+function setBusy(form, busy) {
+  const button = form?.querySelector('button[type="submit"],button:not([type])');
+  if (button) button.disabled = busy;
+}
 function value(id) { return document.querySelector(id).value.trim(); }
 function fileExtension(file) { return (file.name.split('.').pop() || (file.type.startsWith('video/') ? 'mp4' : 'webp')).toLowerCase(); }
 async function videoDuration(file) {
@@ -116,22 +119,28 @@ document.querySelector('#admin-login').addEventListener('submit', async (event) 
 });
 
 document.querySelector('#chapter-form').addEventListener('submit', async (event) => {
-  event.preventDefault(); setBusy(event.currentTarget, true);
-  const { error } = await supabase.from('adh_chapters').insert({ name: document.querySelector('#chapter-name').value.trim(), city: document.querySelector('#chapter-city').value.trim(), state: document.querySelector('#chapter-state').value.trim().toUpperCase(), leader_name: document.querySelector('#chapter-leader').value.trim() || null });
-  setBusy(event.currentTarget, false); showMessage(statusMessage, error ? error.message : 'Capítulo cadastrado.', error ? 'error' : 'success'); if (!error) { event.currentTarget.reset(); await refreshData(); }
+  event.preventDefault(); const form = event.currentTarget; setBusy(form, true);
+  try {
+    const { error } = await supabase.from('adh_chapters').insert({ name: document.querySelector('#chapter-name').value.trim(), city: document.querySelector('#chapter-city').value.trim(), state: document.querySelector('#chapter-state').value.trim().toUpperCase(), leader_name: document.querySelector('#chapter-leader').value.trim() || null });
+    if (error) throw error;
+    showMessage(statusMessage, 'Capítulo cadastrado.', 'success'); form.reset(); await refreshData();
+  } catch (error) { showMessage(statusMessage, `Não foi possível cadastrar o capítulo: ${error.message}`, 'error'); }
+  finally { setBusy(form, false); }
 });
 
 document.querySelector('#leader-form').addEventListener('submit', async (event) => {
-  event.preventDefault(); setBusy(event.currentTarget, true);
-  const { data, error } = await supabase.functions.invoke('manage-adhonep-user', { body: { role: 'chapter_admin', chapter_id: document.querySelector('#leader-chapter').value, full_name: value('#leader-name'), email: value('#leader-email') } });
-  setBusy(event.currentTarget, false);
-  const failure = error?.message || data?.error;
-  showMessage(statusMessage, failure || (data.invited ? 'Líder cadastrado e convite enviado por e-mail.' : 'Líder existente vinculado ao capítulo.'), failure ? 'error' : 'success');
-  if (!failure) event.currentTarget.reset();
+  event.preventDefault(); const form = event.currentTarget; setBusy(form, true);
+  try {
+    const { data, error } = await supabase.functions.invoke('manage-adhonep-user', { body: { role: 'chapter_admin', chapter_id: document.querySelector('#leader-chapter').value, full_name: value('#leader-name'), email: value('#leader-email') } });
+    const failure = error?.message || data?.error;
+    if (failure) throw new Error(failure);
+    showMessage(statusMessage, data.invited ? 'Líder cadastrado e convite enviado por e-mail.' : 'Líder existente vinculado ao capítulo.', 'success'); form.reset(); await refreshData();
+  } catch (error) { showMessage(statusMessage, `Não foi possível convidar o líder: ${error.message}`, 'error'); }
+  finally { setBusy(form, false); }
 });
 
 document.querySelector('#business-form').addEventListener('submit', async (event) => {
-  event.preventDefault(); setBusy(event.currentTarget, true); showMessage(statusMessage, 'Validando e enviando os arquivos...');
+  event.preventDefault(); const form = event.currentTarget; setBusy(form, true); showMessage(statusMessage, 'Validando e enviando os arquivos...');
   const logo = document.querySelector('#business-logo-file').files[0];
   const cover = document.querySelector('#business-cover-file').files[0];
   const video = document.querySelector('#business-video-file').files[0];
@@ -151,13 +160,13 @@ document.querySelector('#business-form').addEventListener('submit', async (event
       const { error: linkError } = await supabase.from('adh_businesses').update({ owner_id: owner.user_id }).eq('id', business.id);
       if (linkError) throw linkError;
     }
-    showMessage(statusMessage, 'Empresário publicado no marketplace com sucesso.', 'success'); event.currentTarget.reset(); await refreshData();
+    showMessage(statusMessage, 'Empresário publicado no marketplace com sucesso.', 'success'); form.reset(); await refreshData();
   } catch (error) { showMessage(statusMessage, error.message, 'error'); }
-  finally { setBusy(event.currentTarget, false); }
+  finally { setBusy(form, false); }
 });
 
 document.querySelector('#event-form').addEventListener('submit', async (event) => {
-  event.preventDefault(); setBusy(event.currentTarget, true); showMessage(statusMessage, 'Enviando a arte e publicando o evento...');
+  event.preventDefault(); const form = event.currentTarget; setBusy(form, true); showMessage(statusMessage, 'Enviando a arte e publicando o evento...');
   try {
     const eventDate = value('#event-date'); const startTime = value('#event-start-time'); const endTime = value('#event-end-time');
     const startsAt = new Date(`${eventDate}T${startTime}:00`); const endsAt = new Date(`${eventDate}T${endTime}:00`);
@@ -170,9 +179,9 @@ document.querySelector('#event-form').addEventListener('submit', async (event) =
     const imageUrl = await uploadEventImage(created.id, document.querySelector('#event-image-file').files[0]);
     const { error: updateError } = await supabase.from('adh_events').update({ image_url: imageUrl }).eq('id', created.id);
     if (updateError) throw updateError;
-    showMessage(statusMessage, 'Evento publicado. A página pública mostrará este evento na data correta.', 'success'); event.currentTarget.reset(); await refreshData();
+    showMessage(statusMessage, 'Evento publicado. A página pública mostrará este evento na data correta.', 'success'); form.reset(); await refreshData();
   } catch (error) { showMessage(statusMessage, error.message, 'error'); }
-  finally { setBusy(event.currentTarget, false); }
+  finally { setBusy(form, false); }
 });
 
 document.querySelectorAll('[data-admin-view]').forEach((button) => button.addEventListener('click', () => showAdminView(button.dataset.adminView)));
