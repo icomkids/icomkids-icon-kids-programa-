@@ -3,8 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.106.0";
 const url = Deno.env.get("SUPABASE_URL")!;
 const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const resendKey = Deno.env.get("ADHONEP_RESEND_API_KEY") || Deno.env.get("RESEND_API_KEY");
-const from = Deno.env.get("ADHONEP_EMAIL_FROM") || Deno.env.get("RESEND_FROM_EMAIL");
-const site = "https://adhonep-expansao.hojetocto.chatgpt.site";
+const from = Deno.env.get("ADHONEP_EMAIL_FROM") || "ADHONEP Expansão <suporte@xn--adhonepexpanso-2hb.com.br>";
+const site = "https://xn--adhonepexpanso-2hb.com.br";
 const db = createClient(url, key, { auth: { persistSession: false } });
 
 const escapeHtml = (value: unknown) => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]!));

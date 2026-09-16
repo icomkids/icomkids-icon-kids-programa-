@@ -11,7 +11,7 @@ const escapeHtml = (value: unknown) => String(value ?? "").replace(/[&<>"']/g, (
 
 async function sendInvite(email: string, fullName: string, actionLink: string, chapterName: string) {
   const apiKey = Deno.env.get("ADHONEP_RESEND_API_KEY") || Deno.env.get("RESEND_API_KEY");
-  const from = Deno.env.get("ADHONEP_EMAIL_FROM") || Deno.env.get("RESEND_FROM_EMAIL");
+  const from = Deno.env.get("ADHONEP_EMAIL_FROM") || "ADHONEP Expansão <suporte@xn--adhonepexpanso-2hb.com.br>";
   if (!apiKey || !from) throw new Error("O Resend ainda não está configurado para a função de convites.");
   const site = "https://xn--adhonepexpanso-2hb.com.br";
   const html = `<!doctype html><html><body style="margin:0;background:#eef2f5;font-family:Arial,sans-serif;color:#102a43"><table width="100%" role="presentation"><tr><td align="center" style="padding:32px 12px"><table width="600" role="presentation" style="max-width:600px;background:#fff;border-radius:16px;overflow:hidden"><tr><td align="center" style="background:#092b4c;padding:30px"><img src="${site}/assets/logo-adhonep-expansao-branca.png" width="190" alt="ADHONEP Expansão"></td></tr><tr><td style="padding:38px"><p style="color:#bd8d32;font-size:12px;font-weight:bold;letter-spacing:2px">CONVITE DE LIDERANÇA</p><h1 style="font:32px Georgia,serif;margin:12px 0">Bem-vindo à ADHONEP Expansão.</h1><p style="font-size:17px;line-height:1.7">Olá, <strong>${escapeHtml(fullName)}</strong>. Você foi convidado para administrar o <strong>${escapeHtml(chapterName)}</strong>.</p><p style="font-size:16px;line-height:1.7">Defina sua senha para acessar o painel, cadastrar empresários, publicar eventos e acompanhar indicações do capítulo.</p><p style="margin:32px 0"><a href="${escapeHtml(actionLink)}" style="display:inline-block;background:#c79a42;color:#092b4c;text-decoration:none;font-weight:bold;padding:15px 24px;border-radius:7px">Criar minha senha</a></p><p style="font-size:13px;color:#6b7780;border-top:1px solid #e5e7eb;padding-top:20px">Se você não esperava este convite, ignore esta mensagem.</p></td></tr></table></td></tr></table></body></html>`;
@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
   }
   let invited = false;
   if (!userId) {
-    const redirectTo = `${req.headers.get("origin") || "https://adhonepexpansão.com.br"}/membros.html`;
+    const redirectTo = `${req.headers.get("origin") || "https://xn--adhonepexpanso-2hb.com.br"}/membros.html`;
     const { data, error } = await admin.auth.admin.generateLink({ type: "invite", email, options: { redirectTo, data: { full_name: fullName } } });
     if (error || !data.user || !data.properties?.action_link) return reply({ error: error?.message || "Não foi possível gerar o convite" }, 400);
     userId = data.user.id;

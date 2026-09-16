@@ -1,5 +1,5 @@
 export const corsHeaders = {
-  "Access-Control-Allow-Origin": Deno.env.get("ADHONEP_SITE_URL") || "https://adhonep-expansao.hojetocto.chatgpt.site",
+  "Access-Control-Allow-Origin": Deno.env.get("ADHONEP_SITE_URL") || "https://xn--adhonepexpanso-2hb.com.br",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
