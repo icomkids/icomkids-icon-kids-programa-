@@ -42,7 +42,7 @@
         <button data-admin-view="events">Agenda e eventos</button>
         <button data-admin-view="calendar">Calendário</button>
       </nav>
-      <button class="admin-exit" id="admin-exit">Sair da demonstração</button>
+      <button class="admin-exit" id="admin-exit">Sair do painel</button>
     </aside>
     <main class="admin-workspace">
       <div class="dash-title"><div><small id="admin-scope">ADMINISTRAÇÃO GERAL • TODOS OS CAPÍTULOS</small><h1 id="admin-greeting">Bom dia, administrador geral.</h1><p id="admin-description">Você pode administrar capítulos, gestores, empresários e conteúdos de toda a rede.</p><h2 class="admin-section-title" id="admin-section-title">Visão geral</h2></div><button type="button" data-scroll-to="event-manager">+ Novo evento</button></div>
@@ -51,7 +51,7 @@
       <p class="auth-message admin-status" id="admin-status" hidden></p>
       <section class="admin-panels">
         <article class="admin-panel admin-wide" data-panel-view="overview"><span class="panel-kicker">RESUMO OPERACIONAL</span><h2>Atividade da plataforma</h2><p class="panel-intro">Acompanhe os últimos eventos e empresários publicados em todos os capítulos do seu acesso.</p><div id="admin-records" class="data-list"></div></article>
-        <article class="admin-panel general-only" data-panel-view="chapters"><h2>Novo capítulo</h2><form id="chapter-form"><label>Nome<input id="chapter-name" required /></label><div class="two"><label>Cidade<input id="chapter-city" required /></label><label>Estado<input id="chapter-state" value="SP" maxlength="2" required /></label></div><label>Nome do líder<input id="chapter-leader" /></label><button class="primary navy">Cadastrar capítulo</button></form></article>
+        <article class="admin-panel general-only" data-panel-view="chapters"><h2 id="chapter-form-title">Novo capítulo</h2><form id="chapter-form"><label>Nome<input id="chapter-name" required /></label><div class="two"><label>Cidade<input id="chapter-city" required /></label><label>Estado<input id="chapter-state" value="SP" maxlength="2" required /></label></div><label>Nome do líder<input id="chapter-leader" /></label><div class="form-actions"><button class="primary navy" id="chapter-submit">Cadastrar capítulo</button><button class="admin-cancel" id="chapter-cancel" type="button" hidden>Cancelar edição</button></div></form></article>
         <article class="admin-panel general-only" data-panel-view="chapters"><h2>Capítulos cadastrados</h2><div id="admin-chapters-list" class="data-list"></div></article>
         <article class="admin-panel general-only" data-panel-view="administrators"><h2>Adicionar líder de capítulo</h2><form id="leader-form"><label>Capítulo<select id="leader-chapter" required></select></label><label>Nome completo<input id="leader-name" required /></label><label>E-mail de acesso<input id="leader-email" type="email" required /></label><p class="field-note">O líder receberá um convite por e-mail e administrará somente o capítulo escolhido.</p><button class="primary navy">Convidar administrador</button></form></article>
         <article class="admin-panel general-only" data-panel-view="administrators"><h2>Administradores cadastrados</h2><div id="admin-leaders-list" class="data-list"></div></article>
