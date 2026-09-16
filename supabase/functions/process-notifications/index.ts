@@ -31,7 +31,7 @@ Deno.serve(async (request) => {
     if (!sub?.active) { await db.from("adh_email_outbox").update({ status: "cancelled" }).eq("id", item.id); continue; }
     await db.from("adh_email_outbox").update({ status: "processing", attempts: item.attempts + 1 }).eq("id", item.id).eq("status", "pending");
     try {
-      const response = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ from, to: [sub.email], subject: item.subject, html: emailHtml(item) }) });
+      const response = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ from, reply_to: "suporte@xn--adhonepexpanso-2hb.com.br", to: [sub.email], subject: item.subject, html: emailHtml(item) }) });
       const result = await response.json();
       if (!response.ok) throw new Error(JSON.stringify(result));
       await db.from("adh_email_outbox").update({ status: "sent", sent_at: new Date().toISOString(), provider_message_id: result.id, last_error: null }).eq("id", item.id); sent++;
