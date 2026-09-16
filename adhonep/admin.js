@@ -36,6 +36,11 @@ function setBusy(form, busy) {
   const button = form?.querySelector('button[type="submit"],button:not([type])');
   if (button) button.disabled = busy;
 }
+async function functionFailure(error, data) {
+  if (data?.error) return data.error;
+  try { const body = await error?.context?.clone?.().json(); if (body?.error) return body.error; } catch { /* resposta sem JSON */ }
+  return error?.message || null;
+}
 function value(id) { return document.querySelector(id).value.trim(); }
 function setValue(id, next = '') { const field = document.querySelector(id); if (field) field.value = next ?? ''; }
 function toLocalParts(dateValue) {
@@ -283,7 +288,7 @@ document.querySelector('#leader-form').addEventListener('submit', async (event) 
   event.preventDefault(); const form = event.currentTarget; setBusy(form, true);
   try {
     const { data, error } = await supabase.functions.invoke('manage-adhonep-user', { body: { role: 'chapter_admin', chapter_id: document.querySelector('#leader-chapter').value, full_name: value('#leader-name'), email: value('#leader-email') } });
-    const failure = error?.message || data?.error;
+    const failure = await functionFailure(error, data);
     if (failure) throw new Error(failure);
     showMessage(statusMessage, data.invited ? 'Líder cadastrado e convite enviado por e-mail.' : 'Líder existente vinculado ao capítulo.', 'success'); form.reset(); await refreshData();
   } catch (error) { showMessage(statusMessage, `Não foi possível convidar o líder: ${error.message}`, 'error'); }
@@ -311,7 +316,7 @@ document.querySelector('#business-form').addEventListener('submit', async (event
     const ownerEmail = value('#business-owner-email');
     if (ownerEmail) {
       const { data: owner, error: ownerError } = await supabase.functions.invoke('manage-adhonep-user', { body: { role: 'business', chapter_id: payload.chapter_id, full_name: value('#business-owner-name') || payload.name, email: ownerEmail } });
-      if (ownerError || owner?.error) throw new Error(owner?.error || ownerError.message);
+      const ownerFailure = await functionFailure(ownerError, owner); if (ownerFailure) throw new Error(ownerFailure);
       const { error: linkError } = await supabase.from('adh_businesses').update({ owner_id: owner.user_id }).eq('id', business.id);
       if (linkError) throw linkError;
     }
