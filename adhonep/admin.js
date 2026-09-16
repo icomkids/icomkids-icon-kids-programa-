@@ -8,6 +8,7 @@ let profile;
 let chapters = [];
 let businesses = [];
 let events = [];
+let financialReferrals = [];
 let managedChapterIds = [];
 let editingChapterId = null;
 let editingBusinessId = null;
@@ -125,6 +126,43 @@ async function removeStoredFolder(bucket, id) {
   const paths = (data || []).map((file) => `${id}/${file.name}`); if (paths.length) { const { error: removeError } = await supabase.storage.from(bucket).remove(paths); if (removeError) throw removeError; }
 }
 
+function formatMoney(value) { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value || 0)); }
+function renderFinance() {
+  const target = document.querySelector('#admin-finance-list'); if (!target) return; target.replaceChildren();
+  const payable = financialReferrals.filter((item) => ['validated', 'payable'].includes(item.financial_status)).reduce((sum, item) => sum + Number(item.commission_amount || 0), 0);
+  const paid = financialReferrals.filter((item) => item.financial_status === 'paid').reduce((sum, item) => sum + Number(item.commission_amount || 0), 0);
+  document.querySelector('#finance-sales').textContent = financialReferrals.filter((item) => item.status === 'converted').length;
+  document.querySelector('#finance-payable').textContent = formatMoney(payable); document.querySelector('#finance-paid').textContent = formatMoney(paid);
+  if (!financialReferrals.length) { const empty = document.createElement('p'); empty.className = 'empty-admin-list'; empty.textContent = 'Nenhuma indicação financeira registrada.'; target.append(empty); return; }
+  financialReferrals.forEach((item) => {
+    const row = document.createElement('article'); row.className = 'finance-row'; row.dataset.financeId = item.id;
+    const info = document.createElement('div'); info.className = 'finance-info';
+    const company = document.createElement('small'); company.textContent = `${item.adh_businesses?.name || 'Empresa'} • ${item.adh_businesses?.adh_chapters?.city || ''}`;
+    const title = document.createElement('b'); title.textContent = item.adh_affiliate_offers?.title || 'Oferta';
+    const affiliate = document.createElement('p'); affiliate.textContent = `Indicador: ${item.referrer_name || 'Membro'} • Cliente: ${item.visitor_name || 'não informado'} • ${item.visitor_contact || ''}`;
+    info.append(company, title, affiliate);
+    const controls = document.createElement('div'); controls.className = 'finance-controls';
+    const sale = document.createElement('input'); sale.type = 'number'; sale.min = '0'; sale.step = '0.01'; sale.value = item.converted_value || ''; sale.placeholder = 'Valor da venda'; sale.setAttribute('aria-label', 'Valor da venda');
+    const status = document.createElement('select'); status.setAttribute('aria-label', 'Situação financeira');
+    [['pending','Pendente'],['validated','Validada'],['payable','A pagar'],['paid','Paga'],['cancelled','Cancelada']].forEach(([value, label]) => { const option = document.createElement('option'); option.value = value; option.textContent = label; option.selected = item.financial_status === value; status.append(option); });
+    const commission = document.createElement('strong'); commission.textContent = `Comissão: ${formatMoney(item.commission_amount)}`;
+    const save = document.createElement('button'); save.type = 'button'; save.className = 'admin-action'; save.textContent = 'Salvar';
+    save.addEventListener('click', () => saveFinance(item.id, sale.value, status.value, save));
+    controls.append(sale, status, commission, save); row.append(info, controls); target.append(row);
+  });
+}
+
+async function saveFinance(id, saleValue, financialStatus, button) {
+  button.disabled = true;
+  try {
+    const convertedValue = saleValue === '' ? null : Number(saleValue);
+    const payload = { converted_value: convertedValue, financial_status: financialStatus, status: financialStatus === 'cancelled' ? 'cancelled' : (convertedValue !== null ? 'converted' : 'contacted') };
+    const { error } = await supabase.from('adh_referrals').update(payload).eq('id', id); if (error) throw error;
+    showMessage(statusMessage, financialStatus === 'paid' ? 'Pagamento da comissão registrado.' : 'Movimentação financeira atualizada.', 'success'); await refreshData();
+  } catch (error) { showMessage(statusMessage, `Não foi possível atualizar a comissão: ${error.message}`, 'error'); }
+  finally { button.disabled = false; }
+}
+
 async function loadAdmin(user) {
   const { data, error } = await supabase.from('adh_profiles').select('*').eq('id', user.id).maybeSingle();
   if (error) throw error;
@@ -150,6 +188,7 @@ async function refreshData() {
   let chapterQuery = supabase.from('adh_chapters').select('*').order('city');
   let businessQuery = supabase.from('adh_businesses').select('*,adh_chapters(city)').order('created_at', { ascending: false });
   let eventQuery = supabase.from('adh_events').select('*,adh_chapters(city)').order('starts_at', { ascending: true });
+  let financeQuery = supabase.from('adh_referrals').select('*,adh_businesses(name,chapter_id,adh_chapters(city)),adh_affiliate_offers(title)').not('offer_id', 'is', null).order('created_at', { ascending: false });
   if (profile.role !== 'super_admin') {
     chapterQuery = chapterQuery.in('id', managedChapterIds);
     businessQuery = businessQuery.in('chapter_id', managedChapterIds);
@@ -157,10 +196,13 @@ async function refreshData() {
   }
   let adminQuery = supabase.from('adh_profiles').select('id,full_name,phone,role').in('role', ['super_admin', 'chapter_admin']).order('full_name');
   const [{ data: chapterRows, error: chapterError }, { data: businessRows, error: businessError }, { data: eventRows, error: eventError }, { data: admins, error: adminError }] = await Promise.all([chapterQuery, businessQuery, eventQuery, adminQuery]);
-  const error = chapterError || businessError || eventError || adminError; if (error) throw error;
+  if (profile.role !== 'super_admin') financeQuery = supabase.from('adh_referrals').select('*,adh_businesses!inner(name,chapter_id,adh_chapters(city)),adh_affiliate_offers(title)').in('adh_businesses.chapter_id', managedChapterIds).not('offer_id', 'is', null).order('created_at', { ascending: false });
+  const { data: financeRows, error: financeError } = await financeQuery;
+  const error = chapterError || businessError || eventError || adminError || financeError; if (error) throw error;
   chapters = chapterRows || [];
   businesses = businessRows || [];
   events = eventRows || [];
+  financialReferrals = financeRows || [];
   document.querySelector('#business-chapter').innerHTML = options(chapters);
   document.querySelector('#event-chapter').innerHTML = options(chapters);
   document.querySelector('#leader-chapter').innerHTML = options(chapters);
@@ -177,6 +219,7 @@ async function refreshData() {
   const visibleBusinesses = sponsorView ? businesses.filter((x) => x.featured) : businesses;
   renderRows(document.querySelector('#admin-business-list'), visibleBusinesses.map((x) => ({ title: x.name, detail: `${x.segment} • ${x.adh_chapters?.city || ''}${x.featured ? ' • destaque' : ''}`, status: x.featured ? 'Patrocinador' : (x.status === 'active' ? 'Ativo' : x.status), onEdit: () => editBusiness(x.id), onDelete: () => deleteBusiness(x.id) })), sponsorView ? 'Nenhum patrocinador em destaque.' : 'Nenhum empresário cadastrado.');
   renderRows(document.querySelector('#admin-events-list'), events.map((x) => ({ title: x.title, detail: `${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(x.starts_at))} • ${x.adh_chapters?.city || ''}`, status: x.published ? 'Publicado' : 'Rascunho', onEdit: () => editEvent(x.id), onDelete: () => deleteEvent(x.id) })), 'Nenhum evento cadastrado. Use “Agenda e eventos” para publicar o próximo.');
+  renderFinance();
 }
 
 async function deleteChapter(id) {
@@ -206,7 +249,7 @@ async function deleteEvent(id) {
 function showAdminView(view) {
   document.querySelectorAll('[data-panel-view]').forEach((panel) => { panel.hidden = !panel.dataset.panelView.split(' ').includes(view); });
   document.querySelectorAll('[data-admin-view]').forEach((button) => button.classList.toggle('active', button.dataset.adminView === view));
-  const titles = { overview: 'Visão geral', administrators: 'Administradores', chapters: 'Capítulos', businesses: 'Empresários', sponsors: 'Patrocinadores', events: 'Agenda e eventos', calendar: 'Calendário' };
+  const titles = { overview: 'Visão geral', administrators: 'Administradores', chapters: 'Capítulos', businesses: 'Empresários', sponsors: 'Patrocinadores', financial: 'Financeiro e comissões', events: 'Agenda e eventos', calendar: 'Calendário' };
   document.querySelector('#admin-section-title').textContent = titles[view] || 'Visão geral';
   const listTitle = document.querySelector('#business-list-title'); if (listTitle) listTitle.textContent = view === 'sponsors' ? 'Patrocinadores em destaque' : 'Empresários publicados';
   window.scrollTo({ top: 0, behavior: 'smooth' });

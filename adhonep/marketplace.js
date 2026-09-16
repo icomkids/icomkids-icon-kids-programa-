@@ -36,7 +36,9 @@ function render() {
 
 function openDetail(x) {
   const detail = document.querySelector('#business-detail');
-  const whatsapp = x.whatsapp ? `https://wa.me/${x.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(`Olá! Conheci a ${x.name} pelo portal ADHONEP e gostaria de mais informações.`)}` : '';
+  const params = new URLSearchParams(location.search); const referralCode = params.get('ref'); const offerId = params.get('offer');
+  const referralNote = referralCode ? ` Meu código de indicação é ${referralCode}${offerId ? `, referente à oferta ${offerId}` : ''}.` : '';
+  const whatsapp = x.whatsapp ? `https://wa.me/${x.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(`Olá! Conheci a ${x.name} pelo portal ADHONEP e gostaria de mais informações.${referralNote}`)}` : '';
   const cover = safeUrl(x.cover_url || x.logo_url) || safe(x.cover_url || x.logo_url);
   const logo = safeUrl(x.logo_url) || safe(x.logo_url);
   const video = safeUrl(x.video_url);
