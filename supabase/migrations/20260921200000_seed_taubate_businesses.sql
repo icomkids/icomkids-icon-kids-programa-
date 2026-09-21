@@ -18,7 +18,7 @@ with taubate as (
     'Expanda fronteiras com estratégia, segurança e compliance.',
     'Soluções para internacionalização de pessoas, empresas e patrimônios.',
     'A Foco Global oferece soluções integradas para pessoas, famílias e empresas que desejam construir uma presença internacional com planejamento e segurança. A atuação reúne abertura e gestão de empresas nos Estados Unidos, suporte contábil e fiscal, estruturas offshore, residência no Paraguai e processos de cidadania, com atendimento multilíngue e foco em compliance.',
-    'assets/empresarios/foco-global.png', 'https://focoglobal.com.br/',
+    'assets/empresarios/foco-global.jpg', 'https://focoglobal.com.br/',
     'https://www.instagram.com/global.foco/', '5511934300444', true,
     array['Abertura e gestão de empresas nos EUA','Residência e internacionalização','Estruturas offshore e proteção patrimonial','Cidadania e mobilidade internacional'],
     array['Atendimento multilíngue','Planejamento estratégico','Suporte de compliance'],

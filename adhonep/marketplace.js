@@ -22,7 +22,9 @@ function render() {
     const card = document.createElement('article');
     card.className = 'market-card';
     card.innerHTML = '<div class="cover-wrap"><img class="market-cover"/><span class="verified">EMPRESA DA COMUNIDADE</span></div><div class="market-card-body"><img class="market-logo"/><small></small><h2></h2><h3></h3><p></p><div class="card-tags"></div><button>Ver perfil completo →</button></div>';
-    card.querySelector('.market-cover').src = item.cover_url || item.logo_url || 'assets/capitulo-taubate-oficial.png';
+    const cardCover = card.querySelector('.market-cover');
+    cardCover.src = item.cover_url || item.logo_url || 'assets/capitulo-taubate-oficial.png';
+    cardCover.classList.toggle('logo-as-cover', !item.cover_url && Boolean(item.logo_url));
     card.querySelector('.market-logo').src = item.logo_url || 'assets/logo-adhonep-expansao.png';
     card.querySelector('small').textContent = `${item.segment} • ${item.adh_chapters?.city || ''}`;
     card.querySelector('h2').textContent = item.name;
@@ -44,6 +46,10 @@ function openDetail(x) {
   const video = safeUrl(x.video_url);
   const paragraphs = String(x.description || x.short_description || '').split(/\n+/).filter(Boolean).map(p => `<p>${safe(p)}</p>`).join('');
   detail.innerHTML = `<article class="business-full"><div class="profile-visual"><img class="detail-cover" src="${safe(cover)}" alt="Imagem de apresentação da ${safe(x.name)}"><img class="detail-logo" src="${safe(logo)}" alt="Logo da ${safe(x.name)}"></div><div class="profile-intro"><span class="chapter">${safe(x.segment)} • CAPÍTULO ${safe(x.adh_chapters?.city).toUpperCase()}</span><h2>${safe(x.name)}</h2><h3>${safe(x.headline || x.short_description || `Soluções em ${x.segment}`)}</h3><p class="lead">${safe(x.short_description || 'Conheça esta empresa da comunidade ADHONEP.')}</p></div><div class="profile-content"><section class="profile-section about"><span class="eyebrow">SOBRE A EMPRESA</span>${paragraphs}</section>${list('PRODUTOS E SERVIÇOS', x.offerings)}${list('POR QUE ESCOLHER', x.differentials)}${x.service_area ? `<section class="profile-section service-area"><span class="eyebrow">ONDE ATENDE</span><p>${safe(x.service_area)}</p></section>` : ''}</div>${video ? `<section class="profile-video"><span class="eyebrow">CONHEÇA MAIS</span><video controls preload="metadata" playsinline src="${safe(video)}"></video></section>` : ''}<section class="contact-panel"><div><span class="eyebrow">FALE COM A EMPRESA</span><h3>Gostou? Inicie uma conversa.</h3><p>Diga que encontrou a empresa pelo portal ADHONEP.</p></div><div class="detail-actions">${action('Conversar no WhatsApp', whatsapp)}${action('Visitar site', x.website_url)}${action('Instagram', x.instagram_url)}${action('Facebook', x.facebook_url)}${action('LinkedIn', x.linkedin_url)}${action('Enviar e-mail', x.contact_email ? `mailto:${x.contact_email}` : '')}</div></section></article>`;
+  if (!x.cover_url && x.logo_url) {
+    detail.querySelector('.profile-visual')?.classList.add('logo-hero');
+    detail.querySelector('.detail-cover')?.classList.add('logo-as-cover');
+  }
   dialog.showModal();
 }
 
