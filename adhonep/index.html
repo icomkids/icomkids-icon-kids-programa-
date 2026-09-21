@@ -151,8 +151,9 @@
     <section class="directory" id="empresarios">
       <div class="section-head"><div><span class="eyebrow">CONECTE-SE COM QUEM FAZ</span><h2>Empresários que fazem<br /><em>a região acontecer.</em></h2></div><a href="empresas.html">Conhecer todas as empresas →</a></div>
       <p class="directory-intro">Conheça negócios reais da nossa comunidade, entenda o que cada empresa oferece e encontre soluções, parceiros e novas oportunidades.</p>
-      <div class="filters"><button class="active">Todos</button><button>Saúde e bem-estar</button><button>Automóveis</button><button>Tecnologia</button></div>
-      <div class="company-grid">
+      <div class="filters" id="home-business-filters" aria-label="Filtrar empresários por nicho"><button class="active" data-segment="">Todos</button></div>
+      <p id="home-business-status" class="directory-status" aria-live="polite">Carregando empresários...</p>
+      <div class="company-grid" id="home-business-grid">
         <article><div class="company-brand tocto-company"><img src="assets/patrocinadores/tocto/logo-tocto-quadrada.webp" alt="Hoje Eu Tocto" /></div><span>SUPLEMENTOS • SAÚDE E BEM-ESTAR</span><h3>Hoje Eu Tocto</h3><p>Suplementação alimentar, cuidado diário e qualidade de vida.</p><a href="patrocinadores.html#tocto">Conhecer empresa →</a></article>
         <article><div class="company-brand icom-company"><img src="assets/patrocinadores/icom-motors/logo-icom-quadrada.webp" alt="ICOM Motors" /></div><span>AUTOMÓVEIS • COMPRA, VENDA E TROCA</span><h3>ICOM Motors</h3><p>Veículos novos e seminovos com atendimento e procedência.</p><a href="patrocinadores.html#icom-motors">Conhecer empresa →</a></article>
         <article><div class="company-brand logos-company"><img src="assets/patrocinadores/logos-ia/logo-logos-ia-quadrada.webp" alt="Logos IA Brasil" /></div><span>INTELIGÊNCIA ARTIFICIAL • MARKETING E VENDAS</span><h3>Logos IA Brasil</h3><p>Agentes de IA para atendimento, CRM e operação comercial.</p><a href="patrocinadores.html#logos-ia">Conhecer empresa →</a></article>
@@ -170,6 +171,6 @@
 
   <dialog id="form-dialog"><button class="close" aria-label="Fechar">×</button><span class="eyebrow">VAMOS CONVERSAR</span><h2 id="dialog-title">Quero conhecer a ADHONEP</h2><p>Esta é uma demonstração do formulário. Nenhum dado será enviado.</p><form method="dialog"><label>Nome<input placeholder="Seu nome completo" /></label><label>Empresa<input placeholder="Nome da sua empresa" /></label><div class="two"><label>WhatsApp<input placeholder="(12) 99999-9999" /></label><label>Cidade<input placeholder="Taubaté" /></label></div><label>Principal interesse<select><option>Networking</option><option>Novos negócios</option><option>Eventos</option><option>Divulgar minha empresa</option></select></label><label class="check"><input type="checkbox" /> Autorizo o contato sobre eventos e atividades da ADHONEP.</label><button class="primary navy" value="cancel">Enviar interesse <b>→</b></button></form></dialog>
   <dialog id="video-dialog" class="video-dialog" hidden><button class="close" aria-label="Fechar">×</button><div class="video-placeholder"><span>▶</span><b>O vídeo de apresentação será exibido aqui</b><small>Preparado para YouTube, Vimeo ou arquivo próprio.</small></div></dialog>
-  <script src="script.js"></script><script type="module" src="public-live.js"></script>
+  <script src="script.js"></script><script type="module" src="public-live.js?v=16"></script>
 </body>
 </html>

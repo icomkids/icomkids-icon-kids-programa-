@@ -1,9 +1,52 @@
 import { supabase } from './supabase-client.js';
 
 const filter = document.querySelector('#public-chapter-filter');
+const businessFilters = document.querySelector('#home-business-filters');
+const businessGrid = document.querySelector('#home-business-grid');
+const businessStatus = document.querySelector('#home-business-status');
 const monthNames = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
 const formatTime = (date) => new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }).format(date);
 const escapeHtml = (text = '') => String(text).replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
+const safeMedia = (value = '') => /^(?:https?:\/\/|assets\/)/i.test(String(value)) ? String(value) : 'assets/logo-adhonep-expansao.png';
+let publicBusinesses = [];
+let selectedBusinessSegment = '';
+
+function renderHomeBusinesses() {
+  if (!businessGrid || !businessStatus) return;
+  const rows = publicBusinesses.filter((item) => !selectedBusinessSegment || item.segment === selectedBusinessSegment);
+  businessStatus.textContent = rows.length ? `${rows.length} empresa${rows.length === 1 ? '' : 's'} neste nicho.` : 'Nenhuma empresa encontrada neste nicho.';
+  businessGrid.innerHTML = rows.map((item) => `<article>
+    <div class="company-brand dynamic-company"><img src="${escapeHtml(safeMedia(item.logo_url))}" alt="Logo da ${escapeHtml(item.name)}" loading="lazy" /></div>
+    <span>${escapeHtml(item.segment)} • ${escapeHtml(item.adh_chapters?.city || 'VALE DO PARAÍBA')}</span>
+    <h3>${escapeHtml(item.name)}</h3>
+    <p>${escapeHtml(item.short_description || item.description || '')}</p>
+    <a href="empresas.html?empresa=${encodeURIComponent(item.slug || item.id)}">Conhecer empresa →</a>
+  </article>`).join('');
+}
+
+function renderBusinessFilters() {
+  if (!businessFilters) return;
+  const segments = [...new Set(publicBusinesses.map((item) => item.segment).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  businessFilters.innerHTML = `<button class="active" data-segment="">Todos</button>${segments.map((segment) => `<button data-segment="${escapeHtml(segment)}">${escapeHtml(segment)}</button>`).join('')}`;
+  businessFilters.querySelectorAll('button').forEach((button) => button.addEventListener('click', () => {
+    selectedBusinessSegment = button.dataset.segment || '';
+    businessFilters.querySelector('.active')?.classList.remove('active');
+    button.classList.add('active');
+    renderHomeBusinesses();
+  }));
+}
+
+async function loadHomeBusinesses() {
+  if (!businessGrid) return;
+  const { data, error } = await supabase.from('adh_businesses').select('id,slug,name,segment,short_description,description,logo_url,adh_chapters(city)').eq('status', 'active').order('featured', { ascending: false }).order('name');
+  if (error) {
+    businessStatus.textContent = 'Não foi possível carregar os empresários agora.';
+    return;
+  }
+  publicBusinesses = data || [];
+  renderBusinessFilters();
+  renderHomeBusinesses();
+}
 
 async function loadChapters() {
   const { data } = await supabase.from('adh_chapters').select('id,name,city,state').eq('active', true).order('city');
@@ -49,4 +92,4 @@ async function loadCalendar(chapterId = '') {
 }
 
 filter?.addEventListener('change', () => { loadNextEvent(filter.value); loadCalendar(filter.value); });
-await loadChapters(); await Promise.all([loadNextEvent(), loadCalendar()]);
+await loadChapters(); await Promise.all([loadNextEvent(), loadCalendar(), loadHomeBusinesses()]);
