@@ -95,8 +95,12 @@ Deno.serve(async (req) => {
   const { error: profileError } = await admin.from("adh_profiles").upsert({ id: userId, full_name: fullName, role: targetRole }, { onConflict: "id" });
   if (profileError) return reply({ error: profileError.message }, 400);
   if (role === "chapter_admin") {
-    const { error } = await admin.from("adh_chapter_admins").upsert({ chapter_id: chapterId, user_id: userId });
+    const { error } = await admin.from("adh_chapter_admins").upsert(
+      { chapter_id: chapterId, user_id: userId },
+      { onConflict: "chapter_id,user_id", ignoreDuplicates: true },
+    );
     if (error) return reply({ error: error.message }, 400);
   }
+  console.info(JSON.stringify({ event: "adhonep_invite_result", user_id: userId, chapter_id: chapterId, email_sent: emailSent, email_warning: Boolean(emailWarning) }));
   return reply({ ok: true, user_id: userId, invited: emailSent, email_sent: emailSent, email_warning: emailWarning });
 });
