@@ -8,6 +8,7 @@ const segments = document.querySelector('#market-segments');
 const dialog = document.querySelector('#business-dialog');
 let businesses = [];
 let selectedSegment = '';
+let affiliateTrackingCode = '';
 
 const safe = value => String(value || '').replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
 const safeUrl = value => { try { const url = new URL(value); return ['http:', 'https:', 'mailto:'].includes(url.protocol) ? url.href : ''; } catch { return ''; } };
@@ -57,7 +58,7 @@ function renderSegmentFilters() {
 function openDetail(x) {
   const detail = document.querySelector('#business-detail');
   const params = new URLSearchParams(location.search); const referralCode = params.get('ref'); const offerId = params.get('offer');
-  const referralNote = referralCode ? ` Meu código de indicação é ${referralCode}${offerId ? `, referente à oferta ${offerId}` : ''}.` : '';
+  const referralNote = referralCode ? ` Vim por uma indicação ADHONEP${affiliateTrackingCode ? ` (código ${affiliateTrackingCode})` : ''}.` : '';
   const whatsapp = x.whatsapp ? `https://wa.me/${x.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(`Olá! Conheci a ${x.name} pelo portal ADHONEP e gostaria de mais informações.${referralNote}`)}` : '';
   const cover = safeUrl(x.cover_url || x.logo_url) || safe(x.cover_url || x.logo_url);
   const logo = safeUrl(x.logo_url) || safe(x.logo_url);
@@ -69,6 +70,17 @@ function openDetail(x) {
     detail.querySelector('.detail-cover')?.classList.add('logo-as-cover');
   }
   dialog.showModal();
+}
+
+async function trackAffiliateVisit(referralCode, offerId) {
+  if (!referralCode || !offerId) return '';
+  const storageKey = `adhonep-affiliate:${referralCode}:${offerId}`;
+  const saved = sessionStorage.getItem(storageKey);
+  if (saved) return saved;
+  const { data, error } = await supabase.rpc('adh_track_affiliate_visit', { p_referral_code: referralCode, p_offer_id: offerId });
+  if (error || !data) return '';
+  sessionStorage.setItem(storageKey, data);
+  return data;
 }
 
 dialog.querySelector('.dialog-close').onclick = () => dialog.close();
@@ -86,7 +98,9 @@ else {
   renderSegmentFilters();
   chapter.innerHTML += [...(chapterRows || [])].map(x => `<option value="${x.id}">${x.name}</option>`).join('');
   render();
-  const requested = new URLSearchParams(location.search).get('empresa');
+  const params = new URLSearchParams(location.search);
+  affiliateTrackingCode = await trackAffiliateVisit(params.get('ref'), params.get('offer'));
+  const requested = params.get('empresa');
   const selected = businesses.find(item => item.slug === requested || item.id === requested);
   if (selected) openDetail(selected);
 }

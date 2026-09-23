@@ -94,7 +94,7 @@ async function loadContacts() {
   const { data, error } = await supabase.from('adh_referrals').select('*,adh_businesses(name)').in('business_id', ownedBusinesses.map((business) => business.id)).order('created_at', { ascending: false });
   if (error) throw error;
   if (!data?.length) { target.innerHTML = emptyState('Nenhum contato recebido', 'Assim que alguém indicar ou procurar sua empresa, a oportunidade aparecerá aqui.'); return; }
-  target.innerHTML = data.map((item) => `<article><span class="timeline-dot"></span><div><small>${escapeHtml(item.adh_businesses?.name || 'Sua empresa')}</small><b>${escapeHtml(item.visitor_name || 'Visitante indicado')}</b><p>${escapeHtml(item.visitor_contact || 'Contato ainda não informado')} • ${formatDate(item.created_at)}</p></div><em>${escapeHtml(statusNames[item.status] || item.status)}</em></article>`).join('');
+  target.innerHTML = data.map((item) => `<article><span class="timeline-dot"></span><div><small>${escapeHtml(item.adh_businesses?.name || 'Sua empresa')}</small><b>${escapeHtml(item.visitor_name || 'Visitante indicado')}</b><p>${escapeHtml(item.visitor_contact || 'Contato ainda não informado')} • ${formatDate(item.created_at)}</p>${item.converted_value ? `<strong>Venda informada: ${money(item.converted_value)}</strong>` : ''}<form class="sale-report-form" data-sale-report="${item.id}"><input name="value" type="number" min="0.01" step="0.01" value="${item.converted_value || ''}" placeholder="Valor da venda" required /><button type="submit">${item.converted_value ? 'Atualizar venda' : 'Informar venda'}</button></form></div><em>${escapeHtml(statusNames[item.status] || item.status)}</em></article>`).join('');
 }
 
 async function loadFeedbackHistory() {
@@ -203,6 +203,14 @@ document.querySelector('#owned-offers').addEventListener('click', async (event) 
   const button = event.target.closest('[data-toggle-offer]'); if (!button) return; const offer = ownedOffers.find((item) => item.id === button.dataset.toggleOffer); if (!offer) return;
   const { error } = await supabase.from('adh_affiliate_offers').update({ active: !offer.active }).eq('id', offer.id); if (error) return alert(error.message);
   offer.active = !offer.active; affiliateOffers = ownedOffers.filter((item) => item.active); renderOwnedOffers(); renderAffiliateOffers();
+});
+document.querySelector('#member-contacts-list').addEventListener('submit', async (event) => {
+  const saleForm = event.target.closest('[data-sale-report]'); if (!saleForm) return; event.preventDefault();
+  const button = saleForm.querySelector('button'); button.disabled = true;
+  const { error } = await supabase.from('adh_referrals').update({ converted_value: Number(saleForm.elements.value.value), status: 'converted' }).eq('id', saleForm.dataset.saleReport);
+  if (error) { button.disabled = false; return alert(`Não foi possível informar a venda: ${error.message}`); }
+  alert('Venda informada. O líder do capítulo já pode validar a comissão e o pagamento.');
+  await loadContacts();
 });
 document.querySelector('#feedback-form').addEventListener('submit', async (event) => {
   event.preventDefault(); const form = event.currentTarget; const status = document.querySelector('#feedback-status');

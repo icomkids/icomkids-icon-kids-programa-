@@ -7,6 +7,7 @@ const statusMessage = document.querySelector('#admin-status');
 let profile;
 let chapters = [];
 let businesses = [];
+let affiliateOffers = [];
 let events = [];
 let financialReferrals = [];
 let managedChapterIds = [];
@@ -83,6 +84,9 @@ function addEditorControls() {
   const businessHeading = businessForm.closest('.admin-panel').querySelector('h2'); businessHeading.id = 'business-form-title';
   const paidLabel = document.querySelector('#business-paid-until').closest('label');
   const featured = document.createElement('label'); featured.className = 'admin-check'; featured.innerHTML = '<input id="business-featured" type="checkbox" /> Exibir como patrocinador em destaque'; paidLabel.after(featured);
+  const offerFields = document.createElement('fieldset'); offerFields.className = 'affiliate-offer-fields';
+  offerFields.innerHTML = '<legend>Produto e comissão por indicação</legend><p class="field-note">Esta oferta aparecerá para os membros. Depois de se afiliar, cada membro receberá um link exclusivo para indicar este produto ou serviço.</p><label>Nome do produto ou serviço<input id="business-offer-title" maxlength="120" required placeholder="Ex.: Consultoria empresarial completa" /></label><label>Descrição da oferta<textarea id="business-offer-description" rows="3" required placeholder="Explique o que será vendido e quando a comissão será considerada válida."></textarea></label><div class="two"><label>Forma da comissão<select id="business-offer-type" required><option value="percentage">Porcentagem da venda</option><option value="fixed">Valor fixo por venda</option></select></label><label>Valor da comissão<input id="business-offer-value" type="number" min="0.01" step="0.01" required placeholder="Ex.: 10 ou 150,00" /></label></div><label class="admin-check"><input id="business-offer-active" type="checkbox" checked /> Oferta aberta para novas afiliações</label>';
+  featured.after(offerFields);
   const businessSubmit = businessForm.querySelector('button[type="submit"],button:not([type])'); businessSubmit.id = 'business-submit';
   const businessCancel = document.createElement('button'); businessCancel.type = 'button'; businessCancel.id = 'business-cancel'; businessCancel.className = 'admin-cancel'; businessCancel.textContent = 'Cancelar edição'; businessCancel.hidden = true; businessSubmit.after(businessCancel);
 
@@ -110,6 +114,8 @@ function editBusiness(id) {
   const item = businesses.find((row) => row.id === id); if (!item) return; editingBusinessId = id;
   const fields = { '#business-chapter': item.chapter_id, '#business-name': item.name, '#business-segment': item.segment, '#business-headline': item.headline, '#business-short': item.short_description, '#business-description': item.description, '#business-offerings': (item.offerings || []).join('\n'), '#business-differentials': (item.differentials || []).join('\n'), '#business-service-area': item.service_area, '#business-whatsapp': item.whatsapp, '#business-contact-email': item.contact_email, '#business-website': item.website_url, '#business-instagram': item.instagram_url, '#business-facebook': item.facebook_url, '#business-linkedin': item.linkedin_url, '#business-paid-until': item.paid_until };
   Object.entries(fields).forEach(([selector, next]) => setValue(selector, next)); document.querySelector('#business-featured').checked = Boolean(item.featured);
+  const offer = affiliateOffers.find((row) => row.business_id === item.id);
+  setValue('#business-offer-title', offer?.title || ''); setValue('#business-offer-description', offer?.description || ''); setValue('#business-offer-type', offer?.commission_type || 'percentage'); setValue('#business-offer-value', offer?.commission_value || ''); document.querySelector('#business-offer-active').checked = offer?.active ?? true;
   document.querySelector('#business-logo-file').required = false; document.querySelector('#business-form-title').textContent = 'Editar empresário ou patrocinador'; document.querySelector('#business-submit').textContent = 'Salvar alterações'; document.querySelector('#business-cancel').hidden = false;
   showAdminView('businesses'); document.querySelector('#business-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -194,6 +200,7 @@ async function refreshData() {
   let businessQuery = supabase.from('adh_businesses').select('*,adh_chapters(city)').order('created_at', { ascending: false });
   let eventQuery = supabase.from('adh_events').select('*,adh_chapters(city)').order('starts_at', { ascending: true });
   let financeQuery = supabase.from('adh_referrals').select('*,adh_businesses(name,chapter_id,adh_chapters(city)),adh_affiliate_offers(title)').not('offer_id', 'is', null).order('created_at', { ascending: false });
+  let offerQuery = supabase.from('adh_affiliate_offers').select('*').order('created_at', { ascending: false });
   if (profile.role !== 'super_admin') {
     chapterQuery = chapterQuery.in('id', managedChapterIds);
     businessQuery = businessQuery.in('chapter_id', managedChapterIds);
@@ -201,11 +208,17 @@ async function refreshData() {
   }
   let adminQuery = supabase.from('adh_profiles').select('id,full_name,phone,role').in('role', ['super_admin', 'chapter_admin']).order('full_name');
   const [{ data: chapterRows, error: chapterError }, { data: businessRows, error: businessError }, { data: eventRows, error: eventError }, { data: admins, error: adminError }] = await Promise.all([chapterQuery, businessQuery, eventQuery, adminQuery]);
+  if (profile.role !== 'super_admin') {
+    const businessIds = (businessRows || []).map((item) => item.id);
+    offerQuery = businessIds.length ? supabase.from('adh_affiliate_offers').select('*').in('business_id', businessIds).order('created_at', { ascending: false }) : supabase.from('adh_affiliate_offers').select('*').eq('business_id', '00000000-0000-0000-0000-000000000000');
+  }
+  const { data: offerRows, error: offerError } = await offerQuery;
   if (profile.role !== 'super_admin') financeQuery = supabase.from('adh_referrals').select('*,adh_businesses!inner(name,chapter_id,adh_chapters(city)),adh_affiliate_offers(title)').in('adh_businesses.chapter_id', managedChapterIds).not('offer_id', 'is', null).order('created_at', { ascending: false });
   const { data: financeRows, error: financeError } = await financeQuery;
-  const error = chapterError || businessError || eventError || adminError || financeError; if (error) throw error;
+  const error = chapterError || businessError || eventError || adminError || offerError || financeError; if (error) throw error;
   chapters = chapterRows || [];
   businesses = businessRows || [];
+  affiliateOffers = offerRows || [];
   events = eventRows || [];
   financialReferrals = financeRows || [];
   document.querySelector('#business-chapter').innerHTML = options(chapters);
@@ -227,7 +240,11 @@ async function refreshData() {
 
 function renderBusinessRows(sponsorView = false) {
   const visibleBusinesses = sponsorView ? businesses.filter((item) => item.featured) : businesses;
-  renderRows(document.querySelector('#admin-business-list'), visibleBusinesses.map((item) => ({ title: item.name, detail: `${item.segment} • ${item.adh_chapters?.city || ''}${item.featured ? ' • destaque' : ''}`, status: item.featured ? 'Patrocinador' : (item.status === 'active' ? 'Ativo' : item.status), onEdit: () => editBusiness(item.id), onDelete: () => deleteBusiness(item.id) })), sponsorView ? 'Nenhum patrocinador em destaque.' : 'Nenhum empresário cadastrado.');
+  renderRows(document.querySelector('#admin-business-list'), visibleBusinesses.map((item) => {
+    const offer = affiliateOffers.find((row) => row.business_id === item.id);
+    const commission = offer ? (offer.commission_type === 'percentage' ? `${Number(offer.commission_value)}%` : formatMoney(offer.commission_value)) : 'sem oferta de comissão';
+    return { title: item.name, detail: `${item.segment} • ${item.adh_chapters?.city || ''}${item.featured ? ' • destaque' : ''} • ${commission}`, status: item.featured ? 'Patrocinador' : (item.status === 'active' ? 'Ativo' : item.status), onEdit: () => editBusiness(item.id), onDelete: () => deleteBusiness(item.id) };
+  }), sponsorView ? 'Nenhum patrocinador em destaque.' : 'Nenhum empresário cadastrado.');
 }
 
 async function deleteChapter(id) {
@@ -317,6 +334,12 @@ document.querySelector('#business-form').addEventListener('submit', async (event
     const media = { logo_url: logoUrl || existing?.logo_url || business.logo_url, cover_url: coverUrl || existing?.cover_url || business.cover_url, video_url: videoUrl || existing?.video_url || business.video_url };
     const { error: mediaError } = await supabase.from('adh_businesses').update(media).eq('id', business.id);
     if (mediaError) throw mediaError;
+    const currentOffer = affiliateOffers.find((item) => item.business_id === business.id);
+    const offerPayload = { business_id: business.id, title: value('#business-offer-title'), description: value('#business-offer-description'), commission_type: value('#business-offer-type'), commission_value: Number(value('#business-offer-value')), active: document.querySelector('#business-offer-active').checked };
+    if (!currentOffer) offerPayload.created_by = profile.id;
+    const offerMutation = currentOffer ? supabase.from('adh_affiliate_offers').update(offerPayload).eq('id', currentOffer.id) : supabase.from('adh_affiliate_offers').insert(offerPayload);
+    const { error: offerError } = await offerMutation;
+    if (offerError) throw offerError;
     const ownerEmail = value('#business-owner-email');
     if (ownerEmail) {
       const { data: owner, error: ownerError } = await supabase.functions.invoke('manage-adhonep-user', { body: { role: 'business', chapter_id: payload.chapter_id, full_name: value('#business-owner-name') || payload.name, email: ownerEmail } });
@@ -324,7 +347,7 @@ document.querySelector('#business-form').addEventListener('submit', async (event
       const { error: linkError } = await supabase.from('adh_businesses').update({ owner_id: owner.user_id }).eq('id', business.id);
       if (linkError) throw linkError;
     }
-    showMessage(statusMessage, editingBusinessId ? 'Empresário atualizado com sucesso.' : 'Empresário publicado no marketplace com sucesso.', 'success'); resetBusinessEditor(); await refreshData();
+    showMessage(statusMessage, editingBusinessId ? 'Empresário e comissão atualizados com sucesso.' : 'Empresário e oferta de comissão publicados com sucesso.', 'success'); resetBusinessEditor(); await refreshData();
   } catch (error) { showMessage(statusMessage, error.message, 'error'); }
   finally { setBusy(form, false); }
 });
