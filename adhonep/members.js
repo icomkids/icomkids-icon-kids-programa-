@@ -41,6 +41,7 @@ function showMemberView(view) {
     panel.classList.toggle('active', active);
   });
   document.querySelectorAll('[data-member-view]').forEach((button) => button.classList.toggle('active', button.dataset.memberView === view));
+  if (window.matchMedia('(max-width: 900px)').matches) document.querySelector(`[data-member-view="${view}"]`)?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 

@@ -278,6 +278,7 @@ function showAdminView(view) {
   document.querySelector('#admin-section-title').textContent = titles[view] || 'Visão geral';
   const listTitle = document.querySelector('#business-list-title'); if (listTitle) listTitle.textContent = view === 'sponsors' ? 'Patrocinadores em destaque' : 'Empresários publicados';
   if (view === 'businesses' || view === 'sponsors') renderBusinessRows(view === 'sponsors');
+  if (window.matchMedia('(max-width: 900px)').matches) document.querySelector(`[data-admin-view="${view}"]`)?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 

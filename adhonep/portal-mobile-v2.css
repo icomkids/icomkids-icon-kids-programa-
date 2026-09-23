@@ -1,0 +1,158 @@
+/* Mobile application layout for the member and administration portals. */
+@media (max-width: 900px) {
+  html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
+  body { -webkit-text-size-adjust: 100%; }
+  button, input, select, textarea { max-width: 100%; }
+  input, select, textarea { font-size: 16px !important; }
+
+  /* Shared touch and feedback rules */
+  .auth-message { margin: 12px 0 0; padding: 14px; line-height: 1.45; overflow-wrap: anywhere; }
+  .primary, .outline-dark, .admin-action, .admin-cancel { min-height: 46px; }
+
+  /* Administration: compact app shell with a persistent bottom navigator. */
+  .admin-page { padding: 0 0 calc(86px + env(safe-area-inset-bottom)); background: #edf1f4; }
+  .admin-access { min-height: 100dvh; padding: 18px; align-items: center; }
+  .admin-access .login-card { width: 100%; max-width: 460px; padding: 30px 22px; border-radius: 20px; }
+  .admin-access .login-card > img { width: min(230px, 80%); margin-bottom: 24px; }
+  .admin-access .login-card h1 { font-size: clamp(30px, 9vw, 38px); }
+  .admin-access .login-card form { margin-top: 22px; }
+  .admin-access .login-card input { min-height: 52px; border-radius: 11px; }
+  .admin-access .login-card .primary { width: 100%; border-radius: 11px; }
+
+  .admin-shell { display: block; width: 100%; min-height: 100dvh; }
+  .admin-sidebar {
+    position: fixed; inset: auto 0 0; z-index: 1000; width: 100%; height: calc(78px + env(safe-area-inset-bottom));
+    padding: 7px 7px calc(7px + env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 5px;
+    background: #061827; border-top: 1px solid #ffffff1c; box-shadow: 0 -12px 32px #06111e45;
+  }
+  .admin-sidebar > img { display: none; }
+  .admin-sidebar nav { flex: 1 1 auto; min-width: 0; margin: 0; padding: 0; display: flex; gap: 6px; overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-width: none; scroll-snap-type: x proximity; }
+  .admin-sidebar nav::-webkit-scrollbar { display: none; }
+  .admin-sidebar nav button { flex: 0 0 105px; min-height: 58px; padding: 8px 7px; border-radius: 13px; display: grid; place-items: center; color: #d1d9df; font-size: 10px; line-height: 1.2; text-align: center; white-space: normal; scroll-snap-align: center; }
+  .admin-sidebar nav button.active { background: linear-gradient(135deg,#d3a557,#bd8738); color: #071b2d; box-shadow: 0 7px 18px #0003; }
+  .admin-sidebar .admin-exit { display: grid; flex: 0 0 58px; min-height: 58px; margin: 0; padding: 7px; place-items: center; border: 1px solid #ffffff30; border-radius: 13px; color: #fff; font-size: 10px; line-height: 1.1; text-align: center; }
+
+  .admin-workspace { width: 100%; max-width: 100%; padding: 24px 16px 32px; overflow: visible; }
+  .admin-workspace .dash-title { display: grid; gap: 16px; }
+  .admin-workspace .dash-title > div { min-width: 0; }
+  .admin-workspace .dash-title h1 { margin: 8px 0; font-size: clamp(29px, 8.5vw, 38px); line-height: 1.05; overflow-wrap: anywhere; }
+  .admin-workspace .dash-title p { line-height: 1.55; }
+  .admin-workspace .dash-title > button { width: 100%; min-height: 48px; margin: 0; border-radius: 12px; }
+  .admin-section-title { margin-top: 18px; font-size: 26px; }
+  .admin-guide { margin-top: 18px; padding: 17px; display: grid; gap: 9px; border-radius: 15px; line-height: 1.4; }
+  .admin-guide b { margin: 0 0 3px; }
+  .admin-guide span { padding: 0; border: 0; }
+  .admin-workspace .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 18px 0; }
+  .admin-workspace .metrics article { min-width: 0; padding: 14px 10px; border-radius: 13px; }
+  .admin-workspace .metrics span { line-height: 1.25; }
+  .admin-workspace .metrics strong { margin: 8px 0 2px; font-size: 29px; }
+  .admin-workspace .metrics small { font-size: 9px; }
+  .admin-panels { display: block; margin-top: 18px; }
+  .admin-panel { width: 100%; min-width: 0; margin-bottom: 14px; padding: 21px 16px; border-radius: 17px; box-shadow: 0 10px 30px #102a3d0b; }
+  .admin-panel h2 { font-size: 24px; line-height: 1.12; }
+  .admin-panel .two, .admin-panel .media-fields, .event-time-fields { grid-template-columns: 1fr; }
+  .admin-panel label { min-width: 0; line-height: 1.4; }
+  .admin-panel input, .admin-panel select, .admin-panel textarea { width: 100%; min-height: 50px; margin-top: 7px; padding: 12px; border-radius: 11px; }
+  .admin-panel textarea { min-height: 108px; }
+  .admin-panel input[type="file"] { height: auto; min-height: 54px; padding: 10px; }
+  .admin-panel form > button, .admin-panel .form-actions > button, .admin-link { width: 100%; min-height: 48px; border-radius: 11px; text-align: center; }
+  .upload-field, .affiliate-offer-fields { padding: 15px 13px; border-radius: 13px; }
+  .admin-list-item { display: grid; gap: 12px; padding: 16px 0; }
+  .admin-row-content, .admin-row-content b, .admin-row-content small { min-width: 0; overflow-wrap: anywhere; }
+  .admin-row-controls { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; justify-content: stretch; }
+  .admin-row-controls .admin-badge { grid-column: 1/-1; width: max-content; max-width: 100%; }
+  .admin-row-controls .admin-action { width: 100%; min-height: 42px; }
+  .finance-metrics { grid-template-columns: 1fr; gap: 8px; }
+  .finance-row { grid-template-columns: 1fr; gap: 14px; }
+  .finance-info { min-width: 0; overflow-wrap: anywhere; }
+  .finance-controls { grid-template-columns: 1fr; }
+  .finance-controls > * { width: 100%; min-height: 44px; }
+
+  /* Members: login first, then a compact brand panel. */
+  .members-page { padding: 0; }
+  .members-top { position: sticky; top: 0; z-index: 60; height: 64px; padding: 6px 14px; box-shadow: 0 5px 20px #061b2e14; }
+  .members-top > a img { width: 150px; height: 50px; }
+  .members-top > div { gap: 8px; }
+  .members-top > div > a { display: none; }
+  .members-top span { padding: 7px 9px; font-size: 7px; }
+  .members-wrap { min-height: calc(100dvh - 64px); }
+  .member-login { min-height: 0; display: flex; flex-direction: column-reverse; background: #f4f1ea; }
+  .login-panel { width: 100%; padding: 30px 18px 34px; background: #fff; }
+  .login-heading { margin-bottom: 22px; }
+  .login-heading .secure-mark { width: 38px; height: 38px; margin-bottom: 17px; }
+  .login-heading h2 { font-size: clamp(33px, 9vw, 40px); }
+  .member-login input:not([type=checkbox]) { min-height: 52px; border-radius: 11px; }
+  .member-login form .login-submit { min-height: 54px; border-radius: 11px; }
+  .member-login .form-support { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 10px; align-items: center; }
+  .member-login .form-support label { min-width: 0; }
+  .member-login .form-support input[type="checkbox"] { flex: 0 0 18px; width: 18px !important; height: 18px; min-height: 0; margin: 0; padding: 0; }
+  .member-login .form-support .link-button { width: auto; min-height: 42px; padding-inline: 4px; text-align: right; }
+  .subscription { padding: 17px; border-radius: 14px; display: grid; gap: 13px; }
+  .subscription a { width: 100%; min-height: 44px; display: grid; place-items: center; border: 1px solid #d8c7a8; border-radius: 10px; }
+  .login-art { min-height: 290px; padding: 30px 18px; justify-content: flex-start; background-position: center 22%; border-radius: 0; }
+  .login-art h1 { max-width: 520px; margin: 16px 0 12px; font-size: clamp(39px, 11vw, 55px); }
+  .login-art-copy > p { font-size: 14px; line-height: 1.55; }
+  .login-proof { margin-top: 22px; padding: 14px 16px; border-radius: 12px; }
+
+  .member-dashboard { display: block; width: 100%; max-width: 100%; min-height: 100dvh; padding: 0 0 calc(84px + env(safe-area-inset-bottom)); overflow: visible; }
+  .member-dashboard aside { position: fixed; inset: auto 0 0; z-index: 1000; width: 100%; height: calc(78px + env(safe-area-inset-bottom)); padding: 7px 7px calc(7px + env(safe-area-inset-bottom)); display: flex; gap: 6px; overflow-x: auto; background: #061827; border-top: 1px solid #ffffff1c; box-shadow: 0 -12px 32px #06111e45; scrollbar-width: none; scroll-snap-type: x proximity; }
+  .member-dashboard aside::-webkit-scrollbar { display: none; }
+  .member-dashboard aside img { display: none; }
+  .member-dashboard aside button { flex: 0 0 104px; min-width: 104px; min-height: 58px; margin: 0; padding: 8px 6px; border-radius: 13px; display: grid; place-items: center; color: #d1d9df; font-size: 10px; line-height: 1.2; text-align: center; white-space: normal; scroll-snap-align: center; }
+  .member-dashboard aside button.active { background: linear-gradient(135deg,#d3a557,#bd8738); color: #071b2d; }
+  .member-dashboard aside button:last-child { margin: 0; border-color: #ffffff30; }
+  .member-content { width: 100%; max-width: 100%; min-width: 0; padding: 24px 16px 32px; }
+  .dashboard-head { display: grid; gap: 14px; align-items: start; }
+  .member-content h1 { font-size: clamp(34px, 10vw, 44px); overflow-wrap: anywhere; }
+  .member-avatar { width: 100%; max-width: 100%; margin: 0; padding: 8px 10px; }
+  .member-avatar div { display: block; min-width: 0; }
+  .member-avatar b, .member-avatar small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .member-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; margin: 22px 0 14px; }
+  .member-metrics article { min-width: 0; padding: 17px 13px; border-radius: 14px; }
+  .member-metrics small { min-height: 25px; line-height: 1.35; }
+  .member-metrics b { margin: 9px 0 3px; font-size: 34px; }
+  .referral-card { padding: 19px 16px; display: grid; grid-template-columns: 40px minmax(0,1fr); gap: 12px; border-radius: 16px; }
+  .referral-icon { width: 40px; height: 40px; }
+  .referral-card strong { font-size: 13px; overflow-wrap: anywhere; }
+  .referral-card button { grid-column: 1/-1; width: 100%; min-height: 46px; border-radius: 10px; }
+  .member-welcome-grid, .member-grid, .member-review-layout { grid-template-columns: 1fr; }
+  .member-welcome-grid article, .member-grid > article, .member-review-layout > form, .member-review-layout > div, .offer-manager { min-width: 0; padding: 19px 15px; border-radius: 15px; }
+  .member-section-head { margin: 10px 0 19px; }
+  .member-section-head h2 { font-size: clamp(32px, 9vw, 40px); overflow-wrap: anywhere; }
+  .member-search { height: 52px; border-radius: 12px; }
+  .member-business-grid { display: grid; grid-template-columns: 1fr; gap: 13px; overflow: visible; padding: 0; }
+  .member-business-card { width: 100%; min-width: 0; padding: 15px; border-radius: 15px; }
+  .member-business-logo { height: 180px; }
+  .member-business-card p { min-height: 0; }
+  .member-company-list article { grid-template-columns: 72px minmax(0,1fr); gap: 12px; padding: 14px; }
+  .member-company-list article > a { grid-column: 1/-1; }
+  .member-timeline > article { grid-template-columns: 13px minmax(0,1fr); padding: 15px 13px; }
+  .member-timeline > article > em { grid-column: 2; overflow-wrap: anywhere; }
+  .affiliate-grid { grid-template-columns: 1fr; }
+  .affiliate-card, .affiliate-membership { min-width: 0; padding: 17px 14px; }
+  .affiliate-membership, .referral-lead-form { grid-template-columns: 1fr; }
+  .affiliate-actions { width: 100%; align-items: stretch; flex-direction: column; }
+  .affiliate-actions button { width: 100%; min-height: 44px; }
+}
+
+@media (max-width: 600px) {
+  .admin-access .login-card h1 { font-size: 31px; line-height: 1.08; overflow-wrap: anywhere; }
+  .members-top span { font-size: 0; }
+  .members-top span::after { content: "SEGURO"; font-size: 8px; }
+  .login-heading h2 { font-size: 34px; line-height: 1.06; overflow-wrap: anywhere; }
+}
+
+@media (max-width: 390px) {
+  .admin-workspace, .member-content { padding-inline: 13px; }
+  .admin-workspace .metrics { grid-template-columns: 1fr; }
+  .admin-workspace .metrics article { display: grid; grid-template-columns: 1fr auto; align-items: center; }
+  .admin-workspace .metrics strong { grid-column: 2; grid-row: 1/3; margin: 0; }
+  .member-metrics { grid-template-columns: 1fr; }
+  .member-metrics article { display: grid; grid-template-columns: 1fr auto; align-items: center; }
+  .member-metrics b { grid-column: 2; grid-row: 1/3; margin: 0; }
+  .member-metrics span { grid-column: 1; }
+  .member-login .form-support { grid-template-columns: 1fr; }
+  .member-login .form-support .link-button { width: max-content; justify-self: start; }
+  .member-company-list article { grid-template-columns: 1fr; }
+  .member-company-list img { width: 100%; height: 120px; }
+}
