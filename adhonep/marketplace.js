@@ -4,8 +4,10 @@ const grid = document.querySelector('#market-grid');
 const status = document.querySelector('#market-status');
 const search = document.querySelector('#market-search');
 const chapter = document.querySelector('#market-chapter');
+const segments = document.querySelector('#market-segments');
 const dialog = document.querySelector('#business-dialog');
 let businesses = [];
+let selectedSegment = '';
 
 const safe = value => String(value || '').replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
 const safeUrl = value => { try { const url = new URL(value); return ['http:', 'https:', 'mailto:'].includes(url.protocol) ? url.href : ''; } catch { return ''; } };
@@ -15,7 +17,7 @@ const list = (title, items) => items?.length ? `<section class="profile-section"
 function render() {
   const term = search.value.trim().toLocaleLowerCase('pt-BR');
   const chosen = chapter.value;
-  const rows = businesses.filter(x => (!chosen || x.chapter_id === chosen) && (!term || `${x.name} ${x.segment} ${x.short_description} ${x.description} ${(x.offerings || []).join(' ')} ${x.adh_chapters?.city}`.toLocaleLowerCase('pt-BR').includes(term)));
+  const rows = businesses.filter(x => (!chosen || x.chapter_id === chosen) && (!selectedSegment || x.segment === selectedSegment) && (!term || `${x.name} ${x.segment} ${x.short_description} ${x.description} ${(x.offerings || []).join(' ')} ${x.adh_chapters?.city}`.toLocaleLowerCase('pt-BR').includes(term)));
   grid.innerHTML = '';
   status.textContent = rows.length ? `${rows.length} empresa${rows.length === 1 ? '' : 's'} encontrada${rows.length === 1 ? '' : 's'}.` : 'Nenhuma empresa encontrada.';
   rows.forEach(item => {
@@ -33,6 +35,22 @@ function render() {
     card.querySelector('.card-tags').innerHTML = (item.offerings || []).slice(0, 3).map(tag => `<span>${safe(tag)}</span>`).join('');
     card.querySelector('button').onclick = () => openDetail(item);
     grid.append(card);
+  });
+}
+
+function renderSegmentFilters() {
+  const labels = [...new Set(businesses.map(item => item.segment?.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  segments.replaceChildren();
+  [['', 'Todos'], ...labels.map(label => [label, label])].forEach(([segment, label]) => {
+    const button = document.createElement('button');
+    button.type = 'button'; button.dataset.segment = segment; button.textContent = label;
+    button.classList.toggle('active', segment === selectedSegment);
+    button.addEventListener('click', () => {
+      selectedSegment = segment;
+      segments.querySelectorAll('button').forEach(item => item.classList.toggle('active', item === button));
+      render();
+    });
+    segments.append(button);
   });
 }
 
@@ -65,6 +83,7 @@ const [{ data: chapterRows }, { data: businessRows, error }] = await Promise.all
 if (error) status.textContent = 'Não foi possível carregar as empresas agora.';
 else {
   businesses = businessRows || [];
+  renderSegmentFilters();
   chapter.innerHTML += [...(chapterRows || [])].map(x => `<option value="${x.id}">${x.name}</option>`).join('');
   render();
   const requested = new URLSearchParams(location.search).get('empresa');

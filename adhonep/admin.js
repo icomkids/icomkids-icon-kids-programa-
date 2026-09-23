@@ -220,11 +220,14 @@ async function refreshData() {
   });
   renderRows(document.querySelector('#admin-chapters-list'), chapters.map((x) => ({ title: x.name, detail: `${x.city}/${x.state} • Líder: ${x.leader_name || 'a definir'}`, status: x.active ? 'Ativo' : 'Inativo', onEdit: profile.role === 'super_admin' ? () => editChapter(x.id) : null, onDelete: profile.role === 'super_admin' ? () => deleteChapter(x.id) : null })), 'Nenhum capítulo cadastrado.');
   renderRows(document.querySelector('#admin-leaders-list'), (admins || []).map((x) => ({ title: x.full_name || 'Administrador', detail: `${x.role === 'super_admin' ? 'Administrador geral' : 'Líder de capítulo'}${x.phone ? ` • ${x.phone}` : ''}`, status: 'Ativo' })), 'Nenhum administrador cadastrado.');
-  const sponsorView = document.querySelector('[data-admin-view="sponsors"]')?.classList.contains('active');
-  const visibleBusinesses = sponsorView ? businesses.filter((x) => x.featured) : businesses;
-  renderRows(document.querySelector('#admin-business-list'), visibleBusinesses.map((x) => ({ title: x.name, detail: `${x.segment} • ${x.adh_chapters?.city || ''}${x.featured ? ' • destaque' : ''}`, status: x.featured ? 'Patrocinador' : (x.status === 'active' ? 'Ativo' : x.status), onEdit: () => editBusiness(x.id), onDelete: () => deleteBusiness(x.id) })), sponsorView ? 'Nenhum patrocinador em destaque.' : 'Nenhum empresário cadastrado.');
+  renderBusinessRows(document.querySelector('[data-admin-view].active')?.dataset.adminView === 'sponsors');
   renderRows(document.querySelector('#admin-events-list'), events.map((x) => ({ title: x.title, detail: `${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(x.starts_at))} • ${x.adh_chapters?.city || ''}`, status: x.published ? 'Publicado' : 'Rascunho', onEdit: () => editEvent(x.id), onDelete: () => deleteEvent(x.id) })), 'Nenhum evento cadastrado. Use “Agenda e eventos” para publicar o próximo.');
   renderFinance();
+}
+
+function renderBusinessRows(sponsorView = false) {
+  const visibleBusinesses = sponsorView ? businesses.filter((item) => item.featured) : businesses;
+  renderRows(document.querySelector('#admin-business-list'), visibleBusinesses.map((item) => ({ title: item.name, detail: `${item.segment} • ${item.adh_chapters?.city || ''}${item.featured ? ' • destaque' : ''}`, status: item.featured ? 'Patrocinador' : (item.status === 'active' ? 'Ativo' : item.status), onEdit: () => editBusiness(item.id), onDelete: () => deleteBusiness(item.id) })), sponsorView ? 'Nenhum patrocinador em destaque.' : 'Nenhum empresário cadastrado.');
 }
 
 async function deleteChapter(id) {
@@ -257,6 +260,7 @@ function showAdminView(view) {
   const titles = { overview: 'Visão geral', administrators: 'Administradores', chapters: 'Capítulos', businesses: 'Empresários', sponsors: 'Patrocinadores', financial: 'Financeiro e comissões', events: 'Agenda e eventos', calendar: 'Calendário' };
   document.querySelector('#admin-section-title').textContent = titles[view] || 'Visão geral';
   const listTitle = document.querySelector('#business-list-title'); if (listTitle) listTitle.textContent = view === 'sponsors' ? 'Patrocinadores em destaque' : 'Empresários publicados';
+  if (view === 'businesses' || view === 'sponsors') renderBusinessRows(view === 'sponsors');
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
