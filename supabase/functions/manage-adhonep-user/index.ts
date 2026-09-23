@@ -53,22 +53,39 @@ Deno.serve(async (req) => {
   const { data: chapter, error: chapterError } = await admin.from("adh_chapters").select("name").eq("id", chapterId).maybeSingle();
   if (chapterError || !chapter) return reply({ error: "Capítulo não encontrado" }, 404);
 
-  let userId: string | undefined;
-  for (let page = 1; page <= 10 && !userId; page++) {
+  let existingUser: { id: string; email_confirmed_at?: string | null } | undefined;
+  for (let page = 1; page <= 10 && !existingUser; page++) {
     const { data } = await admin.auth.admin.listUsers({ page, perPage: 100 });
-    userId = data.users.find((user) => user.email?.toLowerCase() === email)?.id;
+    existingUser = data.users.find((user) => user.email?.toLowerCase() === email);
     if (data.users.length < 100) break;
   }
-  let invited = false;
+  let userId = existingUser?.id;
+  let emailSent = false;
+  let emailWarning: string | null = null;
+  const redirectTo = `${req.headers.get("origin") || "https://xn--adhonepexpanso-2hb.com.br"}/membros.html`;
+  let actionLink: string | undefined;
+
   if (!userId) {
-    const redirectTo = `${req.headers.get("origin") || "https://xn--adhonepexpanso-2hb.com.br"}/membros.html`;
     const { data, error } = await admin.auth.admin.generateLink({ type: "invite", email, options: { redirectTo, data: { full_name: fullName } } });
     if (error || !data.user || !data.properties?.action_link) return reply({ error: error?.message || "Não foi possível gerar o convite" }, 400);
     userId = data.user.id;
-    try { await sendInvite(email, fullName, data.properties.action_link, chapter.name); invited = true; }
-    catch (emailError) {
-      await admin.auth.admin.deleteUser(userId);
-      return reply({ error: emailError instanceof Error ? emailError.message : "Não foi possível enviar o e-mail de convite" }, 502);
+    actionLink = data.properties.action_link;
+  } else if (!existingUser?.email_confirmed_at) {
+    // A previous mail attempt may have failed after Auth created the user. A
+    // recovery link lets the administrator safely resend password setup.
+    const { data, error } = await admin.auth.admin.generateLink({ type: "recovery", email, options: { redirectTo } });
+    if (error || !data.properties?.action_link) emailWarning = error?.message || "Não foi possível gerar um novo link de acesso";
+    else actionLink = data.properties.action_link;
+  }
+
+  if (actionLink) {
+    try {
+      await sendInvite(email, fullName, actionLink, chapter.name);
+      emailSent = true;
+    } catch (emailError) {
+      // E-mail is delivery, not persistence. Keep the user and chapter link so
+      // an invalid provider key never destroys a valid administrative record.
+      emailWarning = emailError instanceof Error ? emailError.message : "Não foi possível enviar o e-mail de convite";
     }
   }
 
@@ -81,5 +98,5 @@ Deno.serve(async (req) => {
     const { error } = await admin.from("adh_chapter_admins").upsert({ chapter_id: chapterId, user_id: userId });
     if (error) return reply({ error: error.message }, 400);
   }
-  return reply({ ok: true, user_id: userId, invited });
+  return reply({ ok: true, user_id: userId, invited: emailSent, email_sent: emailSent, email_warning: emailWarning });
 });

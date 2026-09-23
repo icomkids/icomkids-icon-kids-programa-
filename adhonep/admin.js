@@ -311,7 +311,12 @@ document.querySelector('#leader-form').addEventListener('submit', async (event) 
     const { data, error } = await supabase.functions.invoke('manage-adhonep-user', { body: { role: 'chapter_admin', chapter_id: document.querySelector('#leader-chapter').value, full_name: value('#leader-name'), email: value('#leader-email') } });
     const failure = await functionFailure(error, data);
     if (failure) throw new Error(failure);
-    showMessage(statusMessage, data.invited ? 'Líder cadastrado e convite enviado por e-mail.' : 'Líder existente vinculado ao capítulo.', 'success'); form.reset(); await refreshData();
+    if (data.email_warning) {
+      showMessage(statusMessage, `Líder cadastrado e vinculado ao capítulo. O e-mail não foi enviado: ${data.email_warning}. Corrija a chave do Resend e envie novamente para reenviar o acesso.`, 'warning');
+    } else {
+      showMessage(statusMessage, data.email_sent || data.invited ? 'Líder cadastrado e convite enviado por e-mail.' : 'Líder existente vinculado ao capítulo.', 'success');
+    }
+    form.reset(); await refreshData();
   } catch (error) { showMessage(statusMessage, `Não foi possível convidar o líder: ${error.message}`, 'error'); }
   finally { setBusy(form, false); }
 });
