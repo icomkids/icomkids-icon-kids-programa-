@@ -37,6 +37,15 @@ function setBusy(form, busy) {
   const button = form?.querySelector('button[type="submit"],button:not([type])');
   if (button) button.disabled = busy;
 }
+function friendlyAdminError(error) {
+  const detail = String(error?.message || error || '').trim();
+  if (/invalid login credentials/i.test(detail)) return 'E-mail ou senha incorretos. Confira os dados e tente novamente.';
+  if (/email not confirmed/i.test(detail)) return 'Este e-mail ainda não foi confirmado. Abra o convite recebido e confirme o acesso.';
+  if (/failed to fetch|network|load failed/i.test(detail)) return 'Não foi possível conectar ao sistema agora. Verifique sua internet e tente novamente.';
+  if (/permission denied|row-level security|schema/i.test(detail)) return 'Seu login foi reconhecido, mas a permissão administrativa ainda não está liberada. Entre em contato com o administrador geral.';
+  if (/jwt|refresh token|session/i.test(detail)) return 'Sua sessão expirou. Entre novamente com seu e-mail e senha.';
+  return detail || 'Não foi possível entrar na área administrativa. Tente novamente.';
+}
 async function functionFailure(error, data) {
   if (data?.error) return data.error;
   try { const body = await error?.context?.clone?.().json(); if (body?.error) return body.error; } catch { /* resposta sem JSON */ }
@@ -217,9 +226,11 @@ async function loadAdmin(user) {
   document.querySelector('#admin-scope').textContent = isGeneral ? 'ADMINISTRAÇÃO GERAL • TODOS OS CAPÍTULOS' : 'ADMINISTRAÇÃO DO MEU CAPÍTULO';
   document.querySelector('#admin-greeting').textContent = `Olá, ${profile.full_name.split(' ')[0] || 'administrador'}.`;
   document.querySelector('#admin-description').textContent = isGeneral ? 'Você pode administrar toda a rede ADHONEP.' : 'Você administra empresários, agenda e avaliações do seu capítulo.';
+  const warnings = await refreshData();
   access.hidden = true; shell.hidden = false;
-  await refreshData();
   showAdminView('overview');
+  if (warnings.length) showMessage(statusMessage, 'A área administrativa foi carregada. Alguns módulos complementares estão temporariamente indisponíveis, mas capítulos, empresários e eventos continuam funcionando.', 'warning');
+  return warnings;
 }
 
 async function refreshData() {
@@ -242,7 +253,10 @@ async function refreshData() {
   const { data: offerRows, error: offerError } = await offerQuery;
   if (profile.role !== 'super_admin') financeQuery = supabase.from('adh_referrals').select('*,adh_businesses!inner(name,chapter_id,adh_chapters(city)),adh_affiliate_offers(title)').in('adh_businesses.chapter_id', managedChapterIds).not('offer_id', 'is', null).order('created_at', { ascending: false });
   const { data: financeRows, error: financeError } = await financeQuery;
-  const error = chapterError || businessError || eventError || adminError || offerError || financeError; if (error) throw error;
+  const essentialError = chapterError || businessError || eventError;
+  if (essentialError) throw essentialError;
+  const optionalErrors = [adminError, offerError, financeError].filter(Boolean);
+  optionalErrors.forEach((error) => console.warn('Módulo administrativo complementar indisponível:', error));
   chapters = chapterRows || [];
   businesses = businessRows || [];
   affiliateOffers = offerRows || [];
@@ -263,6 +277,7 @@ async function refreshData() {
   renderBusinessRows(document.querySelector('[data-admin-view].active')?.dataset.adminView === 'sponsors');
   renderRows(document.querySelector('#admin-events-list'), events.map((x) => ({ title: x.title, detail: `${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(x.starts_at))} • ${x.adh_chapters?.city || ''}`, status: x.published ? 'Publicado' : 'Rascunho', onEdit: () => editEvent(x.id), onDelete: () => deleteEvent(x.id) })), 'Nenhum evento cadastrado. Use “Agenda e eventos” para publicar o próximo.');
   renderFinance();
+  return optionalErrors;
 }
 
 function renderBusinessRows(sponsorView = false) {
@@ -315,10 +330,16 @@ document.querySelector('#business-cancel').addEventListener('click', resetBusine
 document.querySelector('#event-cancel').addEventListener('click', resetEventEditor);
 
 document.querySelector('#admin-login').addEventListener('submit', async (event) => {
-  event.preventDefault(); showMessage(loginMessage, 'Validando acesso...');
-  const { data, error } = await supabase.auth.signInWithPassword({ email: document.querySelector('#admin-email').value.trim(), password: document.querySelector('#admin-password').value });
-  if (error) return showMessage(loginMessage, error.message, 'error');
-  try { await loadAdmin(data.user); } catch (loadError) { await supabase.auth.signOut(); showMessage(loginMessage, loadError.message, 'error'); }
+  event.preventDefault(); const form = event.currentTarget; setBusy(form, true); showMessage(loginMessage, 'Validando acesso...');
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({ email: document.querySelector('#admin-email').value.trim(), password: document.querySelector('#admin-password').value });
+    if (error) throw error;
+    if (!data?.user) throw new Error('O acesso não retornou um usuário válido.');
+    await loadAdmin(data.user);
+  } catch (loginError) {
+    await supabase.auth.signOut(); shell.hidden = true; access.hidden = false;
+    showMessage(loginMessage, friendlyAdminError(loginError), 'error');
+  } finally { setBusy(form, false); }
 });
 
 document.querySelector('#chapter-form').addEventListener('submit', async (event) => {
@@ -412,5 +433,18 @@ document.querySelector('#admin-mobile-view')?.addEventListener('change', (event)
 document.querySelectorAll('[data-scroll-to]').forEach((button) => button.addEventListener('click', () => showAdminView('events')));
 
 document.querySelector('#admin-exit').addEventListener('click', async () => { await supabase.auth.signOut(); shell.hidden = true; access.hidden = false; });
-const { data: { session } } = await supabase.auth.getSession();
-if (session) { try { await loadAdmin(session.user); } catch { await supabase.auth.signOut(); } }
+try {
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) throw sessionError;
+  if (session) {
+    showMessage(loginMessage, 'Restaurando seu acesso administrativo...');
+    try { await loadAdmin(session.user); }
+    catch (restoreError) {
+      await supabase.auth.signOut(); shell.hidden = true; access.hidden = false;
+      showMessage(loginMessage, friendlyAdminError(restoreError), 'error');
+    }
+  }
+} catch (sessionError) {
+  shell.hidden = true; access.hidden = false;
+  showMessage(loginMessage, friendlyAdminError(sessionError), 'error');
+}
