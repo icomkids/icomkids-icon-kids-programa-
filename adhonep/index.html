@@ -22,6 +22,7 @@
   <link rel="stylesheet" href="sponsor-layout.css" />
   <link rel="stylesheet" href="institutional.css" />
   <link rel="stylesheet" href="mobile-optimization.css" />
+  <link rel="stylesheet" href="public-mobile-v2.css?v=1" />
 </head>
 <body>
   <header class="topbar">
@@ -29,7 +30,7 @@
       <img class="site-logo" src="assets/logo-adhonep-expansao-branca.png" alt="ADHONEP Taubaté" />
     </a>
     <nav aria-label="Navegação principal">
-      <a href="#sobre">Sobre</a><a href="#capitulos">Capítulos</a><a href="#empresarios">Empresários</a><a href="#eventos">Eventos</a><a href="membros.html">Área de membros</a>
+      <a href="#inicio">Início</a><a href="#eventos">Próximo encontro</a><a href="#empresarios">Empresas</a><a href="#o-que-e-adhonep">A ADHONEP</a><a href="membros.html">Entrar</a>
     </nav>
     <button class="outline" data-open="lead">Quero conhecer</button>
   </header>
@@ -51,6 +52,13 @@
       <button class="video-card" data-video hidden style="display:none" aria-label="Assistir ao vídeo de apresentação"><span class="video-label">VÍDEO DE APRESENTAÇÃO</span><span class="play">▶</span><span class="video-copy"><b>Conheça a ADHONEP Taubaté</b><small>O vídeo oficial será adicionado aqui</small></span></button>
       <a href="#sobre" class="scroll">CONHEÇA <span>↓</span></a>
     </section>
+
+    <nav class="mobile-journey" aria-label="Acessos rápidos">
+      <a href="#eventos"><b>Agenda</b><span>Próximo encontro</span></a>
+      <a href="#empresarios"><b>Empresas</b><span>Encontre soluções</span></a>
+      <a href="#o-que-e-adhonep"><b>ADHONEP</b><span>Conheça a associação</span></a>
+      <a href="membros.html"><b>Comunidade</b><span>Acessar minha conta</span></a>
+    </nav>
 
     <section class="intro" id="sobre">
       <div>
@@ -149,8 +157,8 @@
     </section>
 
     <section class="directory" id="empresarios">
-      <div class="section-head"><div><span class="eyebrow">CONECTE-SE COM QUEM FAZ</span><h2>Empresários que fazem<br /><em>a região acontecer.</em></h2></div><a href="empresas.html">Conhecer todas as empresas →</a></div>
-      <p class="directory-intro">Conheça negócios reais da nossa comunidade, entenda o que cada empresa oferece e encontre soluções, parceiros e novas oportunidades.</p>
+      <div class="section-head"><div><span class="eyebrow">PARCEIROS EM DESTAQUE • CAPÍTULO TAUBATÉ</span><h2>Empresários que fazem<br /><em>a região acontecer.</em></h2></div><a href="empresas.html">Ver o marketplace completo →</a></div>
+      <p class="directory-intro">Valorize quem fortalece esta comunidade. Conheça as empresas, descubra produtos e serviços e fale diretamente com cada parceiro.</p>
       <div class="filters" id="home-business-filters" aria-label="Filtrar empresários por nicho"><button class="active" data-segment="">Todos</button></div>
       <p id="home-business-status" class="directory-status" aria-live="polite">Carregando empresários...</p>
       <div class="company-grid" id="home-business-grid">
@@ -168,6 +176,7 @@
   </main>
 
   <footer><div class="brand inverse"><img class="site-logo" src="assets/logo-adhonep-expansao-branca.png" alt="ADHONEP Taubaté" /></div><p>Capítulo Oficial ADHONEP Taubaté • São Paulo</p><a href="https://adhonep.com/pt/conheca-a-adhonep/" target="_blank" rel="noreferrer">ADHONEP oficial ↗</a></footer>
+  <nav class="mobile-dock" aria-label="Navegação móvel"><a class="active" href="#inicio"><i>⌂</i>Início</a><a href="#eventos"><i>◷</i>Agenda</a><a href="#empresarios"><i>◇</i>Empresas</a><a href="membros.html"><i>○</i>Entrar</a></nav>
 
   <dialog id="form-dialog"><button class="close" aria-label="Fechar">×</button><span class="eyebrow">VAMOS CONVERSAR</span><h2 id="dialog-title">Quero conhecer a ADHONEP</h2><p>Esta é uma demonstração do formulário. Nenhum dado será enviado.</p><form method="dialog"><label>Nome<input placeholder="Seu nome completo" /></label><label>Empresa<input placeholder="Nome da sua empresa" /></label><div class="two"><label>WhatsApp<input placeholder="(12) 99999-9999" /></label><label>Cidade<input placeholder="Taubaté" /></label></div><label>Principal interesse<select><option>Networking</option><option>Novos negócios</option><option>Eventos</option><option>Divulgar minha empresa</option></select></label><label class="check"><input type="checkbox" /> Autorizo o contato sobre eventos e atividades da ADHONEP.</label><button class="primary navy" value="cancel">Enviar interesse <b>→</b></button></form></dialog>
   <dialog id="video-dialog" class="video-dialog" hidden><button class="close" aria-label="Fechar">×</button><div class="video-placeholder"><span>▶</span><b>O vídeo de apresentação será exibido aqui</b><small>Preparado para YouTube, Vimeo ou arquivo próprio.</small></div></dialog>

@@ -14,13 +14,13 @@ let selectedBusinessSegment = '';
 function renderHomeBusinesses() {
   if (!businessGrid || !businessStatus) return;
   const rows = publicBusinesses.filter((item) => !selectedBusinessSegment || item.segment === selectedBusinessSegment);
-  businessStatus.textContent = rows.length ? `${rows.length} empresa${rows.length === 1 ? '' : 's'} neste nicho.` : 'Nenhuma empresa encontrada neste nicho.';
-  businessGrid.innerHTML = rows.map((item) => `<article>
+  businessStatus.textContent = rows.length ? `${rows.length} parceiro${rows.length === 1 ? '' : 's'} para você conhecer.` : 'Nenhuma empresa encontrada neste nicho.';
+  businessGrid.innerHTML = rows.map((item, index) => `<article class="partner-card${index === 0 && !selectedBusinessSegment ? ' partner-card-featured' : ''}">
     <div class="company-brand dynamic-company"><img src="${escapeHtml(safeMedia(item.logo_url))}" alt="Logo da ${escapeHtml(item.name)}" loading="lazy" /></div>
-    <span>${escapeHtml(item.segment)} • ${escapeHtml(item.adh_chapters?.city || 'VALE DO PARAÍBA')}</span>
+    <span class="partner-segment">${escapeHtml(item.segment)} • ${escapeHtml(item.adh_chapters?.city || 'VALE DO PARAÍBA')}</span>
     <h3>${escapeHtml(item.name)}</h3>
     <p>${escapeHtml(item.short_description || item.description || '')}</p>
-    <a href="empresas.html?empresa=${encodeURIComponent(item.slug || item.id)}">Conhecer empresa →</a>
+    <a class="partner-cta" href="empresas.html?empresa=${encodeURIComponent(item.slug || item.id)}">Ver perfil e contatos <b>→</b></a>
   </article>`).join('');
 }
 
