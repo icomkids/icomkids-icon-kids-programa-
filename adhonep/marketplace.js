@@ -1,4 +1,5 @@
 import { supabase } from './supabase-client.js';
+import { withSponsorFallbacks } from './sponsor-fallbacks.js';
 
 const grid = document.querySelector('#market-grid');
 const status = document.querySelector('#market-status');
@@ -102,7 +103,7 @@ const [{ data: chapterRows }, { data: businessRows, error }] = await Promise.all
 ]);
 if (error) status.textContent = 'Não foi possível carregar as empresas agora.';
 else {
-  businesses = businessRows || [];
+  businesses = withSponsorFallbacks(businessRows || [], chapterRows || []);
   renderSegmentFilters();
   chapter.innerHTML += [...(chapterRows || [])].map(x => `<option value="${x.id}">${x.name}</option>`).join('');
   render();

@@ -1,4 +1,5 @@
 import { supabase } from './supabase-client.js';
+import { withSponsorFallbacks } from './sponsor-fallbacks.js';
 
 const filter = document.querySelector('#public-chapter-filter');
 const businessFilters = document.querySelector('#home-business-filters');
@@ -45,12 +46,15 @@ function renderBusinessFilters() {
 
 async function loadHomeBusinesses() {
   if (!businessGrid) return;
-  const { data, error } = await supabase.from('adh_businesses').select('id,slug,name,segment,short_description,description,logo_url,adh_chapters(city)').eq('status', 'active').order('featured', { ascending: false }).order('name');
+  const [{ data, error }, { data: chapterRows }] = await Promise.all([
+    supabase.from('adh_businesses').select('id,slug,name,segment,short_description,description,logo_url,adh_chapters(city)').eq('status', 'active').order('featured', { ascending: false }).order('name'),
+    supabase.from('adh_chapters').select('id,name,city,state').eq('active', true).order('city')
+  ]);
   if (error) {
     businessStatus.textContent = 'Não foi possível carregar os empresários agora.';
     return;
   }
-  publicBusinesses = data || [];
+  publicBusinesses = withSponsorFallbacks(data || [], chapterRows || []);
   renderBusinessFilters();
   renderHomeBusinesses();
 }
