@@ -1,0 +1,81 @@
+/* Shared, bounded login surfaces. No viewport-height clipping or transform scaling. */
+.admin-page [hidden], .members-page [hidden] { display: none !important; }
+.admin-page .admin-access { min-height: 100svh; height: auto; padding: 32px 20px; align-items: center; }
+.admin-page #admin-access .login-card { transform: none; zoom: 1; }
+.admin-page .login-card { width: 100%; max-width: 420px; margin: auto; padding: 28px; border: 1px solid #e1e6e9; border-radius: 20px; box-shadow: 0 18px 65px #0003; }
+.admin-page .login-card > img { width: 210px; height: 74px; object-fit: contain; margin: 0 auto 22px; }
+.admin-page .login-card .secure-label { font: 700 10px/1.5 var(--sans); letter-spacing: .16em; color: #92682d; }
+.admin-page .login-card h1 { margin: 9px 0 10px; font: 400 clamp(26px, 6.8vw, 32px)/1.15 var(--serif); letter-spacing: -.025em; }
+.admin-page .login-card > p { margin: 0; font: 14px/1.5 var(--sans); color: #596b79; }
+.admin-page .login-card > small { margin-top: 18px; font: 11px/1.5 var(--sans); color: #657580; }
+.admin-page #admin-login, .members-page #member-access { display: grid; gap: 15px; margin: 24px 0 18px; min-width: 0; }
+.admin-page #admin-login label, .members-page #member-access label { margin: 0; font: 650 13px/1.4 var(--sans); color: #243d50; letter-spacing: 0; text-transform: none; }
+.admin-page #admin-login input, .members-page #member-access input { box-sizing: border-box; width: 100%; min-width: 0; height: 50px; min-height: 50px; margin: 7px 0 0; padding: 12px 13px; border: 1px solid #bcc7d0; border-radius: 10px; background: #fff; color: #132b43; font: 16px/1.4 var(--sans); }
+.access-password { display: flex; align-items: center; min-width: 0; border: 1px solid #bcc7d0; border-radius: 10px; margin-top: 7px; background: #fff; }
+.admin-page #admin-login .access-password input, .members-page #member-access .access-password input { flex: 1; margin: 0; border: 0; width: 0; background: transparent; }
+.admin-page #admin-login .access-password button, .members-page #member-access .access-password button { flex: 0 0 auto; width: auto; height: 48px; min-height: 44px; padding: 0 12px; margin: 0; border: 0; border-radius: 9px; background: transparent; box-shadow: none; color: #37566d; font: 600 12px var(--sans); }
+.admin-page #admin-login > [type="submit"], .members-page #member-access > [type="submit"], .password-recovery > [type="submit"] { display: flex; justify-content: center; align-items: center; width: 100%; height: auto; min-height: 50px; padding: 14px; margin: 0; border: 0; border-radius: 10px; background: #102a40; color: #fff; font: 700 15px/1.4 var(--sans); box-shadow: none; transform: none; white-space: normal; }
+.admin-page #admin-login .access-text-button, .members-page #member-access .access-text-button, .password-recovery .access-text-button { width: auto; height: auto; min-height: 44px; padding: 8px 0; margin: -9px 0 -5px; border: 0; border-radius: 0; background: transparent; color: #765421; font: 650 13px/1.4 var(--sans); box-shadow: none; text-align: left; justify-self: start; }
+.admin-page #admin-login button:disabled, .members-page #member-access button:disabled { opacity: .65; cursor: wait; }
+.admin-page input:focus-visible, .members-page input:focus-visible, .admin-page button:focus-visible, .members-page button:focus-visible, .access-password:focus-within { outline: 2px solid #9b772e; outline-offset: 3px; }
+.access-back { display: inline-flex; align-items: center; min-height: 44px; color: #34536a; font-size: 13px; text-decoration: none; }
+.admin-page .auth-message, .members-page .auth-message { margin: 0; padding: 12px; border-radius: 9px; font: 13px/1.5 var(--sans); overflow-wrap: anywhere; color: #25485f; background: #eef4f8; }
+.admin-page .auth-message[data-kind="error"], .members-page .auth-message[data-kind="error"] { color: #9c202c; background: #fff0f1; border: 1px solid #f0c9cf; }
+.admin-page .auth-message[data-kind="warning"], .members-page .auth-message[data-kind="warning"] { color: #704b13; background: #fff5df; }
+.password-recovery { gap: 14px; margin: 24px 0; }
+.password-recovery h2 { margin: 0; font: 28px var(--serif); }
+.password-recovery p { margin: 0; font-size: 13px; line-height: 1.5; }
+.password-recovery input { min-height: 48px; border-radius: 9px; font-size: 16px; }
+.member-mobile-switcher { display: none; }
+.member-tools { display: flex; justify-content: flex-end; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 18px; }
+.member-tools button, .member-tools a, .admin-refresh { min-height: 44px; padding: 10px 13px; border: 1px solid #b6c4ce; border-radius: 9px; background: #fff; color: #234055; font: 600 13px/1.4 var(--sans); text-decoration: none; }
+.admin-refresh { margin-top: 14px; }
+@media (max-width: 900px) {
+  .admin-page .admin-access { padding: 20px 16px; align-items: start; }
+  .admin-page .login-card { padding: 24px 20px; margin: 0 auto; }
+  .admin-page .login-card > img { width: 190px; height: 66px; margin-bottom: 18px; }
+  .members-page .members-top { position: static; height: 68px; padding: 8px 16px; box-shadow: none; }
+  .members-page .members-top > a img { width: 170px; height: 48px; }
+  .members-page .members-top > div > a { display: block; font-size: 12px; }
+  .members-page .members-top span { display: none; }
+  .members-page .members-wrap { min-height: calc(100svh - 68px); padding: 0; }
+  .members-page .member-login { display: block; min-height: calc(100svh - 68px); padding: 18px 16px 28px; background: #edf1f4; }
+  .members-page .login-art { display: none; }
+  .members-page .login-panel { width: 100%; max-width: 440px; margin: 0 auto; padding: 24px 20px; border: 1px solid #e1e6e9; border-radius: 18px; }
+  .members-page .login-heading { margin-bottom: 0; }
+  .members-page .login-heading .secure-mark { display: none; }
+  .members-page .login-heading h2 { margin-top: 10px; font-size: 30px; line-height: 1.15; }
+  .members-page .login-heading p { font-size: 14px; line-height: 1.5; }
+  .members-page .subscription { padding: 15px; gap: 10px; margin-top: 8px; }
+  .members-page .subscription b { font-size: 18px; }
+  .members-page .subscription p { font-size: 12px; line-height: 1.5; }
+  .members-page .demo-note { font-size: 11px; line-height: 1.5; }
+  .member-dashboard .member-mobile-switcher { display: block; margin-bottom: 16px; font-size: 12px; }
+  .member-mobile-switcher select { min-height: 48px; border-radius: 10px; font-size: 16px; }
+  .members-page .member-dashboard aside { position: static; display: flex; flex-direction: row; height: auto; min-height: 68px; padding: 10px 16px; justify-content: space-between; overflow: visible; }
+  .members-page .member-dashboard aside img { display: block; width: 160px; height: 48px; margin: 0; padding: 4px; }
+  .members-page .member-dashboard aside button[data-member-view] { display: none; }
+  .members-page .member-dashboard aside #member-exit { display: block; flex: 0 0 auto; min-width: 54px; width: auto; min-height: 44px; margin: 0; padding: 10px; font-size: 13px; }
+  .members-page .member-dashboard { padding-bottom: env(safe-area-inset-bottom); }
+  .member-tools { justify-content: flex-start; }
+  .admin-page .admin-sidebar { position: sticky; height: auto; min-height: 76px; grid-template-columns: minmax(0, 1fr) 58px; padding: 10px 14px; inset: 0 0 auto; overflow: visible; }
+  .admin-page .admin-sidebar > img { display: none; }
+  .admin-page .admin-sidebar .admin-mobile-switcher { min-width: 0; grid-column: 1; grid-row: 1; }
+  .admin-page .admin-mobile-switcher select { min-height: 44px; height: 44px; font-size: 16px !important; }
+  .admin-page .admin-sidebar #admin-exit { grid-column: 2; grid-row: 1; }
+  .admin-page .admin-sidebar .admin-refresh { grid-column: 1 / -1; margin: 0; }
+  .admin-page .admin-workspace { padding-top: 22px; }
+  .admin-page .admin-shell:not([data-view="overview"]) .metrics,
+  .admin-page .admin-shell:not([data-view="overview"]) #admin-greeting,
+  .admin-page .admin-shell:not([data-view="overview"]) #admin-description,
+  .admin-page .admin-shell:not([data-view="overview"]) .dash-title > button { display: none; }
+  .admin-page .admin-shell:not([data-view="overview"]) .dash-title { padding: 16px; }
+  .admin-page .admin-shell:not([data-view="overview"]) .admin-section-title { margin: 8px 0 0; }
+  .admin-page .admin-sidebar #admin-exit { font-size: 13px; }
+  .admin-page .admin-panel input[type="checkbox"] { width: 20px; min-height: 20px; height: 20px; flex: 0 0 20px; padding: 0; }
+  .admin-page .admin-form-step { scroll-margin-top: 155px; }
+}
+@media (max-width: 360px) {
+  .admin-page .admin-access, .members-page .member-login { padding-inline: 10px; }
+  .admin-page .login-card, .members-page .login-panel { padding-inline: 16px; }
+}

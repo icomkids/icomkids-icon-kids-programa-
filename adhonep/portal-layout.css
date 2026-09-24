@@ -1,0 +1,95 @@
+/* Portal-only responsive layout; independent of the public site's mobile rules. */
+.admin-mobile-switcher { display: none; }
+.admin-shell, .admin-workspace, .member-dashboard, .member-content { min-width: 0; }
+.admin-form-step { margin: 0; padding: 0; border: 1px solid #e0e5e8; border-radius: 12px; background: #fbfcfc; overflow: hidden; }
+.admin-form-step + .admin-form-step { margin-top: 10px; }
+.admin-form-step summary { display: grid; grid-template-columns: 34px minmax(0,1fr) 18px; gap: 11px; align-items: center; padding: 15px; cursor: pointer; list-style: none; }
+.admin-form-step summary::-webkit-details-marker { display: none; }
+.admin-form-step summary > b { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; background: #0b2940; color: #fff; }
+.admin-form-step summary span, .admin-form-step summary strong, .admin-form-step summary small { display: block; min-width: 0; }
+.admin-form-step summary strong { color: #17374e; font-size: 14px; }
+.admin-form-step summary small { margin-top: 3px; color: #63737f; font-size: 12px; line-height: 1.4; }
+.admin-form-step summary i { color: #a87831; font-style: normal; font-size: 18px; }
+.admin-form-step[open] summary { border-bottom: 1px solid #e4e8ea; background: #f4f7f8; }
+.admin-form-step[open] summary i { transform: rotate(180deg); }
+.admin-form-step-body { display: grid; gap: 14px; padding: 17px 15px; min-width: 0; }
+.admin-step-next { min-height: 46px; padding: 12px 14px; border: 1px solid #b98942; border-radius: 8px; background: #fff; color: #765421; font-weight: 700; }
+.admin-panel fieldset { min-width: 0; }
+.admin-page :focus-visible, .members-page :focus-visible { outline: 2px solid #aa802e; outline-offset: 3px; }
+@media (max-width: 900px) {
+  body.admin-page, body.members-page { min-width: 0; margin: 0; padding: 0; -webkit-text-size-adjust: 100%; }
+  .admin-page button, .members-page button { min-height: 44px; white-space: normal; }
+  .admin-page input, .admin-page select, .admin-page textarea,
+  .members-page input, .members-page select, .members-page textarea { max-width: 100%; min-width: 0; font-size: 16px; }
+  .admin-page input[type="checkbox"], .members-page input[type="checkbox"] { width: 20px; height: 20px; min-height: 20px; }
+  .admin-shell { display: block; width: 100%; min-height: 100svh; background: #eef2f4; }
+  .admin-sidebar { display: grid; grid-template-columns: minmax(0,1fr) 58px; align-items: center; gap: 10px; width: 100%; background: #0b2438; z-index: 100; }
+  .admin-sidebar nav { display: none; }
+  .admin-mobile-switcher { display: grid; gap: 4px; color: #e4bd7e; }
+  .admin-mobile-switcher span { font-size: 11px; letter-spacing: .04em; }
+  .admin-mobile-switcher select { width: 100%; padding: 9px 10px; margin: 0; border: 1px solid #ffffff3b; border-radius: 9px; background: #14364e; color: white; }
+  .admin-sidebar .admin-exit { min-height: 44px; margin: 0; padding: 8px; border: 1px solid #ffffff3b; color: #fff; text-align: center; border-radius: 9px; }
+  .admin-workspace { width: 100%; max-width: 100%; padding: 22px 14px 32px; overflow: visible; }
+  .admin-workspace .dash-title { display: grid; gap: 16px; padding: 20px; border: 1px solid #dfe5ea; border-radius: 16px; background: #fff; }
+  .admin-workspace .dash-title > div { min-width: 0; }
+  .admin-workspace .dash-title h1 { margin: 8px 0; font-size: clamp(28px,7.5vw,36px); line-height: 1.15; overflow-wrap: anywhere; }
+  .admin-workspace .dash-title p { font-size: 14px; line-height: 1.5; }
+  .admin-workspace .dash-title > button { width: 100%; min-height: 48px; border-radius: 10px; }
+  .admin-section-title { font-size: 26px; line-height: 1.2; }
+  .admin-guide { display: none; }
+  .admin-workspace .metrics { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; margin: 16px 0; }
+  .admin-workspace .metrics article { display: block; min-width: 0; padding: 14px 6px; border-radius: 12px; text-align: center; }
+  .admin-workspace .metrics span { font-size: 9px; letter-spacing: 0; }
+  .admin-workspace .metrics strong { margin: 7px 0 0; font: 28px/1.1 var(--serif); }
+  .admin-workspace .metrics small { display: none; }
+  .admin-page .admin-status { margin: 14px 0; }
+  .admin-panels { display: grid; grid-template-columns: minmax(0,1fr); gap: 14px; margin-top: 14px; }
+  .admin-panel { width: 100%; min-width: 0; margin: 0; padding: 20px 15px; border-radius: 14px; }
+  .admin-panel h2 { margin-top: 0; font-size: 24px; line-height: 1.2; overflow-wrap: anywhere; }
+  .admin-panel p, .admin-panel legend, .admin-panel label { overflow-wrap: anywhere; }
+  .admin-panel .two, .admin-panel .media-fields, .event-time-fields, .finance-controls { display: grid; grid-template-columns: minmax(0,1fr); }
+  .admin-panel label { min-width: 0; font-size: 13px; line-height: 1.4; letter-spacing: 0; }
+  .admin-panel input, .admin-panel select, .admin-panel textarea { width: 100%; min-height: 48px; margin-top: 7px; padding: 12px; border-radius: 9px; }
+  .admin-panel textarea { min-height: 100px; resize: vertical; }
+  .admin-panel input[type="file"] { height: auto; padding: 10px 6px; font-size: 13px; }
+  .admin-panel form > button, .admin-panel .form-actions > button, .admin-link { width: 100%; min-height: 48px; border-radius: 10px; }
+  .upload-field, .affiliate-offer-fields { padding: 14px 12px; border-radius: 12px; }
+  .admin-list-item { display: grid; grid-template-columns: minmax(0,1fr); gap: 12px; padding: 15px 0; }
+  .admin-row-content, .admin-list-item b, .admin-list-item small { min-width: 0; overflow-wrap: anywhere; }
+  .admin-row-controls { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+  .admin-row-controls .admin-badge { grid-column: 1/-1; width: max-content; max-width: 100%; }
+  .finance-metrics, .finance-row { grid-template-columns: minmax(0,1fr); gap: 12px; }
+  .finance-info { min-width: 0; overflow-wrap: anywhere; }
+  .admin-business-submit { position: static; }
+  .member-dashboard { display: block; width: 100%; min-height: 100svh; }
+  .member-content { width: 100%; max-width: 100%; padding: 22px 14px 32px; }
+  .dashboard-head { display: grid; gap: 14px; align-items: start; }
+  .member-content h1 { font-size: 34px; line-height: 1.15; overflow-wrap: anywhere; }
+  .member-avatar { width: 100%; margin: 0; padding: 8px 10px; }
+  .member-avatar div { display: block; min-width: 0; }
+  .member-avatar b, .member-avatar small { overflow-wrap: anywhere; }
+  .member-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; margin: 20px 0 14px; }
+  .member-metrics article { min-width: 0; padding: 16px 12px; border-radius: 12px; }
+  .member-metrics small { line-height: 1.4; letter-spacing: 0; }
+  .member-metrics b { font-size: 32px; }
+  .referral-card { padding: 19px 16px; display: grid; grid-template-columns: 40px minmax(0,1fr); gap: 12px; border-radius: 14px; }
+  .referral-icon { width: 40px; height: 40px; }
+  .referral-card strong { font-size: 13px; overflow-wrap: anywhere; }
+  .referral-card button { grid-column: 1/-1; width: 100%; min-height: 46px; border-radius: 9px; }
+  .member-welcome-grid, .member-grid, .member-review-layout { grid-template-columns: minmax(0,1fr); }
+  .member-welcome-grid article, .member-review-layout > form, .member-review-layout > div, .offer-manager { min-width: 0; padding: 19px 15px; border-radius: 14px; }
+  .member-section-head { margin: 18px 0; }
+  .member-section-head h2 { font-size: 30px; line-height: 1.15; overflow-wrap: anywhere; }
+  .member-business-grid { display: grid; grid-template-columns: minmax(0,1fr); gap: 14px; overflow: visible; padding: 0; }
+  .member-business-card { width: 100%; min-width: 0; padding: 15px; }
+  .member-business-logo { height: 180px; }
+  .member-business-card p { min-height: 0; }
+  .member-company-list article { grid-template-columns: 72px minmax(0,1fr); gap: 12px; padding: 14px; }
+  .member-company-list article > a { grid-column: 1/-1; }
+  .member-timeline > article { grid-template-columns: 13px minmax(0,1fr); padding: 15px 13px; }
+  .member-timeline > article > em { grid-column: 2; overflow-wrap: anywhere; }
+  .affiliate-grid, .affiliate-membership, .referral-lead-form, .offer-manager .two { grid-template-columns: minmax(0,1fr); }
+  .affiliate-card, .affiliate-membership { min-width: 0; padding: 17px 14px; }
+  .affiliate-actions { width: 100%; align-items: stretch; flex-direction: column; }
+  .affiliate-actions button { width: 100%; min-height: 44px; }
+}

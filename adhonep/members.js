@@ -1,4 +1,5 @@
-import { supabase, showMessage } from './supabase-client.js';
+import { supabase, showMessage } from './supabase-client.js?v=2';
+import { mountAccess, withTimeout, friendlyAuthError } from './portal-auth.js';
 
 const login = document.querySelector('#member-login');
 const dashboard = document.querySelector('#member-dashboard');
@@ -16,6 +17,7 @@ let affiliations = [];
 let ownedOffers = [];
 let currentProfile;
 let currentUser;
+let memberLoadVersion = 0;
 
 function escapeHtml(value = '') { return String(value).replace(/[&<>'"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[c]); }
 function emptyState(title, copy) { return `<div class="member-empty"><span>◇</span><b>${escapeHtml(title)}</b><p>${escapeHtml(copy)}</p></div>`; }
@@ -35,6 +37,7 @@ async function ensureProfile(user) {
 }
 
 function showMemberView(view) {
+  document.querySelector('#member-mobile-view').value = view;
   document.querySelectorAll('[data-member-panel]').forEach((panel) => {
     const active = panel.dataset.memberPanel === view;
     panel.hidden = !active;
@@ -117,7 +120,22 @@ async function recordReferral(businessId) {
 
 async function loadDashboard(user) {
   currentUser = user;
-  currentProfile = await ensureProfile(user);
+  currentProfile = await withTimeout(ensureProfile(user), 10000, 'A consulta do seu perfil demorou demais. Tente novamente.');
+  const displayName = currentProfile.full_name || user.email.split('@')[0];
+  document.querySelector('#member-title').textContent = `Olá, ${displayName.split(' ')[0] || 'membro'}.`;
+  document.querySelector('.member-avatar b').textContent = displayName;
+  document.querySelector('.member-avatar > span').textContent = displayName.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase();
+  document.querySelector('#member-role-label').textContent = `${roleNames[currentProfile.role] || 'Membro'} • ADHONEP`;
+  document.querySelector('#member-admin-link').hidden = !['super_admin', 'chapter_admin'].includes(currentProfile.role);
+  document.querySelectorAll('.business-only').forEach((item) => { item.hidden = !['business', 'super_admin'].includes(currentProfile.role); });
+  login.hidden = true; dashboard.hidden = false; memberHeader.hidden = true; showMemberView('overview');
+  loadMemberData(user).catch((error) => showMessage(document.querySelector('#member-status'), friendlyAuthError(error), 'error'));
+}
+
+async function loadMemberData(user = currentUser) {
+  const loadVersion = ++memberLoadVersion;
+  const status = document.querySelector('#member-status');
+  showMessage(status, 'Acesso confirmado. Carregando seus dados…');
   const isBusiness = ['business', 'super_admin'].includes(currentProfile.role);
   const businessQuery = supabase.from('adh_businesses').select('id,name,slug,segment,description,short_description,logo_url,website_url,instagram_url,whatsapp,status,owner_id,adh_chapters(city)').eq('status', 'active').order('name');
   const referralQuery = supabase.from('adh_referrals').select('id,status,points_awarded,commission_amount,financial_status,created_at,adh_businesses(name)').eq('referrer_id', user.id).order('created_at', { ascending: false });
@@ -125,51 +143,55 @@ async function loadDashboard(user) {
   if (currentProfile.role !== 'super_admin') ownedQuery = ownedQuery.eq('owner_id', user.id);
   const offerQuery = supabase.from('adh_affiliate_offers').select('*,adh_businesses(id,name,slug)').eq('active', true).order('created_at', { ascending: false });
   const affiliationQuery = supabase.from('adh_affiliations').select('*,adh_affiliate_offers(*,adh_businesses(id,name,slug))').eq('affiliate_id', user.id).eq('status', 'active').order('created_at', { ascending: false });
-  const [{ data: businessRows, error: businessError }, { data: referralRows, error: referralError }, { data: ownedRows, error: ownedError }, { data: offerRows, error: offerError }, { data: affiliationRows, error: affiliationError }] = await Promise.all([businessQuery, referralQuery, ownedQuery, offerQuery, affiliationQuery]);
-  const loadError = businessError || referralError || ownedError || offerError || affiliationError;
-  if (loadError) throw loadError;
+  const queries = [businessQuery, referralQuery, isBusiness ? ownedQuery : Promise.resolve({ data: [] }), offerQuery, affiliationQuery];
+  const results = await Promise.all(queries.map((query) => withTimeout(query, 12000).catch((error) => ({ error }))));
+  if (loadVersion !== memberLoadVersion) return;
+  const [{ data: businessRows, error: businessError }, { data: referralRows, error: referralError }, { data: ownedRows, error: ownedError }, { data: offerRows, error: offerError }, { data: affiliationRows, error: affiliationError }] = results;
+  const failures = results.filter((result) => result.error).map((result) => result.error);
   businesses = businessRows || [];
   referrals = referralRows || [];
   ownedBusinesses = ownedRows || [];
   affiliateOffers = offerRows || []; affiliations = affiliationRows || [];
   if (ownedBusinesses.length) {
-    const { data, error } = await supabase.from('adh_affiliate_offers').select('*,adh_businesses(name)').in('business_id', ownedBusinesses.map((item) => item.id)).order('created_at', { ascending: false });
-    if (error) throw error; ownedOffers = data || [];
+    const { data, error } = await withTimeout(supabase.from('adh_affiliate_offers').select('*,adh_businesses(name)').in('business_id', ownedBusinesses.map((item) => item.id)).order('created_at', { ascending: false })).catch((error) => ({ error }));
+    if (loadVersion !== memberLoadVersion) return;
+    if (error) failures.push(error); ownedOffers = data || [];
   } else ownedOffers = [];
   renderBusinesses(businesses); renderReferrals(); renderOwnedBusinesses(); renderAffiliateOffers(); renderOwnedOffers();
-  await Promise.all([loadContacts(), loadFeedbackHistory()]);
+  const extraResults = await Promise.allSettled([withTimeout(loadContacts(), 12000), withTimeout(loadFeedbackHistory(), 12000)]);
+  if (loadVersion !== memberLoadVersion) return;
+  extraResults.forEach((result, index) => {
+    if (result.status === 'rejected') {
+      failures.push(result.reason);
+      document.querySelector(index === 0 ? '#member-contacts-list' : '#member-feedback-list').textContent = 'Não foi possível carregar esta lista. Use “Atualizar dados” para tentar novamente.';
+    }
+  });
+  [[businessError, '#business-list'], [referralError, '#member-referrals-list'], [ownedError, '#member-company-list'], [offerError, '#affiliate-offers'], [affiliationError, '#affiliate-memberships']].forEach(([error, selector]) => {
+    if (error) document.querySelector(selector).textContent = 'Esta lista não carregou. Use “Atualizar dados” para tentar novamente.';
+  });
   document.querySelector('#metric-clicks').textContent = referrals.length;
   document.querySelector('#metric-registrations').textContent = referrals.filter((item) => item.status !== 'clicked').length;
   document.querySelector('#metric-conversions').textContent = referrals.filter((item) => item.status === 'converted').length;
   document.querySelector('#metric-points').textContent = currentProfile.points || 0;
   document.querySelector('#member-referral-link').textContent = `${location.origin}/empresas.html?ref=${currentProfile.referral_code}`;
-  const displayName = currentProfile.full_name || user.email.split('@')[0];
-  document.querySelector('#member-title').textContent = `Olá, ${displayName.split(' ')[0] || 'membro'}.`;
-  document.querySelector('.member-avatar b').textContent = displayName;
-  document.querySelector('.member-avatar > span').textContent = displayName.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase();
-  document.querySelector('#member-role-label').textContent = `${roleNames[currentProfile.role] || 'Membro'} • ADHONEP`;
-  document.querySelectorAll('.business-only').forEach((item) => { item.hidden = !isBusiness; });
   document.querySelector('#feedback-business').innerHTML = businesses.map((business) => `<option value="${business.id}">${escapeHtml(business.name)}</option>`).join('');
   document.querySelector('#offer-business').innerHTML = ownedBusinesses.map((business) => `<option value="${business.id}">${escapeHtml(business.name)}</option>`).join('');
-  login.hidden = true; dashboard.hidden = false; memberHeader.hidden = true; showMemberView('overview');
+  showMessage(status, failures.length ? `Algumas informações não carregaram. ${friendlyAuthError(failures[0])} Use “Atualizar dados”.` : '', failures.length ? 'warning' : 'success');
 }
 
-form.addEventListener('submit', async (event) => {
-  event.preventDefault(); showMessage(message, 'Entrando...');
-  const { data, error } = await supabase.auth.signInWithPassword({ email: document.querySelector('#member-email').value.trim(), password: document.querySelector('#member-password').value });
-  if (error) return showMessage(message, 'E-mail ou senha inválidos.', 'error');
-  try { await loadDashboard(data.user); } catch (loadError) { showMessage(message, `Não foi possível carregar o painel: ${loadError.message}`, 'error'); }
+mountAccess({ supabase, form, message, email: document.querySelector('#member-email'), password: document.querySelector('#member-password'),
+  open: loadDashboard, exit: document.querySelector('#member-exit'),
+  close: () => { memberLoadVersion++; dashboard.hidden = true; login.hidden = false; memberHeader.hidden = false; }
+});
+document.querySelector('#member-mobile-view').addEventListener('change', (event) => showMemberView(event.target.value));
+document.querySelector('#member-refresh').addEventListener('click', async (event) => {
+  const button = event.currentTarget; button.disabled = true;
+  try { await loadMemberData(); } catch (error) { showMessage(document.querySelector('#member-status'), friendlyAuthError(error), 'error'); }
+  finally { button.disabled = false; }
 });
 
 document.querySelectorAll('[data-member-view]').forEach((button) => button.addEventListener('click', () => showMemberView(button.dataset.memberView)));
 document.querySelectorAll('[data-go-member-view]').forEach((button) => button.addEventListener('click', () => showMemberView(button.dataset.goMemberView)));
-document.querySelector('#member-reset').addEventListener('click', async () => {
-  const email = document.querySelector('#member-email').value.trim();
-  if (!email) return showMessage(message, 'Informe seu e-mail primeiro.', 'error');
-  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${location.origin}/membros.html` });
-  showMessage(message, error ? error.message : 'Enviamos as instruções para seu e-mail.', error ? 'error' : 'success');
-});
-document.querySelector('#member-exit').addEventListener('click', async () => { await supabase.auth.signOut(); dashboard.hidden = true; login.hidden = false; memberHeader.hidden = false; });
 document.querySelector('[data-copy]').addEventListener('click', async (event) => { const button = event.currentTarget; await navigator.clipboard.writeText(document.querySelector('#member-referral-link').textContent); button.textContent = 'Link copiado ✓'; });
 document.querySelector('#business-search').addEventListener('input', (event) => { const term = event.target.value.toLocaleLowerCase('pt-BR'); renderBusinesses(businesses.filter((business) => `${business.name} ${business.segment} ${business.adh_chapters?.city || ''}`.toLocaleLowerCase('pt-BR').includes(term))); });
 businessList.addEventListener('click', async (event) => { const link = event.target.closest('[data-refer-business]'); if (!link) return; event.preventDefault(); await recordReferral(link.dataset.referBusiness); location.href = link.href; });
@@ -220,6 +242,3 @@ document.querySelector('#feedback-form').addEventListener('submit', async (event
   showMessage(status, error ? error.message : 'Avaliação registrada de forma privada.', error ? 'error' : 'success');
   if (!error) { form.reset(); await loadFeedbackHistory(); }
 });
-
-const { data: { user }, error: authError } = await supabase.auth.getUser();
-if (user && !authError) { try { await loadDashboard(user); } catch (error) { showMessage(message, `Não foi possível carregar o painel: ${error.message}`, 'error'); } }

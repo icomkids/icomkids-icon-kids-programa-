@@ -11,23 +11,26 @@
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="enhancements.css" />
   <link rel="stylesheet" href="portal-live.css?v=8" />
-  <link rel="stylesheet" href="mobile-optimization.css" />
-  <link rel="stylesheet" href="portal-mobile-v2.css?v=3" />
+  <link rel="stylesheet" href="portal-layout.css?v=1" />
+  <link rel="stylesheet" href="portal-access.css?v=1" />
 </head>
 <body class="admin-page">
   <main class="admin-access" id="admin-access">
     <section class="login-card" aria-labelledby="login-title">
       <img src="assets/logo-adhonep-expansao-branca.png" alt="ADHONEP Taubaté" />
       <span class="secure-label">ÁREA RESTRITA</span>
-      <h1 id="login-title">Acesso administrativo</h1>
-      <p>Somente administradores autorizados podem acessar empresas, patrocinadores, leads, eventos e conteúdos.</p>
+      <h1 id="login-title">Entre no seu painel</h1>
+      <p>Gerencie seu capítulo, empresários e agenda em um só lugar.</p>
       <form id="admin-login">
         <label>E-mail<input id="admin-email" type="email" placeholder="seu@email.com" autocomplete="email" required /></label>
-        <label>Senha<input id="admin-password" type="password" placeholder="••••••••" autocomplete="current-password" required /></label>
-        <button class="primary navy" type="submit">Entrar com segurança <b>→</b></button>
-        <p class="auth-message" id="admin-message" aria-live="polite" hidden></p>
+        <div><label for="admin-password">Senha</label><div class="access-password"><input id="admin-password" type="password" placeholder="Sua senha" autocomplete="current-password" required /><button type="button" data-toggle-password aria-pressed="false" aria-controls="admin-password">Mostrar</button></div></div>
+        <button class="access-text-button" type="button" data-reset-password>Esqueci minha senha</button>
+        <button class="primary navy" type="submit" disabled>Entrar no painel →</button>
+        <p class="auth-message" id="admin-message" role="status" aria-live="polite">Preparando acesso seguro…</p>
+        <button class="access-text-button" type="button" data-retry-access hidden>Tentar abrir meu painel novamente</button>
       </form>
-      <small>Acesso real protegido pelo Supabase e pelas permissões do seu capítulo.</small>
+      <a class="access-back" href="index.html">← Voltar ao site</a>
+      <small>Seu acesso é protegido e respeita as permissões do seu capítulo.</small>
     </section>
   </main>
 
@@ -35,6 +38,7 @@
     <aside class="admin-sidebar">
       <img src="assets/logo-adhonep-expansao-branca.png" alt="ADHONEP Taubaté" />
       <label class="admin-mobile-switcher" for="admin-mobile-view"><span>Área do painel</span><select id="admin-mobile-view"><option value="overview">Visão geral</option><option class="general-only" value="administrators">Administradores</option><option class="general-only" value="chapters">Capítulos</option><option value="businesses">Empresários</option><option value="sponsors">Patrocinadores</option><option value="financial">Financeiro e comissões</option><option value="events">Agenda e eventos</option><option value="calendar">Calendário</option></select></label>
+      <button id="admin-refresh" class="admin-refresh" type="button">Atualizar dados</button>
       <nav aria-label="Navegação administrativa">
         <button class="active" data-admin-view="overview">Visão geral</button>
         <button class="general-only" data-admin-view="administrators">Administradores</button>
@@ -45,7 +49,7 @@
         <button data-admin-view="events">Agenda e eventos</button>
         <button data-admin-view="calendar">Calendário</button>
       </nav>
-      <button class="admin-exit" id="admin-exit">Sair do painel</button>
+      <button class="admin-exit" id="admin-exit">Sair</button>
     </aside>
     <main class="admin-workspace">
       <div class="dash-title"><div><small id="admin-scope">ADMINISTRAÇÃO GERAL • TODOS OS CAPÍTULOS</small><h1 id="admin-greeting">Bom dia, administrador geral.</h1><p id="admin-description">Você pode administrar capítulos, gestores, empresários e conteúdos de toda a rede.</p><h2 class="admin-section-title" id="admin-section-title">Visão geral</h2></div><button type="button" data-scroll-to="event-manager">+ Novo evento</button></div>
@@ -67,6 +71,6 @@
       </section>
     </main>
   </section>
-  <script type="module" src="admin.js?v=12"></script>
+  <script type="module" src="portal-entry.js?v=1"></script>
 </body>
 </html>

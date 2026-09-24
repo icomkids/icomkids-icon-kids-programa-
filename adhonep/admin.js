@@ -1,4 +1,5 @@
-import { supabase, showMessage } from './supabase-client.js';
+import { supabase, showMessage } from './supabase-client.js?v=2';
+import { mountAccess, withTimeout, friendlyAuthError as friendlyAdminError } from './portal-auth.js';
 
 const access = document.querySelector('#admin-access');
 const shell = document.querySelector('#admin-shell');
@@ -14,6 +15,7 @@ let managedChapterIds = [];
 let editingChapterId = null;
 let editingBusinessId = null;
 let editingEventId = null;
+let adminLoadVersion = 0;
 const MEDIA_BUCKET = 'adhonep-business-media';
 const EVENT_MEDIA_BUCKET = 'adhonep-event-media';
 
@@ -36,20 +38,6 @@ function renderRows(target, rows, empty = 'Nenhum registro cadastrado.') {
 function setBusy(form, busy) {
   const button = form?.querySelector('button[type="submit"],button:not([type])');
   if (button) button.disabled = busy;
-}
-function withTimeout(promise, milliseconds, message) {
-  let timer;
-  const timeout = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(message)), milliseconds); });
-  return Promise.race([Promise.resolve(promise), timeout]).finally(() => clearTimeout(timer));
-}
-function friendlyAdminError(error) {
-  const detail = String(error?.message || error || '').trim();
-  if (/invalid login credentials/i.test(detail)) return 'E-mail ou senha incorretos. Confira os dados e tente novamente.';
-  if (/email not confirmed/i.test(detail)) return 'Este e-mail ainda não foi confirmado. Abra o convite recebido e confirme o acesso.';
-  if (/failed to fetch|network|load failed/i.test(detail)) return 'Não foi possível conectar ao sistema agora. Verifique sua internet e tente novamente.';
-  if (/permission denied|row-level security|schema/i.test(detail)) return 'Seu login foi reconhecido, mas a permissão administrativa ainda não está liberada. Entre em contato com o administrador geral.';
-  if (/jwt|refresh token|session/i.test(detail)) return 'Sua sessão expirou. Entre novamente com seu e-mail e senha.';
-  return detail || 'Não foi possível entrar na área administrativa. Tente novamente.';
 }
 async function functionFailure(error, data) {
   if (data?.error) return data.error;
@@ -100,7 +88,7 @@ function buildBusinessFormSteps(form, submit, cancel) {
     ['1', 'Identificação', 'Capítulo, empresa e responsável.', [label('#business-chapter'), group('#business-name'), label('#business-owner-name'), label('#business-owner-email')]],
     ['2', 'Apresentação', 'O texto que será exibido no marketplace.', [label('#business-headline'), label('#business-short'), label('#business-description'), label('#business-offerings'), label('#business-differentials'), label('#business-service-area')]],
     ['3', 'Contatos', 'Canais usados pelos visitantes para falar com a empresa.', [group('#business-whatsapp'), group('#business-website'), group('#business-facebook')]],
-    ['4', 'Plano e comissão', 'Validade, destaque e recompensa por indicação.', [label('#business-paid-until'), document.querySelector('#business-featured'), document.querySelector('.affiliate-offer-fields')]],
+    ['4', 'Plano e comissão', 'Validade, destaque e recompensa por indicação.', [label('#business-paid-until'), label('#business-featured'), document.querySelector('.affiliate-offer-fields')]],
     ['5', 'Logo, capa e vídeo', 'Arquivos visuais do perfil empresarial.', [document.querySelector('.media-fields')]]
   ];
   const uniqueNodes = (nodes) => [...new Set(nodes.filter(Boolean))];
@@ -234,11 +222,11 @@ async function loadAdmin(user) {
   access.hidden = true; shell.hidden = false;
   showAdminView('overview');
   showMessage(statusMessage, 'Acesso confirmado. Carregando os dados do painel...');
-  try { await refreshData(); }
-  catch (dataError) { showMessage(statusMessage, `O painel abriu, mas alguns dados não carregaram: ${friendlyAdminError(dataError)}`, 'warning'); }
+  refreshData().catch((dataError) => { showMessage(statusMessage, `O painel abriu, mas alguns dados não carregaram: ${friendlyAdminError(dataError)} Use “Atualizar dados” para tentar novamente.`, 'warning'); });
 }
 
 async function refreshData() {
+  const loadVersion = ++adminLoadVersion;
   let chapterQuery = supabase.from('adh_chapters').select('*').order('city');
   let businessQuery = supabase.from('adh_businesses').select('*,adh_chapters(city)').order('created_at', { ascending: false });
   let eventQuery = supabase.from('adh_events').select('*,adh_chapters(city)').order('starts_at', { ascending: true });
@@ -248,6 +236,7 @@ async function refreshData() {
     eventQuery = eventQuery.in('chapter_id', managedChapterIds);
   }
   const [{ data: chapterRows, error: chapterError }, { data: businessRows, error: businessError }, { data: eventRows, error: eventError }] = await withTimeout(Promise.all([chapterQuery, businessQuery, eventQuery]), 12000, 'Os dados principais demoraram além do esperado.');
+  if (loadVersion !== adminLoadVersion) return;
   const essentialError = chapterError || businessError || eventError;
   if (essentialError) throw essentialError;
   chapters = chapterRows || [];
@@ -269,13 +258,14 @@ async function refreshData() {
   renderRows(document.querySelector('#admin-events-list'), events.map((x) => ({ title: x.title, detail: `${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(x.starts_at))} • ${x.adh_chapters?.city || ''}`, status: x.published ? 'Publicado' : 'Rascunho', onEdit: () => editEvent(x.id), onDelete: () => deleteEvent(x.id) })), 'Nenhum evento cadastrado. Use “Agenda e eventos” para publicar o próximo.');
   renderFinance();
   showMessage(statusMessage, 'Painel atualizado.', 'success');
-  loadOptionalAdminData().catch((optionalError) => {
+  loadOptionalAdminData(loadVersion).catch((optionalError) => {
+    if (loadVersion !== adminLoadVersion) return;
     console.warn('Módulos complementares indisponíveis:', optionalError);
-    showMessage(statusMessage, 'Os dados principais estão disponíveis. Financeiro, afiliados ou a lista de administradores podem levar mais alguns instantes.', 'warning');
+    showMessage(statusMessage, `Os dados principais estão disponíveis, mas um módulo não carregou. ${friendlyAdminError(optionalError)} Use “Atualizar dados” para tentar novamente.`, 'warning');
   });
 }
 
-async function loadOptionalAdminData() {
+async function loadOptionalAdminData(loadVersion) {
   let adminQuery = supabase.from('adh_profiles').select('id,full_name,phone,role').in('role', ['super_admin', 'chapter_admin']).order('full_name');
   let offerQuery = supabase.from('adh_affiliate_offers').select('*').order('created_at', { ascending: false });
   let financeQuery = supabase.from('adh_referrals').select('*,adh_businesses(name,chapter_id,adh_chapters(city)),adh_affiliate_offers(title)').not('offer_id', 'is', null).order('created_at', { ascending: false });
@@ -285,12 +275,13 @@ async function loadOptionalAdminData() {
     financeQuery = supabase.from('adh_referrals').select('*,adh_businesses!inner(name,chapter_id,adh_chapters(city)),adh_affiliate_offers(title)').in('adh_businesses.chapter_id', managedChapterIds).not('offer_id', 'is', null).order('created_at', { ascending: false });
   }
   const [{ data: admins, error: adminError }, { data: offerRows, error: offerError }, { data: financeRows, error: financeError }] = await withTimeout(Promise.all([adminQuery, offerQuery, financeQuery]), 10000, 'Módulos complementares demoraram além do esperado.');
-  const error = adminError || offerError || financeError; if (error) throw error;
-  affiliateOffers = offerRows || [];
-  financialReferrals = financeRows || [];
-  renderRows(document.querySelector('#admin-leaders-list'), (admins || []).map((x) => ({ title: x.full_name || 'Administrador', detail: `${x.role === 'super_admin' ? 'Administrador geral' : 'Líder de capítulo'}${x.phone ? ` • ${x.phone}` : ''}`, status: 'Ativo' })), 'Nenhum administrador cadastrado.');
+  if (loadVersion !== adminLoadVersion) return;
+  if (!offerError) affiliateOffers = offerRows || [];
+  if (!financeError) financialReferrals = financeRows || [];
+  renderRows(document.querySelector('#admin-leaders-list'), (admins || []).map((x) => ({ title: x.full_name || 'Administrador', detail: `${x.role === 'super_admin' ? 'Administrador geral' : 'Líder de capítulo'}${x.phone ? ` • ${x.phone}` : ''}`, status: 'Ativo' })), adminError ? `Não foi possível carregar os administradores: ${friendlyAdminError(adminError)}` : 'Nenhum administrador cadastrado.');
   renderBusinessRows(document.querySelector('[data-admin-view].active')?.dataset.adminView === 'sponsors');
   renderFinance();
+  if (adminError || offerError || financeError) throw adminError || offerError || financeError;
 }
 
 function renderBusinessRows(sponsorView = false) {
@@ -327,6 +318,7 @@ async function deleteEvent(id) {
 }
 
 function showAdminView(view) {
+  shell.dataset.view = view;
   document.querySelectorAll('[data-panel-view]').forEach((panel) => { panel.hidden = !panel.dataset.panelView.split(' ').includes(view); });
   document.querySelectorAll('[data-admin-view]').forEach((button) => button.classList.toggle('active', button.dataset.adminView === view));
   const titles = { overview: 'Visão geral', administrators: 'Administradores', chapters: 'Capítulos', businesses: 'Empresários', sponsors: 'Patrocinadores', financial: 'Financeiro e comissões', events: 'Agenda e eventos', calendar: 'Calendário' };
@@ -337,22 +329,21 @@ function showAdminView(view) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+mountAccess({ supabase, form: document.querySelector('#admin-login'), message: loginMessage,
+  email: document.querySelector('#admin-email'), password: document.querySelector('#admin-password'),
+  open: loadAdmin, exit: document.querySelector('#admin-exit'),
+  close: () => { adminLoadVersion++; shell.hidden = true; access.hidden = false; profile = null; }
+});
+
 addEditorControls();
 document.querySelector('#chapter-cancel').addEventListener('click', resetChapterEditor);
 document.querySelector('#business-cancel').addEventListener('click', resetBusinessEditor);
 document.querySelector('#event-cancel').addEventListener('click', resetEventEditor);
 
-document.querySelector('#admin-login').addEventListener('submit', async (event) => {
-  event.preventDefault(); const form = event.currentTarget; setBusy(form, true); showMessage(loginMessage, 'Validando acesso...');
-  try {
-    const { data, error } = await withTimeout(supabase.auth.signInWithPassword({ email: document.querySelector('#admin-email').value.trim(), password: document.querySelector('#admin-password').value }), 12000, 'A validação está demorando além do esperado. Verifique sua conexão e tente novamente.');
-    if (error) throw error;
-    if (!data?.user) throw new Error('O acesso não retornou um usuário válido.');
-    await loadAdmin(data.user);
-  } catch (loginError) {
-    Promise.resolve(supabase.auth.signOut()).catch(() => {}); shell.hidden = true; access.hidden = false;
-    showMessage(loginMessage, friendlyAdminError(loginError), 'error');
-  } finally { setBusy(form, false); }
+document.querySelector('#admin-refresh').addEventListener('click', async (event) => {
+  const button = event.currentTarget; button.disabled = true; showMessage(statusMessage, 'Atualizando dados…');
+  try { await refreshData(); } catch (error) { showMessage(statusMessage, friendlyAdminError(error), 'error'); }
+  finally { button.disabled = false; }
 });
 
 document.querySelector('#chapter-form').addEventListener('submit', async (event) => {
@@ -444,20 +435,3 @@ document.querySelector('#event-form').addEventListener('submit', async (event) =
 document.querySelectorAll('[data-admin-view]').forEach((button) => button.addEventListener('click', () => showAdminView(button.dataset.adminView)));
 document.querySelector('#admin-mobile-view')?.addEventListener('change', (event) => showAdminView(event.target.value));
 document.querySelectorAll('[data-scroll-to]').forEach((button) => button.addEventListener('click', () => showAdminView('events')));
-
-document.querySelector('#admin-exit').addEventListener('click', async () => { await supabase.auth.signOut(); shell.hidden = true; access.hidden = false; });
-try {
-  const { data: { session }, error: sessionError } = await withTimeout(supabase.auth.getSession(), 8000, 'Não foi possível restaurar a sessão. Entre novamente.');
-  if (sessionError) throw sessionError;
-  if (session) {
-    showMessage(loginMessage, 'Restaurando seu acesso administrativo...');
-    try { await loadAdmin(session.user); }
-    catch (restoreError) {
-      Promise.resolve(supabase.auth.signOut()).catch(() => {}); shell.hidden = true; access.hidden = false;
-      showMessage(loginMessage, friendlyAdminError(restoreError), 'error');
-    }
-  }
-} catch (sessionError) {
-  shell.hidden = true; access.hidden = false;
-  showMessage(loginMessage, friendlyAdminError(sessionError), 'error');
-}

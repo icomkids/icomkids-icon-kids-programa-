@@ -16,9 +16,9 @@
   <link rel="stylesheet" href="members.css" />
   <link rel="stylesheet" href="portal-live.css?v=8" />
   <link rel="stylesheet" href="members-actions.css" />
-  <link rel="stylesheet" href="mobile-optimization.css" />
   <link rel="stylesheet" href="member-functionality.css" />
-  <link rel="stylesheet" href="portal-mobile-v2.css?v=1" />
+  <link rel="stylesheet" href="portal-layout.css?v=1" />
+  <link rel="stylesheet" href="portal-access.css?v=1" />
 </head>
 <body class="members-page">
   <header class="members-top"><a href="index.html"><img src="assets/logo-adhonep-fundo-branco.png" alt="ADHONEP Taubaté" /></a><div><a href="index.html">Voltar ao site</a><span>AMBIENTE SEGURO</span></div></header>
@@ -30,14 +30,24 @@
       </div>
       <div class="login-panel">
         <div class="login-heading"><span class="secure-mark">✦</span><small>ACESSO EXCLUSIVO</small><h2>Bem-vindo à comunidade.</h2><p>Entre com o e-mail e a senha da sua conta.</p></div>
-        <form id="member-access"><label>E-mail<input id="member-email" type="email" autocomplete="email" required /></label><label>Senha<input id="member-password" type="password" autocomplete="current-password" minlength="8" required /></label><div class="form-support"><label><input type="checkbox" checked /> <span>Lembrar meu acesso</span></label><button class="link-button" id="member-reset" type="button">Esqueci minha senha</button></div><button class="primary navy login-submit" id="member-submit">Entrar na comunidade <span>→</span></button><p class="auth-message" id="member-message" hidden></p></form>
-        <div class="subscription"><div><b>Quer apresentar sua empresa?</b><p>Solicite a ativação do perfil empresarial ao líder do capítulo.</p></div><a href="https://wa.me/5512999999999" target="_blank" rel="noreferrer">Falar com o capítulo →</a></div>
+        <form id="member-access">
+          <label>E-mail<input id="member-email" type="email" placeholder="seu@email.com" autocomplete="email" required /></label>
+          <div><label for="member-password">Senha</label><div class="access-password"><input id="member-password" type="password" placeholder="Sua senha" autocomplete="current-password" required /><button type="button" data-toggle-password aria-pressed="false" aria-controls="member-password">Mostrar</button></div></div>
+          <button class="access-text-button" id="member-reset" type="button" data-reset-password>Esqueci minha senha</button>
+          <button class="primary navy login-submit" id="member-submit" type="submit" disabled>Entrar na comunidade →</button>
+          <p class="auth-message" id="member-message" role="status" aria-live="polite">Preparando acesso seguro…</p>
+          <button class="access-text-button" type="button" data-retry-access hidden>Tentar abrir meu painel novamente</button>
+        </form>
+        <div class="subscription"><div><b>Quer apresentar sua empresa?</b><p>Solicite a ativação do perfil empresarial ao líder do capítulo.</p></div><a href="empresas.html">Conhecer empresas →</a></div>
         <p class="demo-note">Acesso protegido pelo Supabase. Seus dados são exibidos conforme seu perfil.</p>
       </div>
     </section>
     <section class="member-dashboard" id="member-dashboard" hidden>
       <aside><img src="assets/logo-adhonep-expansao-branca.png" alt="ADHONEP Taubaté" /><button class="active" data-member-view="overview">Visão geral</button><button data-member-view="businesses">Empresas</button><button data-member-view="affiliates">Afiliados e comissões</button><button data-member-view="referrals">Indicações</button><button class="business-only" data-member-view="company">Minha empresa</button><button class="business-only" data-member-view="contacts">Contatos</button><button data-member-view="reviews">Avaliações</button><button id="member-exit">Sair</button></aside>
       <div class="member-content">
+        <label class="member-mobile-switcher" for="member-mobile-view">Área da comunidade<select id="member-mobile-view"><option value="overview">Visão geral</option><option value="businesses">Empresas</option><option value="affiliates">Afiliados e comissões</option><option value="referrals">Indicações</option><option class="business-only" value="company">Minha empresa</option><option class="business-only" value="contacts">Contatos</option><option value="reviews">Avaliações</option></select></label>
+        <div class="member-tools"><a id="member-admin-link" href="admin.html" hidden>Abrir administração →</a><button id="member-refresh" type="button">Atualizar dados</button></div>
+        <p id="member-status" class="auth-message" role="status" hidden></p>
         <div class="dashboard-head"><div><span class="eyebrow" id="member-label">PAINEL DO MEMBRO</span><h1 id="member-title">Bem-vindo.</h1><p id="member-copy">Acompanhe suas indicações e encontre negócios da comunidade.</p></div><div class="member-avatar"><span>AD</span><div><b>Membro ADHONEP</b><small id="member-role-label">Membro • Taubaté</small></div></div></div>
 
         <section class="member-view active" data-member-panel="overview">
@@ -60,6 +70,6 @@
       </div>
     </section>
   </main>
-  <script type="module" src="members.js?v=10"></script>
+  <script type="module" src="portal-entry.js?v=1"></script>
 </body>
 </html>
