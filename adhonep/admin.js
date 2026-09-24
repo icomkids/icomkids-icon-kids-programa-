@@ -37,6 +37,11 @@ function setBusy(form, busy) {
   const button = form?.querySelector('button[type="submit"],button:not([type])');
   if (button) button.disabled = busy;
 }
+function withTimeout(promise, milliseconds, message) {
+  let timer;
+  const timeout = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(message)), milliseconds); });
+  return Promise.race([Promise.resolve(promise), timeout]).finally(() => clearTimeout(timer));
+}
 function friendlyAdminError(error) {
   const detail = String(error?.message || error || '').trim();
   if (/invalid login credentials/i.test(detail)) return 'E-mail ou senha incorretos. Confira os dados e tente novamente.';
@@ -211,57 +216,43 @@ async function saveFinance(id, saleValue, financialStatus, button) {
 }
 
 async function loadAdmin(user) {
-  const { data, error } = await supabase.from('adh_profiles').select('*').eq('id', user.id).maybeSingle();
+  const { data, error } = await withTimeout(supabase.from('adh_profiles').select('*').eq('id', user.id).maybeSingle(), 10000, 'A validação da permissão demorou além do esperado. Tente novamente.');
   if (error) throw error;
   if (!data || !['super_admin', 'chapter_admin'].includes(data.role)) throw new Error('Seu usuário ainda não possui permissão administrativa na ADHONEP.');
   profile = data;
   const isGeneral = profile.role === 'super_admin';
   if (!isGeneral) {
-    const { data: links, error: linkError } = await supabase.from('adh_chapter_admins').select('chapter_id').eq('user_id', user.id);
+    const { data: links, error: linkError } = await withTimeout(supabase.from('adh_chapter_admins').select('chapter_id').eq('user_id', user.id), 10000, 'A vinculação com o capítulo demorou além do esperado.');
     if (linkError) throw linkError;
     managedChapterIds = (links || []).map((item) => item.chapter_id);
     if (!managedChapterIds.length) throw new Error('Seu acesso ainda não foi vinculado a um capítulo.');
   }
   document.querySelectorAll('.general-only').forEach((item) => { item.hidden = !isGeneral; });
   document.querySelector('#admin-scope').textContent = isGeneral ? 'ADMINISTRAÇÃO GERAL • TODOS OS CAPÍTULOS' : 'ADMINISTRAÇÃO DO MEU CAPÍTULO';
-  document.querySelector('#admin-greeting').textContent = `Olá, ${profile.full_name.split(' ')[0] || 'administrador'}.`;
+  document.querySelector('#admin-greeting').textContent = `Olá, ${String(profile.full_name || 'administrador').split(' ')[0]}.`;
   document.querySelector('#admin-description').textContent = isGeneral ? 'Você pode administrar toda a rede ADHONEP.' : 'Você administra empresários, agenda e avaliações do seu capítulo.';
-  const warnings = await refreshData();
   access.hidden = true; shell.hidden = false;
   showAdminView('overview');
-  if (warnings.length) showMessage(statusMessage, 'A área administrativa foi carregada. Alguns módulos complementares estão temporariamente indisponíveis, mas capítulos, empresários e eventos continuam funcionando.', 'warning');
-  return warnings;
+  showMessage(statusMessage, 'Acesso confirmado. Carregando os dados do painel...');
+  try { await refreshData(); }
+  catch (dataError) { showMessage(statusMessage, `O painel abriu, mas alguns dados não carregaram: ${friendlyAdminError(dataError)}`, 'warning'); }
 }
 
 async function refreshData() {
   let chapterQuery = supabase.from('adh_chapters').select('*').order('city');
   let businessQuery = supabase.from('adh_businesses').select('*,adh_chapters(city)').order('created_at', { ascending: false });
   let eventQuery = supabase.from('adh_events').select('*,adh_chapters(city)').order('starts_at', { ascending: true });
-  let financeQuery = supabase.from('adh_referrals').select('*,adh_businesses(name,chapter_id,adh_chapters(city)),adh_affiliate_offers(title)').not('offer_id', 'is', null).order('created_at', { ascending: false });
-  let offerQuery = supabase.from('adh_affiliate_offers').select('*').order('created_at', { ascending: false });
   if (profile.role !== 'super_admin') {
     chapterQuery = chapterQuery.in('id', managedChapterIds);
     businessQuery = businessQuery.in('chapter_id', managedChapterIds);
     eventQuery = eventQuery.in('chapter_id', managedChapterIds);
   }
-  let adminQuery = supabase.from('adh_profiles').select('id,full_name,phone,role').in('role', ['super_admin', 'chapter_admin']).order('full_name');
-  const [{ data: chapterRows, error: chapterError }, { data: businessRows, error: businessError }, { data: eventRows, error: eventError }, { data: admins, error: adminError }] = await Promise.all([chapterQuery, businessQuery, eventQuery, adminQuery]);
-  if (profile.role !== 'super_admin') {
-    const businessIds = (businessRows || []).map((item) => item.id);
-    offerQuery = businessIds.length ? supabase.from('adh_affiliate_offers').select('*').in('business_id', businessIds).order('created_at', { ascending: false }) : supabase.from('adh_affiliate_offers').select('*').eq('business_id', '00000000-0000-0000-0000-000000000000');
-  }
-  const { data: offerRows, error: offerError } = await offerQuery;
-  if (profile.role !== 'super_admin') financeQuery = supabase.from('adh_referrals').select('*,adh_businesses!inner(name,chapter_id,adh_chapters(city)),adh_affiliate_offers(title)').in('adh_businesses.chapter_id', managedChapterIds).not('offer_id', 'is', null).order('created_at', { ascending: false });
-  const { data: financeRows, error: financeError } = await financeQuery;
+  const [{ data: chapterRows, error: chapterError }, { data: businessRows, error: businessError }, { data: eventRows, error: eventError }] = await withTimeout(Promise.all([chapterQuery, businessQuery, eventQuery]), 12000, 'Os dados principais demoraram além do esperado.');
   const essentialError = chapterError || businessError || eventError;
   if (essentialError) throw essentialError;
-  const optionalErrors = [adminError, offerError, financeError].filter(Boolean);
-  optionalErrors.forEach((error) => console.warn('Módulo administrativo complementar indisponível:', error));
   chapters = chapterRows || [];
   businesses = businessRows || [];
-  affiliateOffers = offerRows || [];
   events = eventRows || [];
-  financialReferrals = financeRows || [];
   document.querySelector('#business-chapter').innerHTML = options(chapters);
   document.querySelector('#event-chapter').innerHTML = options(chapters);
   document.querySelector('#leader-chapter').innerHTML = options(chapters);
@@ -273,11 +264,33 @@ async function refreshData() {
     const row = document.createElement('div'); row.className = 'admin-list-item'; row.innerHTML = '<b></b><small></small>'; row.querySelector('b').textContent = x.title; row.querySelector('small').textContent = x.detail; records.append(row);
   });
   renderRows(document.querySelector('#admin-chapters-list'), chapters.map((x) => ({ title: x.name, detail: `${x.city}/${x.state} • Líder: ${x.leader_name || 'a definir'}`, status: x.active ? 'Ativo' : 'Inativo', onEdit: profile.role === 'super_admin' ? () => editChapter(x.id) : null, onDelete: profile.role === 'super_admin' ? () => deleteChapter(x.id) : null })), 'Nenhum capítulo cadastrado.');
-  renderRows(document.querySelector('#admin-leaders-list'), (admins || []).map((x) => ({ title: x.full_name || 'Administrador', detail: `${x.role === 'super_admin' ? 'Administrador geral' : 'Líder de capítulo'}${x.phone ? ` • ${x.phone}` : ''}`, status: 'Ativo' })), 'Nenhum administrador cadastrado.');
+  renderRows(document.querySelector('#admin-leaders-list'), [], 'Carregando administradores...');
   renderBusinessRows(document.querySelector('[data-admin-view].active')?.dataset.adminView === 'sponsors');
   renderRows(document.querySelector('#admin-events-list'), events.map((x) => ({ title: x.title, detail: `${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(x.starts_at))} • ${x.adh_chapters?.city || ''}`, status: x.published ? 'Publicado' : 'Rascunho', onEdit: () => editEvent(x.id), onDelete: () => deleteEvent(x.id) })), 'Nenhum evento cadastrado. Use “Agenda e eventos” para publicar o próximo.');
   renderFinance();
-  return optionalErrors;
+  showMessage(statusMessage, 'Painel atualizado.', 'success');
+  loadOptionalAdminData().catch((optionalError) => {
+    console.warn('Módulos complementares indisponíveis:', optionalError);
+    showMessage(statusMessage, 'Os dados principais estão disponíveis. Financeiro, afiliados ou a lista de administradores podem levar mais alguns instantes.', 'warning');
+  });
+}
+
+async function loadOptionalAdminData() {
+  let adminQuery = supabase.from('adh_profiles').select('id,full_name,phone,role').in('role', ['super_admin', 'chapter_admin']).order('full_name');
+  let offerQuery = supabase.from('adh_affiliate_offers').select('*').order('created_at', { ascending: false });
+  let financeQuery = supabase.from('adh_referrals').select('*,adh_businesses(name,chapter_id,adh_chapters(city)),adh_affiliate_offers(title)').not('offer_id', 'is', null).order('created_at', { ascending: false });
+  if (profile.role !== 'super_admin') {
+    const businessIds = businesses.map((item) => item.id);
+    offerQuery = businessIds.length ? offerQuery.in('business_id', businessIds) : offerQuery.eq('business_id', '00000000-0000-0000-0000-000000000000');
+    financeQuery = supabase.from('adh_referrals').select('*,adh_businesses!inner(name,chapter_id,adh_chapters(city)),adh_affiliate_offers(title)').in('adh_businesses.chapter_id', managedChapterIds).not('offer_id', 'is', null).order('created_at', { ascending: false });
+  }
+  const [{ data: admins, error: adminError }, { data: offerRows, error: offerError }, { data: financeRows, error: financeError }] = await withTimeout(Promise.all([adminQuery, offerQuery, financeQuery]), 10000, 'Módulos complementares demoraram além do esperado.');
+  const error = adminError || offerError || financeError; if (error) throw error;
+  affiliateOffers = offerRows || [];
+  financialReferrals = financeRows || [];
+  renderRows(document.querySelector('#admin-leaders-list'), (admins || []).map((x) => ({ title: x.full_name || 'Administrador', detail: `${x.role === 'super_admin' ? 'Administrador geral' : 'Líder de capítulo'}${x.phone ? ` • ${x.phone}` : ''}`, status: 'Ativo' })), 'Nenhum administrador cadastrado.');
+  renderBusinessRows(document.querySelector('[data-admin-view].active')?.dataset.adminView === 'sponsors');
+  renderFinance();
 }
 
 function renderBusinessRows(sponsorView = false) {
@@ -332,12 +345,12 @@ document.querySelector('#event-cancel').addEventListener('click', resetEventEdit
 document.querySelector('#admin-login').addEventListener('submit', async (event) => {
   event.preventDefault(); const form = event.currentTarget; setBusy(form, true); showMessage(loginMessage, 'Validando acesso...');
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({ email: document.querySelector('#admin-email').value.trim(), password: document.querySelector('#admin-password').value });
+    const { data, error } = await withTimeout(supabase.auth.signInWithPassword({ email: document.querySelector('#admin-email').value.trim(), password: document.querySelector('#admin-password').value }), 12000, 'A validação está demorando além do esperado. Verifique sua conexão e tente novamente.');
     if (error) throw error;
     if (!data?.user) throw new Error('O acesso não retornou um usuário válido.');
     await loadAdmin(data.user);
   } catch (loginError) {
-    await supabase.auth.signOut(); shell.hidden = true; access.hidden = false;
+    Promise.resolve(supabase.auth.signOut()).catch(() => {}); shell.hidden = true; access.hidden = false;
     showMessage(loginMessage, friendlyAdminError(loginError), 'error');
   } finally { setBusy(form, false); }
 });
@@ -434,13 +447,13 @@ document.querySelectorAll('[data-scroll-to]').forEach((button) => button.addEven
 
 document.querySelector('#admin-exit').addEventListener('click', async () => { await supabase.auth.signOut(); shell.hidden = true; access.hidden = false; });
 try {
-  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  const { data: { session }, error: sessionError } = await withTimeout(supabase.auth.getSession(), 8000, 'Não foi possível restaurar a sessão. Entre novamente.');
   if (sessionError) throw sessionError;
   if (session) {
     showMessage(loginMessage, 'Restaurando seu acesso administrativo...');
     try { await loadAdmin(session.user); }
     catch (restoreError) {
-      await supabase.auth.signOut(); shell.hidden = true; access.hidden = false;
+      Promise.resolve(supabase.auth.signOut()).catch(() => {}); shell.hidden = true; access.hidden = false;
       showMessage(loginMessage, friendlyAdminError(restoreError), 'error');
     }
   }

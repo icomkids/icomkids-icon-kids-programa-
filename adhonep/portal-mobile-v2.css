@@ -196,3 +196,55 @@
   .member-company-list article { grid-template-columns: 1fr; }
   .member-company-list img { width: 100%; height: 120px; }
 }
+
+/* Final mobile admin layout: one consistent app shell, without conflicting navigation rules. */
+@media (max-width: 900px) {
+  body.admin-page { min-width: 0; padding: 0; background: #eef2f4; }
+  .admin-page [hidden] { display: none !important; }
+  .admin-shell { display: block; min-width: 0; }
+  .admin-sidebar {
+    position: fixed; inset: 0 0 auto; z-index: 1000; box-sizing: border-box;
+    width: 100%; height: calc(72px + env(safe-area-inset-top));
+    padding: calc(8px + env(safe-area-inset-top)) 10px 8px;
+    display: grid; grid-template-columns: 44px minmax(0,1fr) 46px; gap: 9px; align-items: center;
+    background: #071d2e; border: 0; border-bottom: 1px solid #ffffff1c; box-shadow: 0 8px 24px #06111e2b;
+  }
+  .admin-sidebar > img { display: block; width: 44px; height: 44px; padding: 4px; object-fit: contain; border-radius: 9px; background: #fff; }
+  .admin-sidebar nav { display: none; }
+  .admin-mobile-switcher { display: grid; min-width: 0; gap: 2px; }
+  .admin-mobile-switcher span { color: #d6a957; font-size: 7px; font-weight: 900; letter-spacing: .14em; }
+  .admin-mobile-switcher select { box-sizing: border-box; width: 100%; height: 38px; margin: 0; padding: 0 28px 0 10px; border: 1px solid #ffffff24; border-radius: 9px; background: #102e44; color: #fff; font-size: 14px !important; font-weight: 800; }
+  .admin-sidebar .admin-exit { width: 46px; min-width: 46px; min-height: 46px; margin: 0; padding: 4px; border: 1px solid #ffffff2a; border-radius: 9px; font-size: 8px; line-height: 1.15; }
+  .admin-workspace { box-sizing: border-box; width: 100%; min-width: 0; padding: calc(88px + env(safe-area-inset-top)) 12px 28px; }
+  .admin-workspace .dash-title { gap: 10px; padding: 17px 15px; border: 1px solid #e0e5e8; border-radius: 16px; background: #fff; }
+  .admin-workspace .dash-title small { font-size: 8px; letter-spacing: .12em; }
+  .admin-workspace .dash-title h1 { margin: 5px 0; font-size: 28px; line-height: 1.08; }
+  .admin-workspace .dash-title p { margin: 0; font-size: 13px; line-height: 1.45; }
+  .admin-workspace .dash-title > button { min-height: 45px; }
+  .admin-section-title { margin: 14px 0 0; font-size: 21px; }
+  .admin-guide { display: none; }
+  .admin-workspace .metrics { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 7px; margin: 12px 0; }
+  .admin-workspace .metrics article { display: block; min-width: 0; padding: 12px 8px; text-align: center; }
+  .admin-workspace .metrics span { font-size: 7px; letter-spacing: .08em; overflow-wrap: anywhere; }
+  .admin-workspace .metrics strong { display: block; margin: 5px 0 0; font-size: 26px; line-height: 1; }
+  .admin-workspace .metrics small { display: none; }
+  .admin-status { position: relative; z-index: 1; margin: 10px 0; border-radius: 11px; font-size: 12px; }
+  .admin-panels { margin-top: 12px; }
+  .admin-panel { box-sizing: border-box; width: 100%; margin: 0 0 12px; padding: 18px 14px; border-radius: 15px; overflow: hidden; }
+  .admin-panel h2 { margin-top: 0; font-size: 22px; }
+  .admin-panel p { overflow-wrap: anywhere; }
+  .admin-panel .two, .admin-panel .media-fields, .event-time-fields, .finance-controls { grid-template-columns: minmax(0,1fr); }
+  .admin-panel input, .admin-panel select, .admin-panel textarea { box-sizing: border-box; width: 100%; min-width: 0; }
+  .admin-list-item { grid-template-columns: minmax(0,1fr); }
+  .admin-row-controls { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .admin-form-step summary { grid-template-columns: 34px minmax(0,1fr) 16px; }
+  .admin-form-step-body { min-width: 0; }
+}
+
+@media (max-width: 390px) {
+  .admin-workspace { padding-inline: 10px; }
+  .admin-workspace .metrics { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .admin-workspace .metrics article { display: block; padding: 11px 5px; }
+  .admin-workspace .metrics strong { margin: 5px 0 0; font-size: 24px; }
+  .admin-panel { padding-inline: 12px; }
+}
