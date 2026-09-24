@@ -79,6 +79,32 @@ async function uploadEventImage(eventId, file) {
   return supabase.storage.from(EVENT_MEDIA_BUCKET).getPublicUrl(path).data.publicUrl;
 }
 
+function buildBusinessFormSteps(form, submit, cancel) {
+  const label = (selector) => document.querySelector(selector)?.closest('label');
+  const group = (selector) => document.querySelector(selector)?.closest('.two');
+  const definitions = [
+    ['1', 'Identificação', 'Capítulo, empresa e responsável.', [label('#business-chapter'), group('#business-name'), label('#business-owner-name'), label('#business-owner-email')]],
+    ['2', 'Apresentação', 'O texto que será exibido no marketplace.', [label('#business-headline'), label('#business-short'), label('#business-description'), label('#business-offerings'), label('#business-differentials'), label('#business-service-area')]],
+    ['3', 'Contatos', 'Canais usados pelos visitantes para falar com a empresa.', [group('#business-whatsapp'), group('#business-website'), group('#business-facebook')]],
+    ['4', 'Plano e comissão', 'Validade, destaque e recompensa por indicação.', [label('#business-paid-until'), document.querySelector('#business-featured'), document.querySelector('.affiliate-offer-fields')]],
+    ['5', 'Logo, capa e vídeo', 'Arquivos visuais do perfil empresarial.', [document.querySelector('.media-fields')]]
+  ];
+  const uniqueNodes = (nodes) => [...new Set(nodes.filter(Boolean))];
+  const steps = definitions.map(([number, title, description, nodes], index) => {
+    const details = document.createElement('details'); details.className = 'admin-form-step'; details.open = !window.matchMedia('(max-width: 900px)').matches || index === 0;
+    const summary = document.createElement('summary'); summary.innerHTML = `<b>${number}</b><span><strong>${title}</strong><small>${description}</small></span><i aria-hidden="true">⌄</i>`;
+    const body = document.createElement('div'); body.className = 'admin-form-step-body';
+    uniqueNodes(nodes).forEach((node) => body.append(node));
+    if (index < definitions.length - 1) {
+      const next = document.createElement('button'); next.type = 'button'; next.className = 'admin-step-next'; next.textContent = `Continuar para ${definitions[index + 1][1]} →`;
+      next.addEventListener('click', () => { details.open = false; steps[index + 1].open = true; steps[index + 1].scrollIntoView({ behavior: 'smooth', block: 'start' }); }); body.append(next);
+    }
+    details.append(summary, body); form.insertBefore(details, submit); return details;
+  });
+  form.addEventListener('invalid', (event) => event.target.closest('.admin-form-step')?.setAttribute('open', ''), true);
+  submit.classList.add('admin-business-submit'); cancel.classList.add('admin-business-cancel');
+}
+
 function addEditorControls() {
   const businessForm = document.querySelector('#business-form');
   const businessHeading = businessForm.closest('.admin-panel').querySelector('h2'); businessHeading.id = 'business-form-title';
@@ -89,6 +115,7 @@ function addEditorControls() {
   featured.after(offerFields);
   const businessSubmit = businessForm.querySelector('button[type="submit"],button:not([type])'); businessSubmit.id = 'business-submit';
   const businessCancel = document.createElement('button'); businessCancel.type = 'button'; businessCancel.id = 'business-cancel'; businessCancel.className = 'admin-cancel'; businessCancel.textContent = 'Cancelar edição'; businessCancel.hidden = true; businessSubmit.after(businessCancel);
+  buildBusinessFormSteps(businessForm, businessSubmit, businessCancel);
 
   const eventForm = document.querySelector('#event-form');
   const eventHeading = eventForm.closest('.admin-panel').querySelector('h2'); eventHeading.id = 'event-form-title';
@@ -276,9 +303,9 @@ function showAdminView(view) {
   document.querySelectorAll('[data-admin-view]').forEach((button) => button.classList.toggle('active', button.dataset.adminView === view));
   const titles = { overview: 'Visão geral', administrators: 'Administradores', chapters: 'Capítulos', businesses: 'Empresários', sponsors: 'Patrocinadores', financial: 'Financeiro e comissões', events: 'Agenda e eventos', calendar: 'Calendário' };
   document.querySelector('#admin-section-title').textContent = titles[view] || 'Visão geral';
+  const mobileView = document.querySelector('#admin-mobile-view'); if (mobileView) mobileView.value = view;
   const listTitle = document.querySelector('#business-list-title'); if (listTitle) listTitle.textContent = view === 'sponsors' ? 'Patrocinadores em destaque' : 'Empresários publicados';
   if (view === 'businesses' || view === 'sponsors') renderBusinessRows(view === 'sponsors');
-  if (window.matchMedia('(max-width: 900px)').matches) document.querySelector(`[data-admin-view="${view}"]`)?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -381,6 +408,7 @@ document.querySelector('#event-form').addEventListener('submit', async (event) =
 });
 
 document.querySelectorAll('[data-admin-view]').forEach((button) => button.addEventListener('click', () => showAdminView(button.dataset.adminView)));
+document.querySelector('#admin-mobile-view')?.addEventListener('change', (event) => showAdminView(event.target.value));
 document.querySelectorAll('[data-scroll-to]').forEach((button) => button.addEventListener('click', () => showAdminView('events')));
 
 document.querySelector('#admin-exit').addEventListener('click', async () => { await supabase.auth.signOut(); shell.hidden = true; access.hidden = false; });

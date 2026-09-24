@@ -1,4 +1,18 @@
 /* Mobile application layout for the member and administration portals. */
+.admin-mobile-switcher { display: none; }
+.admin-form-step { margin: 0; padding: 0; border: 1px solid #e0e5e8; border-radius: 12px; background: #fbfcfc; overflow: hidden; }
+.admin-form-step + .admin-form-step { margin-top: 10px; }
+.admin-form-step summary { display: grid; grid-template-columns: 34px minmax(0,1fr) 18px; gap: 11px; align-items: center; padding: 15px; cursor: pointer; list-style: none; }
+.admin-form-step summary::-webkit-details-marker { display: none; }
+.admin-form-step summary > b { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; background: #0b2940; color: #fff; }
+.admin-form-step summary span,.admin-form-step summary strong,.admin-form-step summary small { display: block; min-width: 0; }
+.admin-form-step summary strong { color: #17374e; font-size: 14px; }
+.admin-form-step summary small { margin-top: 3px; color: #74818a; font-size: 10px; line-height: 1.35; }
+.admin-form-step summary i { color: #a87831; font-style: normal; font-size: 18px; transition: transform .2s; }
+.admin-form-step[open] summary { border-bottom: 1px solid #e4e8ea; background: #f4f7f8; }
+.admin-form-step[open] summary i { transform: rotate(180deg); }
+.admin-form-step-body { display: grid; gap: 12px; padding: 17px 15px; }
+.admin-step-next { min-height: 46px; padding: 12px 14px; border: 1px solid #b98942; border-radius: 8px; background: #fff; color: #8a5c1d; font-weight: 800; cursor: pointer; }
 @media (max-width: 900px) {
   html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
   body { -webkit-text-size-adjust: 100%; }
@@ -133,6 +147,32 @@
   .affiliate-membership, .referral-lead-form { grid-template-columns: 1fr; }
   .affiliate-actions { width: 100%; align-items: stretch; flex-direction: column; }
   .affiliate-actions button { width: 100%; min-height: 44px; }
+}
+
+@media (max-width: 900px) {
+  /* A single native selector replaces the old eight-item horizontal scroller. */
+  .admin-page { padding: 0; }
+  .admin-sidebar { inset: 0 0 auto; height: calc(76px + env(safe-area-inset-top)); padding: calc(8px + env(safe-area-inset-top)) 10px 8px; align-items: center; gap: 9px; border-top: 0; border-bottom: 1px solid #ffffff1c; box-shadow: 0 10px 30px #06111e30; }
+  .admin-sidebar > img { display: block; flex: 0 0 52px; width: 52px; height: 52px; padding: 4px; object-fit: contain; border-radius: 10px; background: #fff; }
+  .admin-sidebar nav { display: none; }
+  .admin-mobile-switcher { display: grid; flex: 1 1 auto; min-width: 0; gap: 2px; color: #d3a557; }
+  .admin-mobile-switcher span { font-size: 7px; font-weight: 900; letter-spacing: .13em; text-transform: uppercase; }
+  .admin-mobile-switcher select { width: 100%; min-width: 0; height: 38px; padding: 0 30px 0 10px; border: 1px solid #ffffff2b; border-radius: 9px; background: #0d2a40; color: #fff; font-size: 14px!important; font-weight: 800; }
+  .admin-sidebar .admin-exit { flex: 0 0 49px; width: 49px; min-height: 50px; padding: 6px; border-radius: 10px; font-size: 9px; }
+  .admin-workspace { padding-top: calc(98px + env(safe-area-inset-top)); padding-bottom: 34px; }
+  .admin-workspace .dash-title > button { position: static; }
+  .admin-guide { display: none; }
+  .business-editor { padding: 18px 12px; }
+  .business-editor > h2 { margin-inline: 4px; }
+  .business-editor form { gap: 10px; }
+  .admin-form-step { border-radius: 14px; background: #fff; box-shadow: 0 5px 18px #0b294008; }
+  .admin-form-step summary { grid-template-columns: 36px minmax(0,1fr) 18px; padding: 14px 12px; }
+  .admin-form-step summary > b { width: 36px; height: 36px; }
+  .admin-form-step summary strong { font-size: 15px; }
+  .admin-form-step summary small { font-size: 10px; }
+  .admin-form-step-body { padding: 15px 12px 17px; }
+  .admin-business-submit { position: sticky; z-index: 10; bottom: 10px; min-height: 54px!important; margin-top: 5px; border-radius: 12px!important; box-shadow: 0 12px 28px #06182735; }
+  .admin-business-cancel { margin-top: 0; }
 }
 
 @media (max-width: 600px) {

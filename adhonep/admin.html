@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="enhancements.css" />
   <link rel="stylesheet" href="portal-live.css?v=8" />
   <link rel="stylesheet" href="mobile-optimization.css" />
-  <link rel="stylesheet" href="portal-mobile-v2.css?v=1" />
+  <link rel="stylesheet" href="portal-mobile-v2.css?v=2" />
 </head>
 <body class="admin-page">
   <main class="admin-access" id="admin-access">
@@ -34,6 +34,7 @@
   <section class="admin-shell" id="admin-shell" hidden>
     <aside class="admin-sidebar">
       <img src="assets/logo-adhonep-expansao-branca.png" alt="ADHONEP Taubaté" />
+      <label class="admin-mobile-switcher" for="admin-mobile-view"><span>Área do painel</span><select id="admin-mobile-view"><option value="overview">Visão geral</option><option class="general-only" value="administrators">Administradores</option><option class="general-only" value="chapters">Capítulos</option><option value="businesses">Empresários</option><option value="sponsors">Patrocinadores</option><option value="financial">Financeiro e comissões</option><option value="events">Agenda e eventos</option><option value="calendar">Calendário</option></select></label>
       <nav aria-label="Navegação administrativa">
         <button class="active" data-admin-view="overview">Visão geral</button>
         <button class="general-only" data-admin-view="administrators">Administradores</button>
@@ -66,6 +67,6 @@
       </section>
     </main>
   </section>
-  <script type="module" src="admin.js?v=9"></script>
+  <script type="module" src="admin.js?v=10"></script>
 </body>
 </html>

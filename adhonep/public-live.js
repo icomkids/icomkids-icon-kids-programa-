@@ -2,6 +2,7 @@ import { supabase } from './supabase-client.js';
 
 const filter = document.querySelector('#public-chapter-filter');
 const businessFilters = document.querySelector('#home-business-filters');
+const businessSegmentMobile = document.querySelector('#home-business-segment-mobile');
 const businessGrid = document.querySelector('#home-business-grid');
 const businessStatus = document.querySelector('#home-business-status');
 const monthNames = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
@@ -28,12 +29,18 @@ function renderBusinessFilters() {
   if (!businessFilters) return;
   const segments = [...new Set(publicBusinesses.map((item) => item.segment).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
   businessFilters.innerHTML = `<button class="active" data-segment="">Todos</button>${segments.map((segment) => `<button data-segment="${escapeHtml(segment)}">${escapeHtml(segment)}</button>`).join('')}`;
+  if (businessSegmentMobile) businessSegmentMobile.innerHTML = `<option value="">Todos os segmentos</option>${segments.map((segment) => `<option value="${escapeHtml(segment)}">${escapeHtml(segment)}</option>`).join('')}`;
   businessFilters.querySelectorAll('button').forEach((button) => button.addEventListener('click', () => {
     selectedBusinessSegment = button.dataset.segment || '';
     businessFilters.querySelector('.active')?.classList.remove('active');
     button.classList.add('active');
     renderHomeBusinesses();
   }));
+  businessSegmentMobile?.addEventListener('change', () => {
+    selectedBusinessSegment = businessSegmentMobile.value;
+    businessFilters.querySelectorAll('button').forEach((button) => button.classList.toggle('active', button.dataset.segment === selectedBusinessSegment));
+    renderHomeBusinesses();
+  });
 }
 
 async function loadHomeBusinesses() {

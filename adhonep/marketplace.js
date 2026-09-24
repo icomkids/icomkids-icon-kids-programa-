@@ -5,6 +5,7 @@ const status = document.querySelector('#market-status');
 const search = document.querySelector('#market-search');
 const chapter = document.querySelector('#market-chapter');
 const segments = document.querySelector('#market-segments');
+const segmentMobile = document.querySelector('#market-segment-mobile');
 const dialog = document.querySelector('#business-dialog');
 let businesses = [];
 let selectedSegment = '';
@@ -42,6 +43,7 @@ function render() {
 function renderSegmentFilters() {
   const labels = [...new Set(businesses.map(item => item.segment?.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
   segments.replaceChildren();
+  segmentMobile.innerHTML = '<option value="">Todos os segmentos</option>' + labels.map(label => `<option value="${safe(label)}">${safe(label)}</option>`).join('');
   [['', 'Todos'], ...labels.map(label => [label, label])].forEach(([segment, label]) => {
     const button = document.createElement('button');
     button.type = 'button'; button.dataset.segment = segment; button.textContent = label;
@@ -53,6 +55,7 @@ function renderSegmentFilters() {
     });
     segments.append(button);
   });
+  segmentMobile.value = selectedSegment;
 }
 
 function openDetail(x) {
@@ -87,6 +90,11 @@ dialog.querySelector('.dialog-close').onclick = () => dialog.close();
 dialog.onclick = event => { if (event.target === dialog) dialog.close(); };
 search.oninput = render;
 chapter.onchange = render;
+segmentMobile.onchange = () => {
+  selectedSegment = segmentMobile.value;
+  segments.querySelectorAll('button').forEach(item => item.classList.toggle('active', item.dataset.segment === selectedSegment));
+  render();
+};
 
 const [{ data: chapterRows }, { data: businessRows, error }] = await Promise.all([
   supabase.from('adh_chapters').select('id,name,city').eq('active', true).order('city'),
