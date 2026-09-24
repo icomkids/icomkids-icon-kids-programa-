@@ -1,5 +1,11 @@
 import { supabase } from './supabase-client.js';
-import { withSponsorFallbacks } from './sponsor-fallbacks.js';
+
+const polarSponsor = { id: 'polar-ar-condicionado', slug: 'polar-ar-condicionado', name: 'Polar Ar Condicionado', segment: 'Climatização e ar-condicionado', short_description: 'Há mais de 30 anos oferecendo venda, instalação, manutenção e higienização de ar-condicionado em Taubaté e região.', description: 'Soluções completas em climatização para residências, comércios e empresas.', logo_url: 'assets/empresarios/polar-ar-condicionado/logo-polar-ar-condicionado.png', featured: true, adh_chapters: { city: 'Taubaté' } };
+function withSponsorFallback(rows = [], chapterRows = []) {
+  if (rows.some((item) => item.slug === polarSponsor.slug)) return rows;
+  const taubate = chapterRows.find((item) => String(item.city || '').toLocaleLowerCase('pt-BR') === 'taubaté');
+  return [{ ...polarSponsor, chapter_id: taubate?.id || '' }, ...rows];
+}
 
 const filter = document.querySelector('#public-chapter-filter');
 const businessFilters = document.querySelector('#home-business-filters');
@@ -10,7 +16,7 @@ const monthNames = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT',
 const formatTime = (date) => new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }).format(date);
 const escapeHtml = (text = '') => String(text).replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
 const safeMedia = (value = '') => /^(?:https?:\/\/|assets\/)/i.test(String(value)) ? String(value) : 'assets/logo-adhonep-expansao.png';
-let publicBusinesses = [];
+let publicBusinesses = withSponsorFallback();
 let selectedBusinessSegment = '';
 
 function renderHomeBusinesses() {
@@ -46,6 +52,8 @@ function renderBusinessFilters() {
 
 async function loadHomeBusinesses() {
   if (!businessGrid) return;
+  renderBusinessFilters();
+  renderHomeBusinesses();
   const [{ data, error }, { data: chapterRows }] = await Promise.all([
     supabase.from('adh_businesses').select('id,slug,name,segment,short_description,description,logo_url,adh_chapters(city)').eq('status', 'active').order('featured', { ascending: false }).order('name'),
     supabase.from('adh_chapters').select('id,name,city,state').eq('active', true).order('city')
@@ -54,7 +62,7 @@ async function loadHomeBusinesses() {
     businessStatus.textContent = 'Não foi possível carregar os empresários agora.';
     return;
   }
-  publicBusinesses = withSponsorFallbacks(data || [], chapterRows || []);
+  publicBusinesses = withSponsorFallback(data || [], chapterRows || []);
   renderBusinessFilters();
   renderHomeBusinesses();
 }
