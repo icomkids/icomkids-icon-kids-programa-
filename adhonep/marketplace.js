@@ -1,21 +1,4 @@
-import { supabase } from './supabase-client.js';
-
-const polarSponsor = {
-  id: 'polar-ar-condicionado', slug: 'polar-ar-condicionado', name: 'Polar Ar Condicionado', segment: 'Climatização e ar-condicionado',
-  headline: 'Conforto e qualidade de vida em qualquer estação.',
-  short_description: 'Há mais de 30 anos oferecendo venda, instalação, manutenção e higienização de ar-condicionado em Taubaté e região.',
-  description: 'A Polar Ar Condicionado é especialista em climatização e atua há mais de 30 anos atendendo residências, comércios e empresas de Taubaté e região. A empresa oferece soluções completas para criar ambientes mais frescos, agradáveis e eficientes, desde a escolha do equipamento até a instalação profissional, a manutenção preventiva e corretiva e a higienização. Com técnicos especializados, atendimento rápido e personalizado, trabalha com equipamentos de todas as marcas e prioriza segurança, qualidade e o melhor custo-benefício para cada cliente.',
-  logo_url: 'assets/empresarios/polar-ar-condicionado/logo-polar-ar-condicionado.png', cover_url: 'assets/empresarios/polar-ar-condicionado/capa-servicos-polar.png',
-  instagram_url: 'https://www.instagram.com/polar_arcondicionado2021/', whatsapp: '5512981935517', featured: true, status: 'active',
-  offerings: ['Venda de equipamentos de ar-condicionado', 'Instalação profissional e segura', 'Manutenção preventiva e corretiva', 'Higienização e limpeza completa', 'Atendimento residencial, comercial e industrial'],
-  differentials: ['Mais de 30 anos de experiência', 'Técnicos especializados', 'Atendimento de todas as marcas', 'Serviço rápido, confiável e personalizado', 'Produtos de qualidade e garantia'],
-  service_area: 'Taubaté e região', adh_chapters: { name: 'Capítulo ADHONEP Taubaté', city: 'Taubaté', state: 'SP' }
-};
-function withSponsorFallback(rows = [], chapterRows = []) {
-  if (rows.some((item) => item.slug === polarSponsor.slug)) return rows;
-  const taubate = chapterRows.find((item) => String(item.city || '').toLocaleLowerCase('pt-BR') === 'taubaté');
-  return [{ ...polarSponsor, chapter_id: taubate?.id || '' }, ...rows];
-}
+import { cachedPublicData, loadPublicData } from './public-data.js?v=1';
 
 const grid = document.querySelector('#market-grid');
 const status = document.querySelector('#market-status');
@@ -24,7 +7,8 @@ const chapter = document.querySelector('#market-chapter');
 const segments = document.querySelector('#market-segments');
 const segmentMobile = document.querySelector('#market-segment-mobile');
 const dialog = document.querySelector('#business-dialog');
-let businesses = withSponsorFallback();
+let businesses = [];
+let businessesStale = false;
 let selectedSegment = '';
 let affiliateTrackingCode = '';
 
@@ -38,15 +22,19 @@ function render() {
   const chosen = chapter.value;
   const rows = businesses.filter(x => (!chosen || x.chapter_id === chosen) && (!selectedSegment || x.segment === selectedSegment) && (!term || `${x.name} ${x.segment} ${x.short_description} ${x.description} ${(x.offerings || []).join(' ')} ${x.adh_chapters?.city}`.toLocaleLowerCase('pt-BR').includes(term)));
   grid.innerHTML = '';
-  status.textContent = rows.length ? `${rows.length} empresa${rows.length === 1 ? '' : 's'} encontrada${rows.length === 1 ? '' : 's'}.` : 'Nenhuma empresa encontrada.';
+  status.textContent = (rows.length ? `${rows.length} empresa${rows.length === 1 ? '' : 's'} encontrada${rows.length === 1 ? '' : 's'}.` : 'Nenhuma empresa encontrada.') + (businessesStale ? ' Exibindo a última lista disponível; a atualização está temporariamente indisponível.' : '');
   rows.forEach(item => {
     const card = document.createElement('article');
     card.className = 'market-card';
     card.innerHTML = '<div class="cover-wrap"><img class="market-cover"/><span class="verified">EMPRESA DA COMUNIDADE</span></div><div class="market-card-body"><img class="market-logo"/><small></small><h2></h2><h3></h3><p></p><div class="card-tags"></div><button>Ver perfil completo →</button></div>';
     const cardCover = card.querySelector('.market-cover');
+    cardCover.loading = 'lazy';
+    cardCover.alt = `Apresentação da ${item.name}`;
     cardCover.src = item.cover_url || item.logo_url || 'assets/capitulo-taubate-oficial.png';
     cardCover.classList.toggle('logo-as-cover', !item.cover_url && Boolean(item.logo_url));
     card.querySelector('.market-logo').src = item.logo_url || 'assets/logo-adhonep-expansao.png';
+    card.querySelector('.market-logo').alt = `Logo da ${item.name}`;
+    card.querySelector('.market-logo').loading = 'lazy';
     card.querySelector('small').textContent = `${item.segment} • ${item.adh_chapters?.city || ''}`;
     card.querySelector('h2').textContent = item.name;
     card.querySelector('h3').textContent = item.headline || `Soluções em ${item.segment}`;
@@ -59,6 +47,7 @@ function render() {
 
 function renderSegmentFilters() {
   const labels = [...new Set(businesses.map(item => item.segment?.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  if (!labels.includes(selectedSegment)) selectedSegment = '';
   segments.replaceChildren();
   segmentMobile.innerHTML = '<option value="">Todos os segmentos</option>' + labels.map(label => `<option value="${safe(label)}">${safe(label)}</option>`).join('');
   [['', 'Todos'], ...labels.map(label => [label, label])].forEach(([segment, label]) => {
@@ -67,6 +56,7 @@ function renderSegmentFilters() {
     button.classList.toggle('active', segment === selectedSegment);
     button.addEventListener('click', () => {
       selectedSegment = segment;
+      segmentMobile.value = selectedSegment;
       segments.querySelectorAll('button').forEach(item => item.classList.toggle('active', item === button));
       render();
     });
@@ -76,6 +66,7 @@ function renderSegmentFilters() {
 }
 
 function openDetail(x) {
+  dialog.dataset.businessId = String(x.id);
   const detail = document.querySelector('#business-detail');
   const params = new URLSearchParams(location.search); const referralCode = params.get('ref'); const offerId = params.get('offer');
   const referralNote = referralCode ? ` Vim por uma indicação ADHONEP${affiliateTrackingCode ? ` (código ${affiliateTrackingCode})` : ''}.` : '';
@@ -95,11 +86,14 @@ function openDetail(x) {
 async function trackAffiliateVisit(referralCode, offerId) {
   if (!referralCode || !offerId) return '';
   const storageKey = `adhonep-affiliate:${referralCode}:${offerId}`;
-  const saved = sessionStorage.getItem(storageKey);
+  let saved;
+  try { saved = sessionStorage.getItem(storageKey); } catch { /* Optional storage. */ }
   if (saved) return saved;
+  // The auth SDK is needed only for explicit referral tracking, never to browse.
+  const { supabase } = await import('./supabase-client.js');
   const { data, error } = await supabase.rpc('adh_track_affiliate_visit', { p_referral_code: referralCode, p_offer_id: offerId });
   if (error || !data) return '';
-  sessionStorage.setItem(storageKey, data);
+  try { sessionStorage.setItem(storageKey, data); } catch { /* Optional storage. */ }
   return data;
 }
 
@@ -113,22 +107,29 @@ segmentMobile.onchange = () => {
   render();
 };
 
-renderSegmentFilters();
-render();
+const params = new URLSearchParams(location.search);
+const saved = cachedPublicData('businesses');
+if (saved) { businesses = saved.data; renderSegmentFilters(); render(); }
+else status.textContent = 'Carregando empresas da comunidade…';
 
-const [{ data: chapterRows }, { data: businessRows, error }] = await Promise.all([
-  supabase.from('adh_chapters').select('id,name,city').eq('active', true).order('city'),
-  supabase.from('adh_businesses').select('*,adh_chapters(name,city,state)').eq('status', 'active').order('featured', { ascending: false }).order('name')
-]);
-if (error) status.textContent = 'Não foi possível carregar as empresas agora.';
-else {
-  businesses = withSponsorFallback(businessRows || [], chapterRows || []);
-  renderSegmentFilters();
-  chapter.innerHTML += [...(chapterRows || [])].map(x => `<option value="${x.id}">${x.name}</option>`).join('');
-  render();
-  const params = new URLSearchParams(location.search);
-  affiliateTrackingCode = await trackAffiliateVisit(params.get('ref'), params.get('offer'));
-  const requested = params.get('empresa');
-  const selected = businesses.find(item => item.slug === requested || item.id === requested);
-  if (selected) openDetail(selected);
+async function loadDirectory() {
+  try {
+    const result = await loadPublicData('businesses');
+    businesses = result.data; businessesStale = result.stale;
+    renderSegmentFilters(); render();
+    const selected = businesses.find(item => item.slug === params.get('empresa') || item.id === params.get('empresa'));
+    if (selected) openDetail(selected);
+    // Tracking failure cannot prevent a company's profile from opening.
+    trackAffiliateVisit(params.get('ref'), params.get('offer')).then((code) => {
+      affiliateTrackingCode = code;
+      if (code && selected && dialog.open && dialog.dataset.businessId === String(selected.id)) openDetail(selected);
+    }).catch(() => {});
+  } catch {
+    status.textContent = 'A lista de empresas está temporariamente indisponível. Tente novamente em instantes.';
+  }
 }
+async function loadChapters() {
+  const { data } = await loadPublicData('chapters');
+  chapter.innerHTML = '<option value="">Todos os capítulos</option>' + data.map(x => `<option value="${safe(x.id)}">${safe(x.name)}</option>`).join('');
+}
+await Promise.allSettled([loadDirectory(), loadChapters()]);
