@@ -1,5 +1,6 @@
 import { supabase, showMessage } from './supabase-client.js?v=2';
 import { mountAccess, withTimeout, friendlyAuthError } from './portal-auth.js';
+import { showMemberView } from './member-navigation.js?v=1';
 
 const login = document.querySelector('#member-login');
 const dashboard = document.querySelector('#member-dashboard');
@@ -34,18 +35,6 @@ async function ensureProfile(user) {
   }
   if (error) throw error;
   return data;
-}
-
-function showMemberView(view) {
-  document.querySelector('#member-mobile-view').value = view;
-  document.querySelectorAll('[data-member-panel]').forEach((panel) => {
-    const active = panel.dataset.memberPanel === view;
-    panel.hidden = !active;
-    panel.classList.toggle('active', active);
-  });
-  document.querySelectorAll('[data-member-view]').forEach((button) => button.classList.toggle('active', button.dataset.memberView === view));
-  if (window.matchMedia('(max-width: 900px)').matches) document.querySelector(`[data-member-view="${view}"]`)?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function businessProfileUrl(business) {
@@ -183,16 +172,12 @@ mountAccess({ supabase, form, message, email: document.querySelector('#member-em
   open: loadDashboard, exit: document.querySelector('#member-exit'),
   close: () => { memberLoadVersion++; dashboard.hidden = true; login.hidden = false; memberHeader.hidden = false; }
 });
-document.querySelector('#member-mobile-view').addEventListener('change', (event) => showMemberView(event.target.value));
 document.querySelector('#member-refresh').addEventListener('click', async (event) => {
   const button = event.currentTarget; button.disabled = true;
   try { await loadMemberData(); } catch (error) { showMessage(document.querySelector('#member-status'), friendlyAuthError(error), 'error'); }
   finally { button.disabled = false; }
 });
 
-document.querySelectorAll('[data-member-view]').forEach((button) => button.addEventListener('click', () => showMemberView(button.dataset.memberView)));
-document.querySelectorAll('[data-go-member-view]').forEach((button) => button.addEventListener('click', () => showMemberView(button.dataset.goMemberView)));
-document.querySelector('[data-copy]').addEventListener('click', async (event) => { const button = event.currentTarget; await navigator.clipboard.writeText(document.querySelector('#member-referral-link').textContent); button.textContent = 'Link copiado ✓'; });
 document.querySelector('#business-search').addEventListener('input', (event) => { const term = event.target.value.toLocaleLowerCase('pt-BR'); renderBusinesses(businesses.filter((business) => `${business.name} ${business.segment} ${business.adh_chapters?.city || ''}`.toLocaleLowerCase('pt-BR').includes(term))); });
 businessList.addEventListener('click', async (event) => { const link = event.target.closest('[data-refer-business]'); if (!link) return; event.preventDefault(); await recordReferral(link.dataset.referBusiness); location.href = link.href; });
 document.querySelector('#affiliate-offers').addEventListener('click', async (event) => {

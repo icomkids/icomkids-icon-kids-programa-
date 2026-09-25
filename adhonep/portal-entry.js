@@ -9,6 +9,6 @@ const report = () => {
   message.textContent = 'Não foi possível carregar o acesso. Verifique sua conexão e recarregue esta página.';
 };
 const timer = setTimeout(report, 12000);
-import(mode === 'admin' ? './admin.js?v=13' : './members.js?v=11')
+import(mode === 'admin' ? './admin.js?v=13' : './members.js?v=12')
   .then(() => { clearTimeout(timer); })
   .catch(() => { clearTimeout(timer); report(); form.querySelector('[type="submit"]').disabled = true; });

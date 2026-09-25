@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#061827" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -19,6 +19,7 @@
   <link rel="stylesheet" href="member-functionality.css" />
   <link rel="stylesheet" href="portal-layout.css?v=1" />
   <link rel="stylesheet" href="portal-access.css?v=1" />
+  <link rel="stylesheet" href="members-premium.css?v=1" />
 </head>
 <body class="members-page">
   <header class="members-top"><a href="index.html"><img src="assets/logo-adhonep-fundo-branco.png" alt="ADHONEP Taubaté" /></a><div><a href="index.html">Voltar ao site</a><span>AMBIENTE SEGURO</span></div></header>
@@ -42,21 +43,50 @@
         <p class="demo-note">Acesso protegido pelo Supabase. Seus dados são exibidos conforme seu perfil.</p>
       </div>
     </section>
-    <section class="member-dashboard" id="member-dashboard" hidden>
-      <aside><img src="assets/logo-adhonep-expansao-branca.png" alt="ADHONEP Taubaté" /><button class="active" data-member-view="overview">Visão geral</button><button data-member-view="businesses">Empresas</button><button data-member-view="affiliates">Afiliados e comissões</button><button data-member-view="referrals">Indicações</button><button class="business-only" data-member-view="company">Minha empresa</button><button class="business-only" data-member-view="contacts">Contatos</button><button data-member-view="reviews">Avaliações</button><button id="member-exit">Sair</button></aside>
+    <section class="member-dashboard member-premium" id="member-dashboard" data-view="overview" hidden>
+      <svg class="member-icon-defs" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><defs>
+        <symbol id="mi-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7M5 9v12h5v-7h4v7h5V9"/></symbol>
+        <symbol id="mi-company" viewBox="0 0 24 24"><path d="M4 10v11h16V10M3 6l2-3h14l2 3M3 6h18v3a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0ZM9 21v-7h6v7"/></symbol>
+        <symbol id="mi-commission" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 16 8-8"/><circle cx="8" cy="8" r="1.5"/><circle cx="16" cy="16" r="1.5"/></symbol>
+        <symbol id="mi-referral" viewBox="0 0 24 24"><circle cx="6" cy="12" r="3"/><circle cx="18" cy="5" r="3"/><circle cx="18" cy="19" r="3"/><path d="m9 10 6-4m-6 8 6 4"/></symbol>
+        <symbol id="mi-contact" viewBox="0 0 24 24"><path d="M21 11a9 9 0 0 1-9 9 10 10 0 0 1-4-1l-5 2 1-5a9 9 0 1 1 17-5Z"/><path d="M8 10h8m-8 4h5"/></symbol>
+        <symbol id="mi-star" viewBox="0 0 24 24"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9Z"/></symbol>
+        <symbol id="mi-arrow" viewBox="0 0 24 24"><path d="M4 12h16m-6-6 6 6-6 6"/></symbol>
+        <symbol id="mi-refresh" viewBox="0 0 24 24"><path d="M20 7a9 9 0 1 0 1 8M20 3v5h-5"/></symbol>
+        <symbol id="mi-exit" viewBox="0 0 24 24"><path d="M10 3H4v18h6m-1-9h12m-5-5 5 5-5 5"/></symbol>
+        <symbol id="mi-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></symbol>
+      </defs></svg>
+      <header class="member-app-header">
+        <a class="member-app-brand" href="index.html" aria-label="ADHONEP Expansão — voltar ao site"><img src="assets/logo-adhonep-expansao-branca.png" alt="ADHONEP Expansão" width="190" height="62" /></a>
+        <div class="member-header-context"><span>COMUNIDADE ADHONEP</span><b id="member-context">Visão geral</b></div>
+        <div class="member-avatar"><span>AD</span><div><b>Membro ADHONEP</b><small id="member-role-label">Membro • Taubaté</small></div></div>
+      </header>
+      <aside class="member-sidebar">
+        <p class="member-nav-label">SEU ESPAÇO</p>
+        <nav aria-label="Áreas do membro">
+          <button type="button" class="active" data-member-view="overview"><svg aria-hidden="true"><use href="#mi-home"/></svg><span>Visão geral</span></button>
+          <button type="button" data-member-view="businesses"><svg aria-hidden="true"><use href="#mi-company"/></svg><span>Empresas</span></button>
+          <button type="button" data-member-view="affiliates"><svg aria-hidden="true"><use href="#mi-commission"/></svg><span>Afiliados e comissões</span></button>
+          <button type="button" data-member-view="referrals"><svg aria-hidden="true"><use href="#mi-referral"/></svg><span>Minhas indicações</span></button>
+          <button type="button" class="business-only" data-member-view="company" hidden><svg aria-hidden="true"><use href="#mi-company"/></svg><span>Minha empresa</span></button>
+          <button type="button" class="business-only" data-member-view="contacts" hidden><svg aria-hidden="true"><use href="#mi-contact"/></svg><span>Contatos recebidos</span></button>
+          <button type="button" data-member-view="reviews"><svg aria-hidden="true"><use href="#mi-star"/></svg><span>Avaliações</span></button>
+        </nav>
+        <div class="member-sidebar-footer"><p>Conexões de confiança.<br />Negócios com propósito.</p><a href="index.html">Voltar ao site <span aria-hidden="true">↗</span></a><button type="button" id="member-exit"><svg aria-hidden="true"><use href="#mi-exit"/></svg>Sair da conta</button></div>
+      </aside>
       <div class="member-content">
-        <label class="member-mobile-switcher" for="member-mobile-view">Área da comunidade<select id="member-mobile-view"><option value="overview">Visão geral</option><option value="businesses">Empresas</option><option value="affiliates">Afiliados e comissões</option><option value="referrals">Indicações</option><option class="business-only" value="company">Minha empresa</option><option class="business-only" value="contacts">Contatos</option><option value="reviews">Avaliações</option></select></label>
-        <div class="member-tools"><a id="member-admin-link" href="admin.html" hidden>Abrir administração →</a><button id="member-refresh" type="button">Atualizar dados</button></div>
+        <div class="member-tools"><span>MEU PAINEL</span><a id="member-admin-link" href="admin.html" hidden>Administração <svg aria-hidden="true"><use href="#mi-arrow"/></svg></a><button id="member-refresh" type="button"><svg aria-hidden="true"><use href="#mi-refresh"/></svg>Atualizar dados</button></div>
         <p id="member-status" class="auth-message" role="status" hidden></p>
-        <div class="dashboard-head"><div><span class="eyebrow" id="member-label">PAINEL DO MEMBRO</span><h1 id="member-title">Bem-vindo.</h1><p id="member-copy">Acompanhe suas indicações e encontre negócios da comunidade.</p></div><div class="member-avatar"><span>AD</span><div><b>Membro ADHONEP</b><small id="member-role-label">Membro • Taubaté</small></div></div></div>
+        <div class="dashboard-head"><div><span class="eyebrow" id="member-label">CONEXÕES QUE GERAM OPORTUNIDADES</span><h1 id="member-title">Bem-vindo.</h1><p id="member-copy">Seu próximo negócio começa com uma boa conexão. Encontre empresas, indique e acompanhe seus resultados.</p></div><svg class="member-welcome-symbol" aria-hidden="true"><use href="#mi-referral"/></svg></div>
 
         <section class="member-view active" data-member-panel="overview">
-          <div class="member-metrics"><article><small>CLIQUES NO MEU LINK</small><b id="metric-clicks">0</b><span>registrados</span></article><article><small>CADASTROS INDICADOS</small><b id="metric-registrations">0</b><span>pela sua indicação</span></article><article><small>NEGÓCIOS CONVERTIDOS</small><b id="metric-conversions">0</b><span>validados</span></article><article><small>MEUS PONTOS</small><b id="metric-points">0</b><span>saldo atual</span></article></div>
-          <section class="referral-card"><div class="referral-icon">↗</div><div><small>SEU LINK DE INDICAÇÃO</small><strong id="member-referral-link">Carregando...</strong><p>Compartilhe este endereço. Os acessos e negócios iniciados por ele serão atribuídos a você.</p></div><button type="button" data-copy>Copiar link</button></section>
-          <div class="member-welcome-grid"><article><span>01</span><h2>Encontre uma empresa</h2><p>Pesquise por segmento ou cidade e indique soluções confiáveis para sua rede.</p><button type="button" data-go-member-view="businesses">Ver empresas →</button></article><article><span>02</span><h2>Acompanhe resultados</h2><p>Consulte cliques, contatos e conversões originados pelas suas indicações.</p><button type="button" data-go-member-view="referrals">Minhas indicações →</button></article></div>
+          <div class="member-metrics"><article><small>Acessos ao meu link</small><b id="metric-clicks">0</b><span>cliques registrados</span></article><article><small>Pessoas indicadas</small><b id="metric-registrations">0</b><span>cadastros e contatos</span></article><article><small>Negócios realizados</small><b id="metric-conversions">0</b><span>conversões registradas</span></article><article><small>Meus pontos</small><b id="metric-points">0</b><span>saldo atual</span></article></div>
+          <section class="referral-card" aria-labelledby="referral-title"><div class="referral-icon"><svg aria-hidden="true"><use href="#mi-referral"/></svg></div><div><small>SEU LINK DE INDICAÇÃO</small><h2 id="referral-title">Conecte pessoas. Gere oportunidades.</h2><p>Compartilhe seu link e acompanhe as indicações aqui no painel.</p><details class="member-link-details"><summary>Ver meu endereço de indicação</summary><strong id="member-referral-link">Carregando...</strong></details><p class="member-copy-status" data-copy-status role="status" hidden></p></div><button type="button" data-copy>Copiar meu link <svg aria-hidden="true"><use href="#mi-arrow"/></svg></button></section>
+          <div class="member-section-label"><h2>Por onde você quer começar?</h2><span>Explore sua comunidade</span></div>
+          <div class="member-welcome-grid"><article><span class="member-action-icon"><svg aria-hidden="true"><use href="#mi-company"/></svg></span><h2>Encontre uma empresa</h2><p>Descubra produtos e serviços de empresários da sua comunidade.</p><button type="button" data-go-member-view="businesses">Explorar empresas <span aria-hidden="true">→</span></button></article><article><span class="member-action-icon"><svg aria-hidden="true"><use href="#mi-commission"/></svg></span><h2>Indique com propósito</h2><p>Conheça as ofertas e as condições de comissão de cada negócio.</p><button type="button" data-go-member-view="affiliates">Ver ofertas e comissões <span aria-hidden="true">→</span></button></article><article><span class="member-action-icon"><svg aria-hidden="true"><use href="#mi-referral"/></svg></span><h2>Acompanhe resultados</h2><p>Consulte os contatos e negócios originados pelas suas indicações.</p><button type="button" data-go-member-view="referrals">Minhas indicações <span aria-hidden="true">→</span></button></article></div>
         </section>
 
-        <section class="member-view" data-member-panel="businesses" hidden><div class="member-section-head"><span>EMPRESÁRIOS DA COMUNIDADE</span><h2>Encontre e indique negócios.</h2><p>Escolha uma empresa, conheça sua apresentação completa e compartilhe usando o seu código de indicação.</p></div><input class="member-search" id="business-search" placeholder="Busque por empresa, segmento ou cidade" /><div id="business-list" class="member-business-grid"><p>Carregando empresas...</p></div></section>
+        <section class="member-view" data-member-panel="businesses" hidden><div class="member-section-head"><span>EMPRESÁRIOS DA COMUNIDADE</span><h2>Encontre e indique negócios.</h2><p>Escolha uma empresa, conheça sua apresentação completa e compartilhe usando o seu código de indicação.</p></div><label class="member-search-label" for="business-search">Buscar na comunidade</label><input class="member-search" id="business-search" type="search" placeholder="Empresa, segmento ou cidade" /><div id="business-list" class="member-business-grid"><p>Carregando empresas...</p></div></section>
 
         <section class="member-view" data-member-panel="referrals" hidden><div class="member-section-head"><span>MINHAS INDICAÇÕES</span><h2>Acompanhe cada oportunidade.</h2><p>Veja quais empresas receberam suas indicações e o estágio de cada contato.</p></div><div id="member-referrals-list" class="member-timeline"><p>Carregando indicações...</p></div></section>
 
@@ -68,8 +98,26 @@
 
         <section class="member-view" data-member-panel="reviews" hidden><div class="member-section-head"><span>QUALIDADE DA COMUNIDADE</span><h2>Avalie uma experiência.</h2><p>Sua identidade não aparece para o empresário. O líder do capítulo pode identificá-la para tratar elogios, problemas ou denúncias com responsabilidade.</p></div><div class="member-review-layout"><form id="feedback-form"><label>Empresa<select id="feedback-business" required></select></label><label>Nota<select id="feedback-rating" required><option value="5">★★★★★ Excelente</option><option value="4">★★★★ Muito bom</option><option value="3">★★★ Regular</option><option value="2">★★ Ruim</option><option value="1">★ Muito ruim</option></select></label><label>Relato privado<textarea id="feedback-message" rows="5" placeholder="Conte como foi sua experiência"></textarea></label><label class="attention-check"><input id="feedback-attention" type="checkbox" /> Este relato precisa da atenção do líder do capítulo</label><button class="primary navy">Enviar avaliação privada</button><p class="auth-message" id="feedback-status" hidden></p></form><div><h3>Minhas avaliações</h3><div id="member-feedback-list" class="member-timeline"><p>Carregando avaliações...</p></div></div></div></section>
       </div>
+      <nav class="member-app-nav" aria-label="Navegação móvel da comunidade">
+        <button type="button" class="active" data-member-view="overview"><svg aria-hidden="true"><use href="#mi-home"/></svg><span>Início</span></button>
+        <button type="button" data-member-view="businesses"><svg aria-hidden="true"><use href="#mi-company"/></svg><span>Empresas</span></button>
+        <button type="button" data-member-view="affiliates"><svg aria-hidden="true"><use href="#mi-commission"/></svg><span>Comissões</span></button>
+        <button type="button" data-member-view="referrals"><svg aria-hidden="true"><use href="#mi-referral"/></svg><span>Indicações</span></button>
+        <button type="button" data-member-more aria-label="Mais opções da comunidade" aria-haspopup="dialog" aria-controls="member-more-dialog" aria-expanded="false"><svg aria-hidden="true"><use href="#mi-more"/></svg><span>Mais</span></button>
+      </nav>
+      <dialog class="member-more-dialog" id="member-more-dialog" aria-labelledby="member-more-title">
+        <div class="member-more-heading"><div><span>SEU ESPAÇO</span><h2 id="member-more-title">Mais da comunidade</h2></div><button type="button" data-close-member-more aria-label="Fechar menu">×</button></div>
+        <nav aria-label="Outras áreas do membro">
+          <button type="button" class="business-only" data-member-view="company" hidden><svg aria-hidden="true"><use href="#mi-company"/></svg><span>Minha empresa<small>Perfil e ofertas do seu negócio</small></span><b aria-hidden="true">→</b></button>
+          <button type="button" class="business-only" data-member-view="contacts" hidden><svg aria-hidden="true"><use href="#mi-contact"/></svg><span>Contatos recebidos<small>Oportunidades para sua empresa</small></span><b aria-hidden="true">→</b></button>
+          <button type="button" data-member-view="reviews"><svg aria-hidden="true"><use href="#mi-star"/></svg><span>Avaliações<small>Compartilhe sua experiência</small></span><b aria-hidden="true">→</b></button>
+          <a href="index.html"><svg aria-hidden="true"><use href="#mi-home"/></svg><span>Voltar ao site</span><b aria-hidden="true">↗</b></a>
+          <button type="button" data-member-exit><svg aria-hidden="true"><use href="#mi-exit"/></svg><span>Sair da conta</span></button>
+        </nav>
+      </dialog>
     </section>
   </main>
-  <script type="module" src="portal-entry.js?v=1"></script>
+  <script type="module" src="member-navigation.js?v=1"></script>
+  <script type="module" src="portal-entry.js?v=2"></script>
 </body>
 </html>
