@@ -30,6 +30,8 @@ Projeto compartilhado: `swsfwthjxtqtkloexyjs` (`icomkids`), PostgreSQL 17, Nano/
 - Eventos e próximo encontro derivam da mesma consulta; filtro por cidade não dispara novas consultas. Empresários carregam independentemente da agenda.
 - Nenhuma alteração em RLS, funções de autenticação, tarefas agendadas ou dados dos outros projetos.
 
+Validação: 29 testes automatizados passaram; a interface local mostrou 8 registros de demonstração e o filtro de segmento alternou corretamente entre 4 e 8. Os arquivos novos foram confirmados no domínio após deploy. A consulta real continuou sofrendo timeout, portanto a exibição dos oito cadastros reais e a redução de CPU ainda NÃO foram confirmadas. Cache vazio depende da primeira resposta bem-sucedida do banco; não resolve uma indisponibilidade contínua por si só.
+
 ## Pendência de manutenção compartilhada
 
 A evidência aponta a tabela técnica do pg_net como forte candidata à carga interna. Ainda é necessário medir a melhora após manutenção; não atribuir toda a CPU a ela sem essa comparação.
