@@ -27,7 +27,7 @@ http.createServer(async (req, res) => {
       }
       res.writeHead(200, { 'Content-Type': 'application/json', 'Content-Range': item.range, 'X-Public-Cache': 'HIT' }); res.end(item.body); return;
     }
-    const filename = resolve(root, '.' + decodeURIComponent(path === '/' ? '/index.html' : path));
+    const filename = resolve(root, '.' + decodeURIComponent(path === '/' ? '/index.html' : path === '/expansao' ? '/expansao.html' : path));
     if (!filename.startsWith(resolve(root) + sep)) throw Error('Invalid path');
     const body = await readFile(filename);
     res.writeHead(200, { 'Content-Type': types[extname(filename)] || 'application/octet-stream', 'Cache-Control': 'no-store' }); res.end(body);

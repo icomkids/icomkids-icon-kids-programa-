@@ -82,6 +82,17 @@ export function mountAccess({ supabase, form, message, email, password, open, ex
       show('Se houver uma conta com esse e-mail, você receberá o link para definir a senha. Confira também o spam.', 'success');
     } catch (error) { show(friendlyAuthError(error), 'error'); } finally { reset.disabled = false; }
   });
+  const magic = form.querySelector('[data-magic-link]');
+  magic?.addEventListener('click', async () => {
+    if (!email.value.trim() || !email.checkValidity()) { show('Preencha um e-mail válido acima para receber o link de acesso.', 'error'); email.focus(); return; }
+    magic.disabled = true; show('Solicitando um link seguro…');
+    try {
+      const { error } = await withTimeout(supabase.auth.signInWithOtp({ email: email.value.trim(), options: { shouldCreateUser: false, emailRedirectTo: `${location.origin}/membros.html` } }));
+      if (error) throw error;
+      show('Se este e-mail já possui uma conta, você receberá um link de acesso. Confira também o spam.', 'success');
+    } catch (error) { show(friendlyAuthError(error), 'error'); }
+    finally { magic.disabled = false; }
+  });
   exit?.addEventListener('click', async () => {
     exit.disabled = true;
     try {

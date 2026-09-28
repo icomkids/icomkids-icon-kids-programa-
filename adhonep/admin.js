@@ -1,5 +1,6 @@
 import { supabase, showMessage } from './supabase-client.js?v=2';
-import { mountAccess, withTimeout, friendlyAuthError as friendlyAdminError } from './portal-auth.js';
+import { mountAccess, withTimeout, friendlyAuthError as friendlyAdminError } from './portal-auth.js?v=2';
+import { mountExpansionAdmin } from './admin-expansion.js';
 
 const access = document.querySelector('#admin-access');
 const shell = document.querySelector('#admin-shell');
@@ -18,6 +19,8 @@ let editingEventId = null;
 let adminLoadVersion = 0;
 const MEDIA_BUCKET = 'adhonep-business-media';
 const EVENT_MEDIA_BUCKET = 'adhonep-event-media';
+const expansionAdmin = mountExpansionAdmin(supabase);
+const expansionOption = document.createElement('option'); expansionOption.value = 'expansion'; expansionOption.textContent = 'Cadastros da Expansão'; document.querySelector('#admin-mobile-view').append(expansionOption);
 
 function options(items) { return items.map((x) => `<option value="${x.id}">${x.name} — ${x.city}</option>`).join(''); }
 function renderRows(target, rows, empty = 'Nenhum registro cadastrado.') {
@@ -318,11 +321,13 @@ async function deleteEvent(id) {
 }
 
 function showAdminView(view) {
+  if (view === 'expansion') expansionAdmin.load();
   shell.dataset.view = view;
   document.querySelectorAll('[data-panel-view]').forEach((panel) => { panel.hidden = !panel.dataset.panelView.split(' ').includes(view); });
   document.querySelectorAll('[data-admin-view]').forEach((button) => button.classList.toggle('active', button.dataset.adminView === view));
   const titles = { overview: 'Visão geral', administrators: 'Administradores', chapters: 'Capítulos', businesses: 'Empresários', sponsors: 'Patrocinadores', financial: 'Financeiro e comissões', events: 'Agenda e eventos', calendar: 'Calendário' };
   document.querySelector('#admin-section-title').textContent = titles[view] || 'Visão geral';
+  if (view === 'expansion') document.querySelector('#admin-section-title').textContent = 'Cadastros da Expansão';
   const mobileView = document.querySelector('#admin-mobile-view'); if (mobileView) mobileView.value = view;
   const listTitle = document.querySelector('#business-list-title'); if (listTitle) listTitle.textContent = view === 'sponsors' ? 'Patrocinadores em destaque' : 'Empresários publicados';
   if (view === 'businesses' || view === 'sponsors') renderBusinessRows(view === 'sponsors');
@@ -332,7 +337,7 @@ function showAdminView(view) {
 mountAccess({ supabase, form: document.querySelector('#admin-login'), message: loginMessage,
   email: document.querySelector('#admin-email'), password: document.querySelector('#admin-password'),
   open: loadAdmin, exit: document.querySelector('#admin-exit'),
-  close: () => { adminLoadVersion++; shell.hidden = true; access.hidden = false; profile = null; }
+  close: () => { adminLoadVersion++; expansionAdmin.reset(); shell.hidden = true; access.hidden = false; profile = null; }
 });
 
 addEditorControls();
@@ -341,6 +346,7 @@ document.querySelector('#business-cancel').addEventListener('click', resetBusine
 document.querySelector('#event-cancel').addEventListener('click', resetEventEditor);
 
 document.querySelector('#admin-refresh').addEventListener('click', async (event) => {
+  if (shell.dataset.view === 'expansion') { await expansionAdmin.load(true); return; }
   const button = event.currentTarget; button.disabled = true; showMessage(statusMessage, 'Atualizando dados…');
   try { await refreshData(); } catch (error) { showMessage(statusMessage, friendlyAdminError(error), 'error'); }
   finally { button.disabled = false; }

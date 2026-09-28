@@ -1,5 +1,5 @@
 import { supabase, showMessage } from './supabase-client.js?v=2';
-import { mountAccess, withTimeout, friendlyAuthError } from './portal-auth.js';
+import { mountAccess, withTimeout, friendlyAuthError } from './portal-auth.js?v=2';
 import { showMemberView } from './member-navigation.js?v=1';
 
 const login = document.querySelector('#member-login');

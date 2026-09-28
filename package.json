@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "lint:expansion": "eslint --config eslint.adhonep.config.mjs adhonep/expansion*.js adhonep/admin-expansion.js tests/expansion*.mjs && eslint supabase/functions/register-adhonep-expansion/index.ts",
+    "test:adhonep": "node --test tests/*.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

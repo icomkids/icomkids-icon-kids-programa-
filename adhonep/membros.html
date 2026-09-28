@@ -32,7 +32,9 @@
       <div class="login-panel">
         <div class="login-heading"><span class="secure-mark">✦</span><small>ACESSO EXCLUSIVO</small><h2>Bem-vindo à comunidade.</h2><p>Entre com o e-mail e a senha da sua conta.</p></div>
         <form id="member-access">
+          <p>Conheça novas oportunidades: <a href="expansao.html">cadastre ou atualize seu perfil de networking</a>.</p>
           <label>E-mail<input id="member-email" type="email" placeholder="seu@email.com" autocomplete="email" required /></label>
+          <button type="button" class="access-text-button" data-magic-link>Receber um link de acesso por e-mail</button>
           <div><label for="member-password">Senha</label><div class="access-password"><input id="member-password" type="password" placeholder="Sua senha" autocomplete="current-password" required /><button type="button" data-toggle-password aria-pressed="false" aria-controls="member-password">Mostrar</button></div></div>
           <button class="access-text-button" id="member-reset" type="button" data-reset-password>Esqueci minha senha</button>
           <button class="primary navy login-submit" id="member-submit" type="submit" disabled>Entrar na comunidade →</button>
@@ -75,7 +77,7 @@
         <div class="member-sidebar-footer"><p>Conexões de confiança.<br />Negócios com propósito.</p><a href="index.html">Voltar ao site <span aria-hidden="true">↗</span></a><button type="button" id="member-exit"><svg aria-hidden="true"><use href="#mi-exit"/></svg>Sair da conta</button></div>
       </aside>
       <div class="member-content">
-        <div class="member-tools"><span>MEU PAINEL</span><a id="member-admin-link" href="admin.html" hidden>Administração <svg aria-hidden="true"><use href="#mi-arrow"/></svg></a><button id="member-refresh" type="button"><svg aria-hidden="true"><use href="#mi-refresh"/></svg>Atualizar dados</button></div>
+        <div class="member-tools"><span>MEU PAINEL</span><a href="expansao.html">Meu perfil de networking</a><a id="member-admin-link" href="admin.html" hidden>Administração <svg aria-hidden="true"><use href="#mi-arrow"/></svg></a><button id="member-refresh" type="button"><svg aria-hidden="true"><use href="#mi-refresh"/></svg>Atualizar dados</button></div>
         <p id="member-status" class="auth-message" role="status" hidden></p>
         <div class="dashboard-head"><div><span class="eyebrow" id="member-label">CONEXÕES QUE GERAM OPORTUNIDADES</span><h1 id="member-title">Bem-vindo.</h1><p id="member-copy">Seu próximo negócio começa com uma boa conexão. Encontre empresas, indique e acompanhe seus resultados.</p></div><svg class="member-welcome-symbol" aria-hidden="true"><use href="#mi-referral"/></svg></div>
 
@@ -118,6 +120,6 @@
     </section>
   </main>
   <script type="module" src="member-navigation.js?v=1"></script>
-  <script type="module" src="portal-entry.js?v=2"></script>
+  <script type="module" src="portal-entry.js?v=3"></script>
 </body>
 </html>

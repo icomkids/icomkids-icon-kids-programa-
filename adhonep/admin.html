@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="portal-live.css?v=8" />
   <link rel="stylesheet" href="portal-layout.css?v=1" />
   <link rel="stylesheet" href="portal-access.css?v=1" />
+  <link rel="stylesheet" href="admin-expansion.css?v=1" />
 </head>
 <body class="admin-page">
   <main class="admin-access" id="admin-access">
@@ -48,6 +49,7 @@
         <button data-admin-view="financial">Financeiro e comissões</button>
         <button data-admin-view="events">Agenda e eventos</button>
         <button data-admin-view="calendar">Calendário</button>
+        <button data-admin-view="expansion">Cadastros da Expansão</button>
       </nav>
       <button class="admin-exit" id="admin-exit">Sair</button>
     </aside>
@@ -57,6 +59,12 @@
       <div class="metrics"><article><span>CAPÍTULOS</span><strong id="admin-chapters-count">0</strong><small>no meu acesso</small></article><article><span>EMPRESÁRIOS</span><strong id="admin-business-count">0</strong><small>cadastrados</small></article><article><span>EVENTOS</span><strong id="admin-events-count">0</strong><small>na agenda</small></article></div>
       <p class="auth-message admin-status" id="admin-status" aria-live="polite" hidden></p>
       <section class="admin-panels">
+        <article class="admin-panel admin-wide" id="expansion-admin" data-panel-view="expansion" hidden>
+          <span class="panel-kicker">RELACIONAMENTO E NETWORKING</span><h2>Cadastros da Expansão</h2><p class="panel-intro">Conheça o perfil e os objetivos dos membros. Estes cadastros não publicam empresas automaticamente no marketplace.</p>
+          <a href="expansao.html" target="_blank" rel="noopener">Abrir formulário de cadastro ↗</a>
+          <form class="expansion-filters"><label>Nome ou empresa<input name="search" type="search" maxlength="100" placeholder="Pesquisar cadastros"></label><label>Cidade<input name="city" maxlength="100" placeholder="Todas as cidades"></label><label>Ramo<select name="business_sector"><option value="">Todos os ramos</option></select></label><label>Ticket médio<select name="average_ticket"><option value="">Todas as faixas</option></select></label><label>Objetivo<select name="networking_goals"><option value="">Todos os objetivos</option></select></label><label>Status<select name="status"><option value="">Todos os status</option></select></label><button type="submit" class="primary navy">Filtrar e atualizar</button></form>
+          <p role="status" aria-live="polite"></p><div id="expansion-list"></div><div class="expansion-pagination"><button type="button" data-page="previous" disabled>Anterior</button><span id="expansion-page">Página 1</span><button type="button" data-page="next" disabled>Próxima</button></div>
+        </article>
         <article class="admin-panel admin-wide" data-panel-view="overview"><span class="panel-kicker">RESUMO OPERACIONAL</span><h2>Atividade da plataforma</h2><p class="panel-intro">Acompanhe os últimos eventos e empresários publicados em todos os capítulos do seu acesso.</p><div id="admin-records" class="data-list"></div></article>
         <article class="admin-panel general-only" data-panel-view="chapters"><h2 id="chapter-form-title">Novo capítulo</h2><form id="chapter-form"><label>Nome<input id="chapter-name" required /></label><div class="two"><label>Cidade<input id="chapter-city" required /></label><label>Estado<input id="chapter-state" value="SP" maxlength="2" required /></label></div><label>Nome do líder<input id="chapter-leader" /></label><div class="form-actions"><button class="primary navy" id="chapter-submit">Cadastrar capítulo</button><button class="admin-cancel" id="chapter-cancel" type="button" hidden>Cancelar edição</button></div></form></article>
         <article class="admin-panel general-only" data-panel-view="chapters"><h2>Capítulos cadastrados</h2><div id="admin-chapters-list" class="data-list"></div></article>
@@ -71,6 +79,6 @@
       </section>
     </main>
   </section>
-  <script type="module" src="portal-entry.js?v=1"></script>
+  <script type="module" src="portal-entry.js?v=3"></script>
 </body>
 </html>
