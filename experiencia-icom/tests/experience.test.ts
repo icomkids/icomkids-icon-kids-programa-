@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {feedbackSummary} from '../lib/feedback.ts';
-import {assertManagement,scopeRows,sellerFilter,type AccessProfile} from '../lib/access.ts';
+import {assertManagement,scopeRows,sellerFilter,sellerRegistration,type AccessProfile} from '../lib/access.ts';
 import {analytics,alertRule,assertEditable,category,questions,relationArray,sanitizeAnswers,validToken, type Experience} from '../lib/experience.ts';
 test('PostgREST one-to-one relations normalize missing, object and array values',()=>{assert.deepEqual(relationArray(null),[]);assert.deepEqual(relationArray(undefined),[]);const response={answers:{nps_score:10}};assert.deepEqual(relationArray(response),[response]);assert.deepEqual(relationArray([response]),[response])});
 test('NPS classification boundaries',()=>{assert.deepEqual([0,6,7,8,9,10].map(category),['detractor','detractor','passive','passive','promoter','promoter'])});
@@ -37,4 +37,10 @@ test('seller sees only own feedback with leadership and internal alert treatment
  const rows=[{id:'own-experience',salesperson_id:'12345678-1234-4234-8234-123456789abc',experience_responses:[{answers:{salesperson_rating:5,manager_rating:1,leadership_feedback:'private'}}],experience_alerts:[{alert_reason:'private',resolution_notes:'internal'}]},{id:'other-experience',salesperson_id:'other',experience_responses:[],experience_alerts:[]}] as unknown as Experience[];
  const scoped=scopeRows(seller,rows);assert.equal(scoped.length,1);assert.equal(scoped[0].id,'own-experience');assert.deepEqual(scoped[0].experience_responses[0].answers,{salesperson_rating:5});assert.deepEqual(scoped[0].experience_alerts,[]);assert.equal(rows[0].experience_responses[0].answers.manager_rating,1);
  assert.equal(scopeRows({...seller,role:'owner'},rows).length,2);assert.equal(scopeRows({...seller,role:'owner'},rows)[0].experience_responses[0].answers.manager_rating,1);
+});
+test('seller registration ignores forged owner, seller and dates and normalizes Brazilian plates',()=>{
+ const profile={id:'authenticated-user',name:'Seller',role:'seller',salesperson_id:'12345678-1234-4234-8234-123456789abc',leadership_access:false} as AccessProfile;
+ const request=crypto.randomUUID();const payload={customer_name:' Maria ',vehicle_name:' Compass ',vehicle_plate:'abc-1234',request_id:request,p_user:'forged',salesperson_id:'other-seller',created_at:'1990-01-01',purchase_date:'1990-01-01'};
+ assert.deepEqual(sellerRegistration(profile,payload),{p_user:'authenticated-user',p_customer:'Maria',p_vehicle:'Compass',p_plate:'ABC1234',p_request:request});
+ assert.equal(sellerRegistration(profile,{...payload,vehicle_plate:'abc1d23'}).p_plate,'ABC1D23');assert.throws(()=>sellerRegistration(profile,{...payload,vehicle_plate:'bad'}));assert.throws(()=>sellerRegistration(profile,{...payload,customer_name:'x'}));assert.throws(()=>sellerRegistration({...profile,role:'owner'},payload));assert.throws(()=>sellerRegistration(profile,{...payload,request_id:'bad'}));
 });

@@ -1,6 +1,6 @@
 import { authorize, config, db, errorResponse, log } from '@/lib/server';
 import { Experience, relationArray, resolutions } from '@/lib/experience';
-import {assertManagement,scopeRows,sellerFilter} from '@/lib/access';
+import {assertManagement,scopeRows,sellerFilter,sellerRegistration} from '@/lib/access';
 import {appPath} from '@/lib/paths';
 export async function GET() {try {
   const profile=await authorize();
@@ -15,7 +15,20 @@ export async function GET() {try {
   return Response.json({profile,rows,settings,users,customers,salespeople,vehicles,accesses});
 }catch(e){return errorResponse(e);}}
 export async function POST(req:Request) {try {
-  const user=await authorize(); assertManagement(user); const body=await req.json() as Record<string,unknown>; const action=String(body.action);
+  const user=await authorize(); const body=await req.json() as Record<string,unknown>; const action=String(body.action);
+  if(action==='seller_create') {
+    const params=sellerRegistration(user,body);
+    const token=await db<string>('rpc/experience_seller_create','POST',params);
+    const [experience]=await db<{id:string;created_at:string;sent_at:string|null}[]>(`customer_experiences?token=eq.${encodeURIComponent(token)}${sellerFilter(user)}&select=id,created_at,sent_at`);
+    return Response.json({token,...experience});
+  }
+  if(action==='seller_sent') {
+    if(user.role!=='seller')throw new Error('Acesso não autorizado.');
+    sellerFilter(user);
+    await db('rpc/experience_seller_sent','POST',{p_user:user.id,p_experience:String(body.id||'')});
+    return Response.json({ok:true});
+  }
+  assertManagement(user);
   if(action==='seller_access' || action==='seller_access_status') {
     if(!['owner','admin'].includes(user.role)) throw new Error('Acesso não autorizado.');
     const sellerId=String(body.salesperson_id||'');

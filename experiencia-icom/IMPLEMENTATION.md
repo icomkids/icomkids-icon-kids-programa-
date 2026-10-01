@@ -24,7 +24,7 @@ Rota específica do domínio encaminha `/experiencia-icom` para o novo serviço,
 
 ## Verificado
 
-- TypeScript e lint sem erros; 19 testes das regras e de isolamento passaram.
+- TypeScript e lint sem erros; 20 testes das regras, isolamento e cadastro pelo vendedor passaram.
 - Build Docker/Next.js de produção passou no Easypanel.
 - Pesquisa DEMO concluída pelo navegador; comentário e respostas persistidos.
 - NPS 10 com nota geral baixa gerou alerta crítico, conforme regra.
@@ -34,9 +34,12 @@ Rota específica do domínio encaminha `/experiencia-icom` para o novo serviço,
 
 ## Validação restante com o usuário
 
-O usuário confirmou a redefinição de senha e login. Resumos por vendedor e veículo foram verificados em produção. Para ativar as contas de vendedores, é necessário informar os nomes e e-mails corretos; o cadastro e a entrega do convite ainda precisam ser validados com um destinatário autorizado. A aceitação de um envio não comprova entrega na caixa de entrada.
+O usuário confirmou a redefinição de senha, login e recebimento do convite da conta do João. Resumos por vendedor e veículo foram verificados em produção. Novas contas exigem nome/e-mail correto e vínculo autorizado. A aceitação de um envio não comprova entrega na caixa de entrada.
+
+Portal do vendedor com duas áreas: Meus feedbacks e Cadastrar cliente. Cadastro exige nome, carro e placa; o servidor vincula ao vendedor autenticado e registra horários automaticamente. Somente cadastro e marcação do início de compartilhamento são permitidos; respostas e configurações continuam sem edição. Cadastro é transacional e idempotente. Limites de perfil, timestamp, placa, duplicidade e bloqueio de outro vendedor verificados em transação revertida. O WhatsApp registra início de compartilhamento, sem confirmação automática de entrega ao destinatário.
+
+Migration `20261001212035_seller_customer_registration.sql` aplicada. Contém placa por experiência, idempotência e funções restritas ao servidor. Não reaplicar migrations já existentes.
 
 Migrations incrementais de acesso `20261001205656_seller_access.sql` e `20261001210141_seller_access_email.sql` aplicadas. Vínculo, desativação e proteção das contas da gestão verificados em transação revertida; nenhum vendedor foi ativado por esse teste.
 
 `db/experience-schema.sql` é cópia de consulta da migration; não aplicar separadamente nem reaplicar a migration inicial.
-

@@ -10,7 +10,7 @@ export function assertEditable(record: {completed_at:string|null;status:string})
   if(record.status==='arquivada') throw new Error('Esta experiência foi arquivada.');
 }
 export const ratingFields = ['overall_rating','salesperson_rating','transparency_rating','delivery_rating','store_cleanliness_rating','vehicle_cleanliness_rating','manager_rating','owner_rating'];
-const answerLabels: Record<string,string> = {store_cleanliness_rating:'Limpeza da loja',vehicle_cleanliness_rating:'Limpeza do veículo',discovery_source:'Como conheceu a Icom',discovery_source_other:'Outra origem'};
+const answerLabels: Record<string,string> = {overall_rating:'Experiência de compra',salesperson_rating:'Atendimento do vendedor',salesperson_understanding:'O vendedor entendeu o que procurava?',transparency_rating:'Transparência na negociação',documentation_experience:'Documentação e pagamento',delivery_rating:'Entrega do veículo',nps_score:'Chance de recomendar a Icom (0 a 10)',positive_highlights:'Pontos positivos',improvement_areas:'O que pode melhorar',problem_areas:'Problemas apontados',customer_feedback:'Comentário do cliente',contact_requested:'Deseja contato da gestão?',store_cleanliness_rating:'Limpeza da loja',vehicle_cleanliness_rating:'Limpeza do veículo',discovery_source:'Como conheceu a Icom',discovery_source_other:'Outra origem'};
 export const answerLabel = (key: string) => answerLabels[key] || key.replaceAll('_',' ');
 export function alertRule(a: Answers, manual = false) {
   const reasons: string[] = [];
@@ -21,7 +21,7 @@ export function alertRule(a: Answers, manual = false) {
   if (manual) reasons.push('Problema registrado pela gestão');
   return {level: reasons.length ? 'critical' : Number(a.nps_score) < 9 ? 'attention' : 'none', reasons};
 }
-export interface Experience { id: string; token: string; customer_id: string; salesperson_id: string; vehicle_id: string; purchase_date: string; delivery_date: string; status: string; created_at: string; sent_at: string | null; completed_at: string | null; is_demo: boolean; customers: {name: string; phone: string; customer_type: string}; salespeople: {name: string}; vehicles: {name: string}; experience_responses: {answers: Answers; nps_score: number; nps_category: Category}[]; experience_alerts: Alert[] }
+export interface Experience { vehicle_plate?:string|null; id: string; token: string; customer_id: string; salesperson_id: string; vehicle_id: string; purchase_date: string; delivery_date: string; status: string; created_at: string; sent_at: string | null; completed_at: string | null; is_demo: boolean; customers: {name: string; phone: string; customer_type: string}; salespeople: {name: string}; vehicles: {name: string}; experience_responses: {answers: Answers; nps_score: number; nps_category: Category}[]; experience_alerts: Alert[] }
 export interface Alert { id: string; experience_id: string; alert_level: string; alert_reason: string; resolution_status: string; assigned_to: string | null; created_at: string; resolved_at: string | null; resolution_notes: string | null; experience_alert_events?: {description: string; event_type: string; created_at: string}[] }
 export const resolutions = ['Novo','Em análise','Contato iniciado','Aguardando cliente','Resolvido','Não resolvido'];
 export const statuses = ['criada','enviada','aberta','iniciada','respondida','atendimento necessário','em tratamento','resolvida','arquivada'];
