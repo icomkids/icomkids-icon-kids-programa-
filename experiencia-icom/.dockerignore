@@ -1,0 +1,13 @@
+node_modules
+.next
+.git
+.sites-runtime
+.wrangler
+.env*
+!.env.example
+dist
+coverage
+work
+outputs
+*.zip
+*.tsbuildinfo
