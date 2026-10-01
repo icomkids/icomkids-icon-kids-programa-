@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {feedbackSummary} from '../lib/feedback.ts';
 import {analytics,alertRule,assertEditable,category,questions,relationArray,sanitizeAnswers,validToken, type Experience} from '../lib/experience.ts';
 test('PostgREST one-to-one relations normalize missing, object and array values',()=>{assert.deepEqual(relationArray(null),[]);assert.deepEqual(relationArray(undefined),[]);const response={answers:{nps_score:10}};assert.deepEqual(relationArray(response),[response]);assert.deepEqual(relationArray([response]),[response])});
 test('NPS classification boundaries',()=>{assert.deepEqual([0,6,7,8,9,10].map(category),['detractor','detractor','passive','passive','promoter','promoter'])});
@@ -16,3 +17,13 @@ test('final validation rejects incomplete and unknown options',()=>{assert.throw
 test('discard obsolete branch data',()=>{const clean=sanitizeAnswers({nps_score:10,problem_areas:['Prazo'],leadership_contact:'Não tive contato',manager_rating:2});assert.equal(clean.manager_rating,undefined);assert.equal(clean.problem_areas,undefined)});
 test('completed or archived surveys cannot be answered again',()=>{assert.throws(()=>assertEditable({completed_at:new Date().toISOString(),status:'respondida'}),/já foi registrada/);assert.throws(()=>assertEditable({completed_at:null,status:'arquivada'}));assert.doesNotThrow(()=>assertEditable({completed_at:null,status:'iniciada'}))});
 test('draft responses do not affect NPS',()=>{const rows=[{experience_responses:[{nps_score:null,answers:{overall_rating:5}}],experience_alerts:[]}] as unknown as Experience[];assert.equal(analytics(rows).nps,null);assert.equal(analytics(rows).count,0)});
+test('grouped feedback separates clients, experiences, completed ratings and item denominators',()=>{
+ const rows=[
+ {customer_id:'same',created_at:'2026-10-01',completed_at:'2026-10-02',experience_responses:[{nps_score:10,answers:{salesperson_rating:5,vehicle_cleanliness_rating:4}}],experience_alerts:[]},
+ {customer_id:'same',created_at:'2026-10-03',completed_at:'2026-10-04',experience_responses:[{nps_score:6,answers:{salesperson_rating:3}}],experience_alerts:[]},
+ {customer_id:'other',created_at:'2026-10-05',completed_at:null,experience_responses:[{nps_score:null,answers:{salesperson_rating:1}}],experience_alerts:[]},
+ ] as unknown as Experience[];
+ const summary=feedbackSummary(rows),seller=summary.items.find(i=>i.key==='salesperson_rating')!,vehicle=summary.items.find(i=>i.key==='vehicle_cleanliness_rating')!;
+ assert.equal(summary.customers,2);assert.equal(summary.experiences,3);assert.equal(summary.responses,2);assert.equal(summary.responseRate,67);assert.equal(seller.mean,4);assert.equal(seller.satisfaction,50);assert.equal(vehicle.mean,4);assert.equal(vehicle.count,1);assert.equal(vehicle.satisfaction,100);assert.equal(summary.stats.nps,0);assert.deepEqual(summary.months,['2026-10']);assert.equal(seller.distribution.find(d=>d.score===5)?.percent,50);
+});
+test('empty grouped feedback shows no fabricated zero rating or satisfaction',()=>{const summary=feedbackSummary([]);assert.equal(summary.responseRate,null);for(const item of summary.items){assert.equal(item.mean,null);assert.equal(item.satisfaction,null);assert.equal(item.count,0)}});
