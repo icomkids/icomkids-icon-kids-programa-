@@ -1,15 +1,45 @@
-import { authorize, db, errorResponse, log } from '@/lib/server';
+import { authorize, config, db, errorResponse, log } from '@/lib/server';
 import { Experience, relationArray, resolutions } from '@/lib/experience';
+import {assertManagement,scopeRows,sellerFilter} from '@/lib/access';
+import {appPath} from '@/lib/paths';
 export async function GET() {try {
-  const profile=await authorize(); const [rows,settings,users,customers,salespeople,vehicles]=await Promise.all([
-    db<Experience[]>('customer_experiences?select=*,customers(*),salespeople(*),vehicles(*),experience_responses(*),experience_alerts(*,experience_alert_events(*))&order=created_at.desc'),
-    db('experience_settings?id=eq.1'),db('experience_users?active=eq.true&select=id,name,role'),db('customers?order=name'),db('salespeople?order=name'),db('vehicles?order=name')]);
-  rows.forEach(r=>{r.experience_responses=relationArray(r.experience_responses);r.experience_alerts=relationArray(r.experience_alerts)});
-  if(!profile.leadership_access) rows.forEach(r=>{r.experience_responses.forEach(response=>{Object.keys(response.answers).filter(k=>/manager|owner|leadership/.test(k)).forEach(k=>delete response.answers[k]);});r.experience_alerts.forEach(a=>{a.alert_reason=a.alert_reason.replace(/Nota baixa: (manager_rating|owner_rating)/g,'Avaliação restrita requer atenção');});});
-  return Response.json({profile,rows,settings,users,customers,salespeople,vehicles});
+  const profile=await authorize();
+  const raw=await db<Experience[]>('customer_experiences?select=*,customers(*),salespeople(*),vehicles(*),experience_responses(*),experience_alerts(*,experience_alert_events(*))&order=created_at.desc'+sellerFilter(profile));
+  raw.forEach(r=>{r.experience_responses=relationArray(r.experience_responses);r.experience_alerts=relationArray(r.experience_alerts)});
+  const rows=scopeRows(profile,raw);
+  if(profile.role==='seller') {
+    const unique=(key:'customer_id'|'vehicle_id',relation:'customers'|'vehicles')=>[...new Map(rows.map(r=>[r[key],{id:r[key],...r[relation]}])).values()];
+    return Response.json({profile,rows,settings:[],users:[],accesses:[],customers:unique('customer_id','customers'),salespeople:[{id:profile.salesperson_id,name:profile.name}],vehicles:unique('vehicle_id','vehicles')});
+  }
+  const [settings,users,customers,salespeople,vehicles,accesses]=await Promise.all([db('experience_settings?id=eq.1'),db('experience_users?active=eq.true&select=id,name,role'),db('customers?order=name'),db('salespeople?order=name'),db('vehicles?order=name'),['owner','admin'].includes(profile.role)?db('rpc/experience_seller_accesses','POST',{p_actor:profile.id}):Promise.resolve([])]);
+  return Response.json({profile,rows,settings,users,customers,salespeople,vehicles,accesses});
 }catch(e){return errorResponse(e);}}
 export async function POST(req:Request) {try {
-  const user=await authorize(); const body=await req.json() as Record<string,unknown>; const action=String(body.action);
+  const user=await authorize(); assertManagement(user); const body=await req.json() as Record<string,unknown>; const action=String(body.action);
+  if(action==='seller_access' || action==='seller_access_status') {
+    if(!['owner','admin'].includes(user.role)) throw new Error('Acesso não autorizado.');
+    const sellerId=String(body.salesperson_id||'');
+    const [seller]=await db<{id:string;name:string}[]>(`salespeople?id=eq.${encodeURIComponent(sellerId)}`);
+    if(!seller) throw new Error('Selecione um vendedor válido.');
+    let target=String(body.user_id||''); let invited=false; let email=String(body.email||'').trim().toLowerCase();
+    if(action==='seller_access') {
+
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('Informe um e-mail válido.');
+      target=await findAuthUser(email);
+      if(!target) {
+        const {url,key}=config(); const redirect=`${process.env.APP_URL||'https://sistema.icomkids.com.br'}${appPath('/recuperar-senha')}`;
+        const res=await fetch(`${url}/auth/v1/invite?redirect_to=${encodeURIComponent(redirect)}`,{method:'POST',headers:{apikey:key,Authorization:`Bearer ${key}`,'Content-Type':'application/json'},body:JSON.stringify({email})});
+        if(!res.ok) throw new Error('Não foi possível enviar o convite. Confira o e-mail e tente novamente.');
+        const account=await res.json() as {id:string}; target=account.id; invited=true;
+      }
+    } else {
+      const [existing]=await db<{role:string;access_email:string}[]>(`experience_users?id=eq.${encodeURIComponent(target)}`);
+      if(existing?.role!=='seller') throw new Error('Acesso não autorizado.'); email=existing.access_email;
+    }
+    if(!target) throw new Error('Não foi possível identificar a conta.');
+    await db('rpc/experience_set_seller_access','POST',{p_actor:user.id,p_target:target,p_seller:sellerId,p_active:action==='seller_access'||body.active===true,p_email:email});
+    return Response.json({ok:true,message:invited?'Convite enviado. O vendedor define a senha pelo e-mail.':'Acesso atualizado. A conta usa a senha já existente.'});
+  }
   if(action === 'create') {
     const customerId=String(body.customer_id || ''); const salespersonId=String(body.salesperson_id || ''); const vehicleId=String(body.vehicle_id || '');
     if(!customerId || !salespersonId || !vehicleId || !body.purchase_date || !body.delivery_date) throw new Error('Selecione cliente, veículo, vendedor e datas.');
@@ -35,3 +65,15 @@ export async function POST(req:Request) {try {
   } else throw new Error('Ação inválida.');
   return Response.json({ok:true});
 }catch(e){return errorResponse(e);}}
+
+async function findAuthUser(email:string):Promise<string> {
+ const {url,key}=config();
+ for(let page=1;page<=100;page++) {
+   const res=await fetch(`${url}/auth/v1/admin/users?page=${page}&per_page=200`,{headers:{apikey:key,Authorization:`Bearer ${key}`},cache:'no-store'});
+   if(!res.ok) throw new Error('Não foi possível consultar as contas de acesso.');
+   const data=await res.json() as {users:{id:string;email?:string}[]};
+   const user=data.users.find(u=>u.email?.toLowerCase()===email);if(user)return user.id;
+   if(data.users.length<200)return '';
+ }
+ throw new Error('A consulta de contas excedeu o limite. Contate a administração.');
+}

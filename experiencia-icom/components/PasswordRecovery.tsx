@@ -10,7 +10,7 @@ export default function PasswordRecovery() {
   useEffect(() => {
     const hash = new URLSearchParams(location.hash.slice(1));
     const access = hash.get('access_token');
-    const recovery = hash.get('type') === 'recovery';
+    const recovery = ['recovery','invite'].includes(hash.get('type')||'');
     history.replaceState(null, '', location.pathname);
     Promise.resolve().then(() => {
       if (access && recovery) setToken(access);

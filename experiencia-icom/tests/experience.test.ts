@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {feedbackSummary} from '../lib/feedback.ts';
+import {assertManagement,scopeRows,sellerFilter,type AccessProfile} from '../lib/access.ts';
 import {analytics,alertRule,assertEditable,category,questions,relationArray,sanitizeAnswers,validToken, type Experience} from '../lib/experience.ts';
 test('PostgREST one-to-one relations normalize missing, object and array values',()=>{assert.deepEqual(relationArray(null),[]);assert.deepEqual(relationArray(undefined),[]);const response={answers:{nps_score:10}};assert.deepEqual(relationArray(response),[response]);assert.deepEqual(relationArray([response]),[response])});
 test('NPS classification boundaries',()=>{assert.deepEqual([0,6,7,8,9,10].map(category),['detractor','detractor','passive','passive','promoter','promoter'])});
@@ -27,3 +28,13 @@ test('grouped feedback separates clients, experiences, completed ratings and ite
  assert.equal(summary.customers,2);assert.equal(summary.experiences,3);assert.equal(summary.responses,2);assert.equal(summary.responseRate,67);assert.equal(seller.mean,4);assert.equal(seller.satisfaction,50);assert.equal(vehicle.mean,4);assert.equal(vehicle.count,1);assert.equal(vehicle.satisfaction,100);assert.equal(summary.stats.nps,0);assert.deepEqual(summary.months,['2026-10']);assert.equal(seller.distribution.find(d=>d.score===5)?.percent,50);
 });
 test('empty grouped feedback shows no fabricated zero rating or satisfaction',()=>{const summary=feedbackSummary([]);assert.equal(summary.responseRate,null);for(const item of summary.items){assert.equal(item.mean,null);assert.equal(item.satisfaction,null);assert.equal(item.count,0)}});
+test('seller authorization filters at database boundary and fails closed without link',()=>{
+ const seller={id:'user',name:'Seller',role:'seller',salesperson_id:'12345678-1234-4234-8234-123456789abc',leadership_access:false} as AccessProfile;
+ assert.equal(sellerFilter(seller),'&salesperson_id=eq.12345678-1234-4234-8234-123456789abc');assert.throws(()=>sellerFilter({...seller,salesperson_id:null}));assert.throws(()=>assertManagement(seller));assert.equal(sellerFilter({...seller,role:'owner',salesperson_id:null}),'');assert.doesNotThrow(()=>assertManagement({...seller,role:'owner'}));
+});
+test('seller sees only own feedback with leadership and internal alert treatment removed',()=>{
+ const seller={id:'user',name:'Seller',role:'seller',salesperson_id:'12345678-1234-4234-8234-123456789abc',leadership_access:true} as AccessProfile;
+ const rows=[{id:'own-experience',salesperson_id:'12345678-1234-4234-8234-123456789abc',experience_responses:[{answers:{salesperson_rating:5,manager_rating:1,leadership_feedback:'private'}}],experience_alerts:[{alert_reason:'private',resolution_notes:'internal'}]},{id:'other-experience',salesperson_id:'other',experience_responses:[],experience_alerts:[]}] as unknown as Experience[];
+ const scoped=scopeRows(seller,rows);assert.equal(scoped.length,1);assert.equal(scoped[0].id,'own-experience');assert.deepEqual(scoped[0].experience_responses[0].answers,{salesperson_rating:5});assert.deepEqual(scoped[0].experience_alerts,[]);assert.equal(rows[0].experience_responses[0].answers.manager_rating,1);
+ assert.equal(scopeRows({...seller,role:'owner'},rows).length,2);assert.equal(scopeRows({...seller,role:'owner'},rows)[0].experience_responses[0].answers.manager_rating,1);
+});

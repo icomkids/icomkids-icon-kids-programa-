@@ -1,4 +1,5 @@
 import { headers } from 'next/headers';
+import type {AccessProfile} from './access';
 export function config() {
   const url = process.env.SUPABASE_URL; const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if(!url || !key) throw new Error('Banco não configurado.');
@@ -10,7 +11,7 @@ export async function db<T>(path: string, method = 'GET', body?: unknown): Promi
   if(!res.ok) { console.error('Database request failed',res.status,path.split('?')[0]); throw new Error('Não foi possível acessar os dados.'); }
   const text = await res.text(); return text ? JSON.parse(text) as T : undefined as T;
 }
-export interface Profile {id: string; name: string; role: 'admin' | 'manager' | 'owner'; leadership_access: boolean}
+export type Profile = AccessProfile;
 export async function authorize() {
   const {url,key} = config(); const authorization = (await headers()).get('authorization');
   if(!authorization?.startsWith('Bearer ')) throw new Error('Acesso não autorizado.');
