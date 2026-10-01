@@ -1,4 +1,5 @@
 'use client';
+import {appPath} from '@/lib/paths';
 import Link from 'next/link';
 import {useEffect,useRef,useState} from 'react';
 import {Answers,questions} from '@/lib/experience';
@@ -6,12 +7,12 @@ type PublicData={name:string;completed:boolean;answers:Answers;settings:{google_
 export function Brand(){return <Link className="brand" href="/experiencia"><strong>ICOM<span>VEÍCULOS</span></strong><i>EXPERIÊNCIA</i></Link>}
 export default function Survey({token}:{token?:string}) {
  const [data,setData]=useState<PublicData|null>(null),[answers,setAnswers]=useState<Answers>({}),[step,setStep]=useState(-1),[error,setError]=useState(''),[busy,setBusy]=useState(false),[done,setDone]=useState(false);
- useEffect(()=>{if(!token)return;let active=true;fetch(`/api/experience/${token}`).then(async r=>{const d=await r.json() as PublicData&{error?:string};if(!r.ok)throw new Error(d.error);if(active){setData(d);setAnswers(d.answers);setDone(d.completed);}}).catch(e=>{if(active)setError(e.message)});return()=>{active=false}},[token]);
+ useEffect(()=>{if(!token)return;let active=true;fetch(appPath(`/api/experience/${token}`)).then(async r=>{const d=await r.json() as PublicData&{error?:string};if(!r.ok)throw new Error(d.error);if(active){setData(d);setAnswers(d.answers);setDone(d.completed);}}).catch(e=>{if(active)setError(e.message)});return()=>{active=false}},[token]);
  const draftTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
- useEffect(()=>{if(!token||done||step<0)return;const persist=()=>{void fetch(`/api/experience/${token}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({answers,complete:false}),keepalive:true})};window.addEventListener("pagehide",persist);return()=>window.removeEventListener("pagehide",persist)},[token,done,step,answers]);
+ useEffect(()=>{if(!token||done||step<0)return;const persist=()=>{void fetch(appPath(`/api/experience/${token}`),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({answers,complete:false}),keepalive:true})};window.addEventListener("pagehide",persist);return()=>window.removeEventListener("pagehide",persist)},[token,done,step,answers]);
  useEffect(()=>()=>{if(draftTimer.current)clearTimeout(draftTimer.current)},[]);
  const qs=questions(answers),q=qs[step];
- async function save(next:Answers,complete=false){setBusy(true);setError('');try{const r=await fetch(`/api/experience/${token}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({answers:next,complete})});const d=await r.json() as {error?:string};if(!r.ok)throw new Error(d.error);if(complete)setDone(true);return true;}catch(e){setError(e instanceof Error?e.message:'Não foi possível salvar. Tente novamente.');return false;}finally{setBusy(false)}}
+ async function save(next:Answers,complete=false){setBusy(true);setError('');try{const r=await fetch(appPath(`/api/experience/${token}`),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({answers:next,complete})});const d=await r.json() as {error?:string};if(!r.ok)throw new Error(d.error);if(complete)setDone(true);return true;}catch(e){setError(e instanceof Error?e.message:'Não foi possível salvar. Tente novamente.');return false;}finally{setBusy(false)}}
  async function choose(value:Answers[string]){const next={...answers,[q.key]:value};setAnswers(next);await save(next)}
  const answered=q&&(q.optional||(answers[q.key]!==undefined&&answers[q.key]!==''&&(!Array.isArray(answers[q.key])||(answers[q.key] as string[]).length>0)));
  return <main className="survey"><header><Brand/><span>FEEDBACK DIRETO À GESTÃO</span></header><section className="survey-card" aria-live="polite">
