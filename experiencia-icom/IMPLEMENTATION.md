@@ -8,7 +8,7 @@ Painel: https://sistema.icomkids.com.br/experiencia-icom/admin/experiencia
 
 ## Implementado
 
-- Pesquisa responsiva por token UUID, progresso automático, perguntas condicionais, notas e NPS.
+- Pesquisa responsiva por token UUID, progresso automático, perguntas condicionais, notas e NPS. Inclui limpeza da loja, limpeza do veículo e origem do cliente, com campo para outra origem.
 - Painel com indicadores, filtros, CSV, vendas, clientes, vendedores, liderança, alertas e histórico.
 - QR Code e compartilhamento WhatsApp; configurações de textos e experiência DEMO.
 - Login com contas existentes do Supabase e autorização explícita em `experience_users`.
@@ -23,7 +23,7 @@ Rota específica do domínio encaminha `/experiencia-icom` para o novo serviço,
 
 ## Verificado
 
-- TypeScript e lint sem erros; 12 testes das regras passaram.
+- TypeScript e lint sem erros; 15 testes das regras passaram.
 - Build Docker/Next.js de produção passou no Easypanel.
 - Pesquisa DEMO concluída pelo navegador; comentário e respostas persistidos.
 - NPS 10 com nota geral baixa gerou alerta crítico, conforme regra.
