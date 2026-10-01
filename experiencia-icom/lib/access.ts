@@ -1,5 +1,6 @@
 import type {Experience} from './experience.ts';
 import {validToken} from './experience.ts';
+import {phoneBR} from './whatsapp.ts';
 export interface AccessProfile {id:string;name:string;role:'admin'|'manager'|'owner'|'seller';leadership_access:boolean;salesperson_id:string|null}
 export function sellerFilter(profile:AccessProfile) {
   if(profile.role!=='seller') return '';
@@ -14,7 +15,7 @@ export function sellerRegistration(profile:AccessProfile,body:Record<string,unkn
   if(name.length<2||name.length>120||vehicle.length<2||vehicle.length>120)throw new Error('Preencha o nome do cliente e o carro (2 a 120 caracteres).');
   if(!/^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/.test(plate))throw new Error('Informe uma placa válida, como ABC1D23 ou ABC1234.');
   if(!validToken(request))throw new Error('Solicitação inválida. Atualize a página.');
-  return {p_user:profile.id,p_customer:name,p_vehicle:vehicle,p_plate:plate,p_request:request};
+  return {p_user:profile.id,p_customer:name,p_vehicle:vehicle,p_plate:plate,p_request:request,p_phone:phoneBR(body.customer_phone)};
 }
 export function scopeRows(profile:AccessProfile,rows:Experience[]) {
   sellerFilter(profile);

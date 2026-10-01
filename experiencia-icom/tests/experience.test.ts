@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {phoneBR,sellerInstance,connection,sendText} from '../lib/whatsapp.ts';
 import {feedbackSummary} from '../lib/feedback.ts';
 import {assertManagement,scopeRows,sellerFilter,sellerRegistration,type AccessProfile} from '../lib/access.ts';
 import {analytics,alertRule,assertEditable,category,questions,relationArray,sanitizeAnswers,validToken, type Experience} from '../lib/experience.ts';
@@ -27,6 +28,27 @@ test('grouped feedback separates clients, experiences, completed ratings and ite
  const summary=feedbackSummary(rows),seller=summary.items.find(i=>i.key==='salesperson_rating')!,vehicle=summary.items.find(i=>i.key==='vehicle_cleanliness_rating')!;
  assert.equal(summary.customers,2);assert.equal(summary.experiences,3);assert.equal(summary.responses,2);assert.equal(summary.responseRate,67);assert.equal(seller.mean,4);assert.equal(seller.satisfaction,50);assert.equal(vehicle.mean,4);assert.equal(vehicle.count,1);assert.equal(vehicle.satisfaction,100);assert.equal(summary.stats.nps,0);assert.deepEqual(summary.months,['2026-10']);assert.equal(seller.distribution.find(d=>d.score===5)?.percent,50);
 });
+test('Brazilian WhatsApp phones normalize DDD 55 without confusing country code',()=>{
+ assert.equal(phoneBR('(55) 99999-1234'),'5555999991234');assert.equal(phoneBR('+55 (12) 99999-1234'),'5512999991234');assert.equal(phoneBR('(11) 3333-1234'),'551133331234');
+ for(const invalid of ['','999991234','5510999991234','+1 202 555 1234','(12) 89999-1234'])assert.throws(()=>phoneBR(invalid));
+});
+test('WhatsApp configuration never falls back to another seller and rejects non HTTPS servers',()=>{
+ const raw=JSON.stringify({seller:{url:'https://test.uazapi.com',token:'secret',phone:'12999991234'}});
+ assert.equal(sellerInstance('other',raw),null);assert.equal(sellerInstance('seller',raw)?.phone,'5512999991234');assert.throws(()=>sellerInstance('seller',raw.replace('https:','http:')));
+});
+test('WhatsApp connection checks the sender phone and hides raw provider credentials',()=>{
+ const raw={instance:{owner:'5512999991234',status:'connected',token:'private'},status:{connected:true}};
+ assert.equal(connection(raw,'5512999991234').connected,true);assert.equal(connection(raw,'5511988881234').connected,false);assert.ok(!JSON.stringify(connection(raw,'5512999991234')).includes('private'));
+ assert.equal(connection({instance:{qrcode:'https://evil.example/qr',status:'disconnected'}},'5512999991234').qr,undefined);
+});
+test('WhatsApp delivery distinguishes acceptance, definitive rejection and uncertain results without retrying',async()=>{
+ const config={url:'https://test.uazapi.com',token:'secret',phone:'5512999991234'};let count=0;
+ const mock=(status:number,body:unknown)=>(async (_url:unknown,init:RequestInit)=>{count++;assert.deepEqual(JSON.parse(String(init.body)),{number:'5512999991234',text:'test'});return new Response(JSON.stringify(body),{status})}) as typeof fetch;
+ assert.deepEqual(await sendText(config,'12999991234','test',mock(200,{messageid:'accepted-id'})),{status:'accepted',providerId:'accepted-id'});
+ assert.equal((await sendText(config,'12999991234','test',mock(400,{error:'bad'}))).status,'failed');
+ assert.equal((await sendText(config,'12999991234','test',mock(500,{error:'uncertain'}))).status,'unknown');
+ assert.equal((await sendText(config,'12999991234','test',mock(200,{success:true}))).status,'unknown');assert.equal(count,4);
+});
 test('empty grouped feedback shows no fabricated zero rating or satisfaction',()=>{const summary=feedbackSummary([]);assert.equal(summary.responseRate,null);for(const item of summary.items){assert.equal(item.mean,null);assert.equal(item.satisfaction,null);assert.equal(item.count,0)}});
 test('seller authorization filters at database boundary and fails closed without link',()=>{
  const seller={id:'user',name:'Seller',role:'seller',salesperson_id:'12345678-1234-4234-8234-123456789abc',leadership_access:false} as AccessProfile;
@@ -40,7 +62,7 @@ test('seller sees only own feedback with leadership and internal alert treatment
 });
 test('seller registration ignores forged owner, seller and dates and normalizes Brazilian plates',()=>{
  const profile={id:'authenticated-user',name:'Seller',role:'seller',salesperson_id:'12345678-1234-4234-8234-123456789abc',leadership_access:false} as AccessProfile;
- const request=crypto.randomUUID();const payload={customer_name:' Maria ',vehicle_name:' Compass ',vehicle_plate:'abc-1234',request_id:request,p_user:'forged',salesperson_id:'other-seller',created_at:'1990-01-01',purchase_date:'1990-01-01'};
- assert.deepEqual(sellerRegistration(profile,payload),{p_user:'authenticated-user',p_customer:'Maria',p_vehicle:'Compass',p_plate:'ABC1234',p_request:request});
+ const request=crypto.randomUUID();const payload={customer_phone:'(12) 99999-1234',customer_name:' Maria ',vehicle_name:' Compass ',vehicle_plate:'abc-1234',request_id:request,p_user:'forged',salesperson_id:'other-seller',created_at:'1990-01-01',purchase_date:'1990-01-01'};
+ assert.deepEqual(sellerRegistration(profile,payload),{p_user:'authenticated-user',p_customer:'Maria',p_vehicle:'Compass',p_plate:'ABC1234',p_request:request,p_phone:'5512999991234'});
  assert.equal(sellerRegistration(profile,{...payload,vehicle_plate:'abc1d23'}).p_plate,'ABC1D23');assert.throws(()=>sellerRegistration(profile,{...payload,vehicle_plate:'bad'}));assert.throws(()=>sellerRegistration(profile,{...payload,customer_name:'x'}));assert.throws(()=>sellerRegistration({...profile,role:'owner'},payload));assert.throws(()=>sellerRegistration(profile,{...payload,request_id:'bad'}));
 });

@@ -2,6 +2,7 @@ import { authorize, config, db, errorResponse, log } from '@/lib/server';
 import { Experience, relationArray, resolutions } from '@/lib/experience';
 import {assertManagement,scopeRows,sellerFilter,sellerRegistration} from '@/lib/access';
 import {appPath} from '@/lib/paths';
+import {sellerConnection,sendSurvey} from '@/lib/whatsapp-server';
 export async function GET() {try {
   const profile=await authorize();
   const raw=await db<Experience[]>('customer_experiences?select=*,customers(*),salespeople(*),vehicles(*),experience_responses(*),experience_alerts(*,experience_alert_events(*))&order=created_at.desc'+sellerFilter(profile));
@@ -9,7 +10,7 @@ export async function GET() {try {
   const rows=scopeRows(profile,raw);
   if(profile.role==='seller') {
     const unique=(key:'customer_id'|'vehicle_id',relation:'customers'|'vehicles')=>[...new Map(rows.map(r=>[r[key],{id:r[key],...r[relation]}])).values()];
-    return Response.json({profile,rows,settings:[],users:[],accesses:[],customers:unique('customer_id','customers'),salespeople:[{id:profile.salesperson_id,name:profile.name}],vehicles:unique('vehicle_id','vehicles')});
+    return Response.json({profile,rows,connection:await sellerConnection(profile),settings:[],users:[],accesses:[],customers:unique('customer_id','customers'),salespeople:[{id:profile.salesperson_id,name:profile.name}],vehicles:unique('vehicle_id','vehicles')});
   }
   const [settings,users,customers,salespeople,vehicles,accesses]=await Promise.all([db('experience_settings?id=eq.1'),db('experience_users?active=eq.true&select=id,name,role'),db('customers?order=name'),db('salespeople?order=name'),db('vehicles?order=name'),['owner','admin'].includes(profile.role)?db('rpc/experience_seller_accesses','POST',{p_actor:profile.id}):Promise.resolve([])]);
   return Response.json({profile,rows,settings,users,customers,salespeople,vehicles,accesses});
@@ -18,10 +19,15 @@ export async function POST(req:Request) {try {
   const user=await authorize(); const body=await req.json() as Record<string,unknown>; const action=String(body.action);
   if(action==='seller_create') {
     const params=sellerRegistration(user,body);
-    const token=await db<string>('rpc/experience_seller_create','POST',params);
+    const token=await db<string>('rpc/experience_seller_create_with_phone','POST',params);
     const [experience]=await db<{id:string;created_at:string;sent_at:string|null}[]>(`customer_experiences?token=eq.${encodeURIComponent(token)}${sellerFilter(user)}&select=id,created_at,sent_at`);
-    return Response.json({token,...experience});
+    if(!experience)throw new Error('Não foi possível localizar o atendimento salvo.');
+    let delivery;
+    try{delivery=await sendSurvey(user,experience.id)}catch{delivery={whatsapp_status:'unknown',message:'Cliente salvo. Não foi possível confirmar o envio. Atualize para conferir antes de reenviar.'}}
+    return Response.json({token,...experience,...delivery});
   }
+  if(action==='seller_connection')return Response.json({connection:await sellerConnection(user,body.connect===true)});
+  if(action==='seller_whatsapp')return Response.json(await sendSurvey(user,String(body.id||'')));
   if(action==='seller_sent') {
     if(user.role!=='seller')throw new Error('Acesso não autorizado.');
     sellerFilter(user);
