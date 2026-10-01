@@ -11,7 +11,8 @@ Painel: https://sistema.icomkids.com.br/experiencia-icom/admin/experiencia
 - Pesquisa responsiva por token UUID, progresso automático, perguntas condicionais, notas e NPS. Inclui limpeza da loja, limpeza do veículo e origem do cliente, com campo para outra origem.
 - Painel com indicadores, filtros, CSV, vendas, clientes, vendedores, liderança, alertas e histórico.
 - QR Code e compartilhamento WhatsApp; configurações de textos e experiência DEMO.
-- Login com contas existentes do Supabase e autorização explícita em `experience_users`.
+- Login com contas existentes do Supabase e autorização explícita em `experience_users`. Perfil vendedor exige vínculo a `salespeople`; consulta apenas seus clientes e feedbacks, sem permissões de alteração ou acesso à liderança.
+- Gestão de contas em Configurações: vínculo por e-mail, convite para novas contas e desativação. Contas da gestão não podem ser convertidas em vendedor.
 - Recuperação de senha por e-mail pelo Supabase Auth com SMTP Resend existente.
 - APIs com validação, acesso ao banco exclusivamente no servidor e regras de autorização.
 
@@ -23,7 +24,7 @@ Rota específica do domínio encaminha `/experiencia-icom` para o novo serviço,
 
 ## Verificado
 
-- TypeScript e lint sem erros; 15 testes das regras passaram.
+- TypeScript e lint sem erros; 19 testes das regras e de isolamento passaram.
 - Build Docker/Next.js de produção passou no Easypanel.
 - Pesquisa DEMO concluída pelo navegador; comentário e respostas persistidos.
 - NPS 10 com nota geral baixa gerou alerta crítico, conforme regra.
@@ -33,6 +34,9 @@ Rota específica do domínio encaminha `/experiencia-icom` para o novo serviço,
 
 ## Validação restante com o usuário
 
-Confirmar recebimento do e-mail e concluir pessoalmente a definição da senha, se necessário. Validar login com sua conta e apresentação do painel autenticado, incluindo CSV e QR Code. A aceitação do pedido de recuperação não comprova entrega na caixa de entrada.
+O usuário confirmou a redefinição de senha e login. Resumos por vendedor e veículo foram verificados em produção. Para ativar as contas de vendedores, é necessário informar os nomes e e-mails corretos; o cadastro e a entrega do convite ainda precisam ser validados com um destinatário autorizado. A aceitação de um envio não comprova entrega na caixa de entrada.
+
+Migrations incrementais de acesso `20261001205656_seller_access.sql` e `20261001210141_seller_access_email.sql` aplicadas. Vínculo, desativação e proteção das contas da gestão verificados em transação revertida; nenhum vendedor foi ativado por esse teste.
 
 `db/experience-schema.sql` é cópia de consulta da migration; não aplicar separadamente nem reaplicar a migration inicial.
+
