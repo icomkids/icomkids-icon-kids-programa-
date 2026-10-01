@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {analytics,alertRule,assertEditable,category,questions,sanitizeAnswers,validToken, type Experience} from '../lib/experience.ts';
+import {analytics,alertRule,assertEditable,category,questions,relationArray,sanitizeAnswers,validToken, type Experience} from '../lib/experience.ts';
+test('PostgREST one-to-one relations normalize missing, object and array values',()=>{assert.deepEqual(relationArray(null),[]);assert.deepEqual(relationArray(undefined),[]);const response={answers:{nps_score:10}};assert.deepEqual(relationArray(response),[response]);assert.deepEqual(relationArray([response]),[response])});
 test('NPS classification boundaries',()=>{assert.deepEqual([0,6,7,8,9,10].map(category),['detractor','detractor','passive','passive','promoter','promoter'])});
 test('NPS formula and empty dataset',()=>{const rows=[10,9,7,5].map(n=>({experience_responses:[{nps_score:n,answers:{},nps_category:category(n)}],experience_alerts:[]})) as unknown as Experience[];assert.equal(analytics(rows).nps,25);assert.equal(analytics([]).nps,null)});
 test('critical alert for low score even with promoter NPS',()=>{for(const field of ['overall_rating','salesperson_rating','transparency_rating','delivery_rating','manager_rating','owner_rating'])for(const score of [1,2])assert.equal(alertRule({nps_score:10,[field]:score}).level,'critical')});

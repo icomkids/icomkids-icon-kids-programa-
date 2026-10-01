@@ -1,4 +1,7 @@
 export type Answers = Record<string, string | number | boolean | string[]>;
+export function relationArray<T>(value: T | T[] | null | undefined): T[] {
+  return value == null ? [] : Array.isArray(value) ? value : [value];
+}
 export type Category = 'promoter' | 'passive' | 'detractor';
 export const category = (score: number): Category => score >= 9 ? 'promoter' : score >= 7 ? 'passive' : 'detractor';
 export const validToken = (token: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(token);

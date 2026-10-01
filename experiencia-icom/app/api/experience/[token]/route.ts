@@ -1,6 +1,6 @@
 import { db, errorResponse } from '@/lib/server';
-import { Answers, alertRule, assertEditable, category, sanitizeAnswers, validToken } from '@/lib/experience';
-interface PublicRecord {id:string;status:string;completed_at:string|null;expires_at:string|null;customers:{name:string};experience_responses:{answers:Answers}[]}
+import { Answers, alertRule, assertEditable, category, relationArray, sanitizeAnswers, validToken } from '@/lib/experience';
+interface PublicRecord {id:string;status:string;completed_at:string|null;expires_at:string|null;customers:{name:string};experience_responses:{answers:Answers}|{answers:Answers}[]|null}
 async function load(token: string) {
   if(!validToken(token)) throw new Error('Este link não é válido. Solicite um novo link à Icom.');
   const [row] = await db<PublicRecord[]>(`customer_experiences?token=eq.${token}&select=id,status,completed_at,expires_at,customers(name),experience_responses(answers)`);
@@ -14,7 +14,7 @@ async function load(token: string) {
 export async function GET(_:Request, context:{params:Promise<{token:string}>}) {
   try { const {token}=await context.params; const {row,settings}=await load(token);
     await db('rpc/experience_open','POST',{p_token:token});
-    return Response.json({name:row.customers.name.split(' ')[0],completed:!!row.completed_at,answers:row.experience_responses[0]?.answers || {},settings:{google_review_url:settings.google_review_url,intro_text:settings.intro_text,final_text:settings.final_text,estimated_time:settings.estimated_time}});
+    return Response.json({name:row.customers.name.split(' ')[0],completed:!!row.completed_at,answers:relationArray(row.experience_responses)[0]?.answers || {},settings:{google_review_url:settings.google_review_url,intro_text:settings.intro_text,final_text:settings.final_text,estimated_time:settings.estimated_time}});
   } catch(e) {return errorResponse(e);}
 }
 export async function POST(req:Request,context:{params:Promise<{token:string}>}) {

@@ -1,9 +1,10 @@
 import { authorize, db, errorResponse, log } from '@/lib/server';
-import { Experience, resolutions } from '@/lib/experience';
+import { Experience, relationArray, resolutions } from '@/lib/experience';
 export async function GET() {try {
   const profile=await authorize(); const [rows,settings,users,customers,salespeople,vehicles]=await Promise.all([
     db<Experience[]>('customer_experiences?select=*,customers(*),salespeople(*),vehicles(*),experience_responses(*),experience_alerts(*,experience_alert_events(*))&order=created_at.desc'),
     db('experience_settings?id=eq.1'),db('experience_users?active=eq.true&select=id,name,role'),db('customers?order=name'),db('salespeople?order=name'),db('vehicles?order=name')]);
+  rows.forEach(r=>{r.experience_responses=relationArray(r.experience_responses);r.experience_alerts=relationArray(r.experience_alerts)});
   if(!profile.leadership_access) rows.forEach(r=>{r.experience_responses.forEach(response=>{Object.keys(response.answers).filter(k=>/manager|owner|leadership/.test(k)).forEach(k=>delete response.answers[k]);});r.experience_alerts.forEach(a=>{a.alert_reason=a.alert_reason.replace(/Nota baixa: (manager_rating|owner_rating)/g,'Avaliação restrita requer atenção');});});
   return Response.json({profile,rows,settings,users,customers,salespeople,vehicles});
 }catch(e){return errorResponse(e);}}
