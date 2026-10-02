@@ -2,18 +2,19 @@ import { authorize, config, db, errorResponse, log } from '@/lib/server';
 import { Experience, relationArray, resolutions } from '@/lib/experience';
 import {assertManagement,scopeRows,sellerFilter,sellerRegistration} from '@/lib/access';
 import {appPath} from '@/lib/paths';
+import {warrantySettings} from '@/lib/warranty';
 import {sellerConnection,sendSurvey} from '@/lib/whatsapp-server';
 export async function GET() {try {
   const profile=await authorize();
-  const raw=await db<Experience[]>('customer_experiences?select=*,customers(*),salespeople(*),vehicles(*),experience_responses(*),experience_alerts(*,experience_alert_events(*))&order=created_at.desc'+sellerFilter(profile));
-  raw.forEach(r=>{r.experience_responses=relationArray(r.experience_responses);r.experience_alerts=relationArray(r.experience_alerts)});
+  const raw=await db<Experience[]>('customer_experiences?select=*,customers(*),salespeople(*),vehicles(*),experience_responses(*),experience_alerts(*,experience_alert_events(*)),experience_warranty_sessions(*),experience_referrals(*),experience_referral_reminders(*)&order=created_at.desc'+sellerFilter(profile));
+  raw.forEach(r=>{r.experience_responses=relationArray(r.experience_responses);r.experience_alerts=relationArray(r.experience_alerts);r.experience_warranty_sessions=relationArray(r.experience_warranty_sessions);r.experience_referrals=relationArray(r.experience_referrals);r.experience_referral_reminders=relationArray(r.experience_referral_reminders)});
   const rows=scopeRows(profile,raw);
   if(profile.role==='seller') {
     const unique=(key:'customer_id'|'vehicle_id',relation:'customers'|'vehicles')=>[...new Map(rows.map(r=>[r[key],{id:r[key],...r[relation]}])).values()];
     return Response.json({profile,rows,connection:await sellerConnection(profile),settings:[],users:[],accesses:[],customers:unique('customer_id','customers'),salespeople:[{id:profile.salesperson_id,name:profile.name}],vehicles:unique('vehicle_id','vehicles')});
   }
-  const [settings,users,customers,salespeople,vehicles,accesses]=await Promise.all([db('experience_settings?id=eq.1'),db('experience_users?active=eq.true&select=id,name,role'),db('customers?order=name'),db('salespeople?order=name'),db('vehicles?order=name'),['owner','admin'].includes(profile.role)?db('rpc/experience_seller_accesses','POST',{p_actor:profile.id}):Promise.resolve([])]);
-  return Response.json({profile,rows,settings,users,customers,salespeople,vehicles,accesses});
+  const [settings,users,customers,salespeople,vehicles,accesses,warranty]=await Promise.all([db('experience_settings?id=eq.1'),db('experience_users?active=eq.true&select=id,name,role'),db('customers?order=name'),db('salespeople?order=name'),db('vehicles?order=name'),['owner','admin'].includes(profile.role)?db('rpc/experience_seller_accesses','POST',{p_actor:profile.id}):Promise.resolve([]),db('experience_warranty_config?id=eq.1')]);
+  return Response.json({profile,rows,settings,users,customers,salespeople,vehicles,accesses,warranty});
 }catch(e){return errorResponse(e);}}
 export async function POST(req:Request) {try {
   const user=await authorize(); const body=await req.json() as Record<string,unknown>; const action=String(body.action);
@@ -35,6 +36,7 @@ export async function POST(req:Request) {try {
     return Response.json({ok:true});
   }
   assertManagement(user);
+  if(action==='warranty_settings'){const params=warrantySettings(body);await db('rpc/experience_warranty_settings','POST',{p_actor:user.id,...params});return Response.json({ok:true,message:'Orientações de garantia atualizadas. Os registros anteriores foram preservados.'});}
   if(action==='seller_access' || action==='seller_access_status') {
     if(!['owner','admin'].includes(user.role)) throw new Error('Acesso não autorizado.');
     const sellerId=String(body.salesperson_id||'');
