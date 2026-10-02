@@ -1,0 +1,10 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {qualityBand,qualitySummary,monthBR} from '../lib/quality.ts';
+import type {Experience} from '../lib/experience.ts';
+const row=(answers:Record<string,string|number>)=>({is_demo:false,status:'respondida',completed_at:'2026-10-02',experience_responses:[{answers}]} as Experience);
+test('quality boundaries use raw percentages and neutral empty data',()=>{assert.equal(qualityBand(null).tone,'empty');assert.equal(qualityBand(90).tone,'excellent');assert.equal(qualityBand(89.99).tone,'good');assert.equal(qualityBand(80).tone,'good');assert.equal(qualityBand(70).tone,'medium');assert.equal(qualityBand(69.99).tone,'poor')});
+test('top two ratings count positives instead of dividing average by five',()=>{const s=qualitySummary([row({salesperson_rating:5,transparency_rating:3}),row({salesperson_rating:4,transparency_rating:1})]);assert.equal(s.percent,50);assert.equal(s.mean,3.25);assert.equal(s.low,1)});
+test('invalid missing demo archived and unfinished responses do not affect quality',()=>{const r=row({salesperson_rating:5});const s=qualitySummary([{...r,is_demo:true},{...r,status:'arquivada'},{...r,completed_at:null},row({salesperson_rating:'5',transparency_rating:6})]);assert.equal(s.percent,null);assert.equal(s.total,0)});
+test('ordinal answers contribute only recognized values',()=>{assert.equal(qualitySummary([row({salesperson_understanding:'Sim, completamente',documentation_experience:'Fácil'})]).percent,100);assert.equal(qualitySummary([row({documentation_experience:'unknown'})]).total,0)});
+test('monthly period uses Brasilia midnight and handles invalid dates',()=>{assert.equal(monthBR('2026-10-01T02:59:59Z'),'2026-09');assert.equal(monthBR('2026-10-01T03:00:00Z'),'2026-10');assert.equal(monthBR('invalid'),'')});
