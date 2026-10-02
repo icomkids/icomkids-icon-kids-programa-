@@ -6,7 +6,7 @@ Deno.serve(async(req:Request)=>{
  const auth=await fetch(`${url}/rest/v1/rpc/experience_reminder_authorize`,{method:'POST',headers:{apikey:key,Authorization:`Bearer ${key}`,'Content-Type':'application/json'},body:JSON.stringify({p_secret:secret})});
  if(!auth.ok||await auth.json()!==true)return new Response('Unauthorized',{status:401});
  try{
-  const response=await fetch('https://sistema.icomkids.com.br/experiencia-icom/api/internal/referral-reminders',{method:'POST',headers:{Authorization:`Bearer ${key}`},signal:AbortSignal.timeout(140000),redirect:'error'});
-  return new Response(response.ok?'Dispatch completed':'Dispatch unavailable',{status:response.ok?200:503});
+  const response=await fetch('https://sistema.icomkids.com.br/experiencia-icom/api/internal/referral-reminders',{method:'POST',headers:{'x-experience-cron':secret},signal:AbortSignal.timeout(140000),redirect:'error'});
+  return new Response(response.ok?'Dispatch completed':`Dispatch unavailable (${response.status})`,{status:response.ok?200:503});
  }catch{return new Response('Dispatch unavailable',{status:503})}
 });

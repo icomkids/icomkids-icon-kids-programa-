@@ -1,12 +1,11 @@
-import {timingSafeEqual} from 'node:crypto';
-import {config,db} from '@/lib/server';
+import {db} from '@/lib/server';
 import {appPath} from '@/lib/paths';
 import {connection,sellerInstance,sendText} from '@/lib/whatsapp';
 type Reminder={id:string;experience_id:string};
 type Dispatch={id:string;salesperson_id:string;token:string;name:string;phone:string};
 export async function POST(req:Request){
- const {key}=config();const supplied=req.headers.get('authorization')||'';const expected=`Bearer ${key}`;
- if(supplied.length!==expected.length||!timingSafeEqual(Buffer.from(supplied),Buffer.from(expected)))return Response.json({error:'Acesso não autorizado.'},{status:401});
+ const secret=req.headers.get('x-experience-cron');
+ if(!secret||secret.length!==64||!await db<boolean>('rpc/experience_reminder_authorize','POST',{p_secret:secret}))return Response.json({error:'Acesso não autorizado.'},{status:401});
  const origin=process.env.APP_URL;if(!origin||new URL(origin).protocol!=='https:')return Response.json({error:'Endereço não configurado.'},{status:503});
  // Interrupted/uncertain sends stay unknown and are never resent automatically.
  await db(`experience_referral_reminders?status=eq.sending&attempted_at=lt.${encodeURIComponent(new Date(Date.now()-10*60000).toISOString())}`,'PATCH',{status:'unknown'});
