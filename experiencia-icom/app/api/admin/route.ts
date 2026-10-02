@@ -4,11 +4,12 @@ import {assertManagement,scopeRows,sellerFilter,sellerRegistration} from '@/lib/
 import {appPath} from '@/lib/paths';
 import {warrantySettings} from '@/lib/warranty';
 import {sellerConnection,sendSurvey} from '@/lib/whatsapp-server';
+import {closingParams} from '@/lib/sales-points';
 import {scheduledDate} from '@/lib/whatsapp-schedule';
 export async function GET() {try {
   const profile=await authorize();
-  const raw=await db<Experience[]>('customer_experiences?select=*,customers(*),salespeople(*),vehicles(*),experience_responses(*),experience_alerts(*,experience_alert_events(*)),experience_warranty_sessions(*),experience_referrals(*),experience_referral_reminders(*)&order=created_at.desc'+sellerFilter(profile));
-  raw.forEach(r=>{r.experience_responses=relationArray(r.experience_responses);r.experience_alerts=relationArray(r.experience_alerts);r.experience_warranty_sessions=relationArray(r.experience_warranty_sessions);r.experience_referrals=relationArray(r.experience_referrals);r.experience_referral_reminders=relationArray(r.experience_referral_reminders)});
+  const raw=await db<Experience[]>('customer_experiences?select=*,customers(*),salespeople(*),vehicles(*),experience_responses(*),experience_alerts(*,experience_alert_events(*)),experience_warranty_sessions(*),experience_referrals(*),experience_referral_reminders(*),experience_sale_closings(*)&order=created_at.desc'+sellerFilter(profile));
+  raw.forEach(r=>{r.experience_sale_closings=relationArray(r.experience_sale_closings);r.experience_responses=relationArray(r.experience_responses);r.experience_alerts=relationArray(r.experience_alerts);r.experience_warranty_sessions=relationArray(r.experience_warranty_sessions);r.experience_referrals=relationArray(r.experience_referrals);r.experience_referral_reminders=relationArray(r.experience_referral_reminders)});
   const rows=scopeRows(profile,raw);
   if(profile.role==='seller') {
     const unique=(key:'customer_id'|'vehicle_id',relation:'customers'|'vehicles')=>[...new Map(rows.map(r=>[r[key],{id:r[key],...r[relation]}])).values()];
@@ -19,6 +20,7 @@ export async function GET() {try {
 }catch(e){return errorResponse(e);}}
 export async function POST(req:Request) {try {
   const user=await authorize(); const body=await req.json() as Record<string,unknown>; const action=String(body.action);
+  if(action==='seller_close'){if(user.role!=='seller')throw new Error('Acesso não autorizado.');await db('rpc/experience_sale_close','POST',{p_actor:user.id,p_experience:String(body.id||''),...closingParams(body)});return Response.json({ok:true,message:'Fechamento registrado.'});}
   if(action==='seller_create') {
     const params=sellerRegistration(user,body);
     const due=scheduledDate(body.scheduled_at);
