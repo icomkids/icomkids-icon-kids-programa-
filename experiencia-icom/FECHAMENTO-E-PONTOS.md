@@ -11,3 +11,6 @@ Gestão → Vendedores exibe ranking de qualidade, média por item avaliado, nú
 Google mantém o convite voluntário no fim da avaliação. Não há comprovação automática de publicação e nenhum ponto é concedido por abrir o link. O vendedor não altera respostas do cliente.
 
 Segurança: tabela com RLS e sem grants anon/authenticated. RPC exclusivo service_role valida usuário ativo e vínculo do atendimento; backend autentica antes de passar actor. Lock por atendimento impede duplicidades concorrentes; cadastro marca exigência atomicamente. Os dados de cada vendedor continuam filtrados no servidor. Testes do banco usam rollback sem envios reais.
+
+
+Atualização 02/10/2026: novas notas internas de 0 a 10; positivas de 8 a 10, baixas de 0 a 4. Histórico na escala 5 convertido por multiplicação por 2 para médias e pontos, preservando os originais. Google permanece com 5 estrelas; NPS permanece 0 a 10. A escala é versionada por experiência; rascunhos antigos são convertidos uma única vez pelo servidor ao abrir a pesquisa.

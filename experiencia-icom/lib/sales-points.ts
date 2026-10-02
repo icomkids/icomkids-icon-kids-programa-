@@ -1,3 +1,4 @@
+import {ratingValue} from './rating-scale.ts';
 import type {Experience} from './experience.ts';
 export type SaleClosing={experience_id:string;lead_source:'store'|'own'|'internet';inspection_sold:boolean;full_return:boolean;full_documentation:boolean;feedback_video:boolean;created_at:string};
 export const commercialItems=[['inspection_sold','Você vendeu o cautelar?'],['full_return','O retorno foi cheio?'],['full_documentation','A documentação foi cheia?'],['feedback_video','Gravou o vídeo de feedback do cliente para as redes sociais?']] as const;
@@ -10,11 +11,8 @@ export function closingParams(body:Record<string,unknown>){
 export function experiencePoints(row:Experience){
  if(row.is_demo||row.status==='arquivada')return {seller:0,manager:0,commercial:0,ratings:0};
  const raw=row.completed_at?row.experience_responses[0]?.answers||{}:{};
- const answers={...raw};
- const scales={salesperson_understanding:['Não','Pouco','Parcialmente','Em grande parte','Sim, completamente'],documentation_experience:['Muito complicado','Um pouco complicado','Normal','Fácil','Muito fácil']};
- for(const [key,options] of Object.entries(scales)){const index=options.indexOf(String(raw[key]));if(index>=0)answers[key]=index+1;}
- const valid=(key:string)=>typeof answers[key]==='number'&&Number.isInteger(answers[key])&&Number(answers[key])>=1&&Number(answers[key])<=5;
- const total=(fields:readonly string[])=>fields.reduce((n,k)=>n+(valid(k)?Number(answers[k]):0),0);
+ const valid=(key:string)=>ratingValue(raw,key,row.rating_scale)!==null;
+ const total=(fields:readonly string[])=>fields.reduce((n,k)=>n+(ratingValue(raw,k,row.rating_scale)??0),0);
  const closing=row.experience_sale_closings?.[0];
  return {seller:total(sellerPointFields),manager:total(managerPointFields),commercial:closing?1+commercialItems.filter(([k])=>closing[k]).length:0,ratings:sellerPointFields.filter(valid).length};
 }

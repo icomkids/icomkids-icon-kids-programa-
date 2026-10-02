@@ -1,0 +1,13 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {ratingValue} from '../lib/rating-scale.ts';
+import {sanitizeAnswers,analytics,alertRule} from '../lib/experience.ts';
+import type {Experience} from '../lib/experience.ts';
+import {feedbackSummary} from '../lib/feedback.ts';
+import {experiencePoints} from '../lib/sales-points.ts';
+import {qualitySummary} from '../lib/quality.ts';
+const row=(value:number,scale:5|10)=>({rating_scale:scale,status:'respondida',completed_at:'2026-10-02',created_at:'2026-10-02',is_demo:false,experience_responses:[{nps_score:10,answers:{salesperson_rating:value}}],experience_alerts:[],experience_sale_closings:[]} as unknown as Experience);
+test('ten point scale includes zero, preserves missing and converts legacy only',()=>{assert.equal(ratingValue({a:0},'a',10),0);assert.equal(ratingValue({a:5},'a',10),5);assert.equal(ratingValue({a:5},'a',5),10);assert.equal(ratingValue({},'a',10),null);assert.equal(ratingValue({a:0},'a',5),null);assert.equal(ratingValue({a:11},'a',10),null);assert.equal(ratingValue({documentation_experience:'Fácil'},'documentation_experience',5),8)});
+test('new numeric questions validate all eleven scores and reject invalid input',()=>{for(let n=0;n<=10;n++)assert.equal(sanitizeAnswers({documentation_experience:n,salesperson_understanding:n}).documentation_experience,n);for(const n of [-1,11,2.5,'5'])assert.throws(()=>sanitizeAnswers({salesperson_rating:n}));assert.throws(()=>sanitizeAnswers({documentation_experience:'Fácil'}))});
+test('mixed scale analytics, points and distributions count real zero',()=>{const rows=[row(4,5),row(0,10),row(7,10),row(8,10)];assert.equal(analytics(rows).mean('salesperson_rating'),5.75);const item=feedbackSummary(rows).items.find(i=>i.key==='salesperson_rating')!;assert.equal(item.count,4);assert.equal(item.distribution.find(d=>d.score===0)?.percent,25);assert.equal(qualitySummary(rows).percent,50);assert.equal(qualitySummary(rows).low,1);assert.equal(experiencePoints(rows[0]).seller,8);assert.equal(experiencePoints(rows[1]).seller,0);assert.equal(experiencePoints(rows[1]).ratings,1)});
+test('low rating alerts include zero and understanding without changing NPS',()=>{assert.equal(alertRule({nps_score:10,salesperson_understanding:0}).level,'critical');assert.equal(alertRule({nps_score:10,salesperson_rating:5}).level,'none')});

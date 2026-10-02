@@ -13,3 +13,6 @@ Referências consultadas: Qualtrics — https://www.qualtrics.com/en-au/articles
 Pontuação comercial não interfere na cor/qualidade. O ranking por soma considera também o volume de avaliações; a média e o percentual permitem avaliar qualidade com outros denominadores. DEMO, arquivados e respostas parciais são excluídos.
 
 Verificação: testes de limites, notas positivas, notas baixas, itens ausentes/inválidos, exclusões, escalas ordinais e virada mensal em Brasília. Prévia com nomes e notas fictícios gerada diretamente dos componentes para conferir todas as cores, sem salvar dados ou enviar pesquisas.
+
+
+Atualização 02/10/2026: novas notas internas de 0 a 10; positivas de 8 a 10, baixas de 0 a 4. Histórico na escala 5 convertido por multiplicação por 2 para médias e pontos, preservando os originais. Google permanece com 5 estrelas; NPS permanece 0 a 10. A escala é versionada por experiência; rascunhos antigos são convertidos uma única vez pelo servidor ao abrir a pesquisa.
