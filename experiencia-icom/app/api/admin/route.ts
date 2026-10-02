@@ -5,6 +5,7 @@ import {appPath} from '@/lib/paths';
 import {warrantySettings} from '@/lib/warranty';
 import {sellerConnection,sendSurvey} from '@/lib/whatsapp-server';
 import {closingParams} from '@/lib/sales-points';
+import {saleDate} from '@/lib/sales-history';
 import {scheduledDate} from '@/lib/whatsapp-schedule';
 export async function GET() {try {
   const profile=await authorize();
@@ -24,7 +25,7 @@ export async function POST(req:Request) {try {
   if(action==='seller_create') {
     const params=sellerRegistration(user,body);
     const due=scheduledDate(body.scheduled_at);
-    const token=await db<string>('rpc/experience_seller_create_scheduled','POST',{...params,p_due:due});
+    const token=await db<string>('rpc/experience_seller_create_sale','POST',{...params,p_due:due,p_purchase:saleDate(body.purchase_date)});
     const [experience]=await db<{id:string;created_at:string;sent_at:string|null;whatsapp_due_at:string|null}[]>(`customer_experiences?token=eq.${encodeURIComponent(token)}${sellerFilter(user)}&select=id,created_at,sent_at,whatsapp_due_at`);
     if(!experience)throw new Error('Não foi possível localizar o atendimento salvo.');
     let delivery;
