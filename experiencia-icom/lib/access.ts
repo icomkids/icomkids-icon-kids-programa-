@@ -1,7 +1,7 @@
 import type {Experience} from './experience.ts';
 import {validToken} from './experience.ts';
 import {phoneBR} from './whatsapp.ts';
-export interface AccessProfile {id:string;name:string;role:'admin'|'manager'|'owner'|'seller';leadership_access:boolean;salesperson_id:string|null}
+export interface AccessProfile {photo_url?:string|null;id:string;name:string;role:'admin'|'manager'|'owner'|'seller';leadership_access:boolean;salesperson_id:string|null}
 export function sellerFilter(profile:AccessProfile) {
   if(profile.role!=='seller') return '';
   if(!profile.salesperson_id || !/^[0-9a-f-]{36}$/i.test(profile.salesperson_id)) throw new Error('Acesso não autorizado. Vendedor sem vínculo.');
