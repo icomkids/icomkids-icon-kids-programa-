@@ -4,7 +4,7 @@ Depois do cadastro e processamento do envio, o vendedor abre a etapa interna obr
 
 Origem obrigatória: porta/loja, próprio ou internet. Cada origem preenchida soma 1 ponto. Cautelar vendido, retorno cheio, documentação cheia e vídeo de feedback: cada Sim soma 1 ponto, Não soma zero. O vídeo exige autorização do cliente para divulgação. Respostas são autodeclaradas, imutáveis pelo vendedor e gravadas uma única vez; retries idênticos são idempotentes.
 
-Qualidade do vendedor: notas de atendimento e transparência, 1 a 5 pontos cada. Gerente Luiz Lázaro: entrega, limpeza da loja, limpeza do veículo e participação do gerente, 1 a 5 cada. Sem nota não há ponto. NPS, comentários livres, respostas parciais, proprietário e experiência geral não são atribuídos arbitrariamente a um setor. DEMO e arquivados não pontuam.
+Qualidade do vendedor: notas de atendimento e transparência, 1 a 5 pontos cada; compreensão do que o cliente procurava e documentação são convertidas da escala de cinco opções para 1 a 5, da pior à melhor resposta. Gerente Luiz Lázaro: entrega, limpeza da loja, limpeza do veículo e participação do gerente, 1 a 5 cada. Sem nota não há ponto. NPS, comentários livres, respostas parciais, proprietário e experiência geral não são atribuídos arbitrariamente a um setor. DEMO e arquivados não pontuam.
 
 Gestão → Vendedores exibe ranking de qualidade, média por item avaliado, número de respostas, pontos comerciais separados, total e pendências. O período segue os filtros dos atendimentos existentes (data de criação). Empates recebem a mesma colocação. Somar pontos considera o volume; a média permite comparar qualidade com denominadores diferentes.
 

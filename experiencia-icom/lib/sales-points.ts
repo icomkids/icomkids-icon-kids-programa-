@@ -1,7 +1,7 @@
 import type {Experience} from './experience.ts';
 export type SaleClosing={experience_id:string;lead_source:'store'|'own'|'internet';inspection_sold:boolean;full_return:boolean;full_documentation:boolean;feedback_video:boolean;created_at:string};
 export const commercialItems=[['inspection_sold','Você vendeu o cautelar?'],['full_return','O retorno foi cheio?'],['full_documentation','A documentação foi cheia?'],['feedback_video','Gravou o vídeo de feedback do cliente para as redes sociais?']] as const;
-export const sellerPointFields=['salesperson_rating','transparency_rating'] as const;
+export const sellerPointFields=['salesperson_rating','transparency_rating','salesperson_understanding','documentation_experience'] as const;
 export const managerPointFields=['delivery_rating','store_cleanliness_rating','vehicle_cleanliness_rating','manager_rating'] as const;
 export function closingParams(body:Record<string,unknown>){
  if(!['store','own','internet'].includes(String(body.lead_source))||commercialItems.some(([key])=>typeof body[key]!=='boolean'))throw new Error('Responda todos os itens do fechamento.');
@@ -9,7 +9,10 @@ export function closingParams(body:Record<string,unknown>){
 }
 export function experiencePoints(row:Experience){
  if(row.is_demo||row.status==='arquivada')return {seller:0,manager:0,commercial:0,ratings:0};
- const answers=row.completed_at?row.experience_responses[0]?.answers||{}:{};
+ const raw=row.completed_at?row.experience_responses[0]?.answers||{}:{};
+ const answers={...raw};
+ const scales={salesperson_understanding:['Não','Pouco','Parcialmente','Em grande parte','Sim, completamente'],documentation_experience:['Muito complicado','Um pouco complicado','Normal','Fácil','Muito fácil']};
+ for(const [key,options] of Object.entries(scales)){const index=options.indexOf(String(raw[key]));if(index>=0)answers[key]=index+1;}
  const valid=(key:string)=>typeof answers[key]==='number'&&Number.isInteger(answers[key])&&Number(answers[key])>=1&&Number(answers[key])<=5;
  const total=(fields:readonly string[])=>fields.reduce((n,k)=>n+(valid(k)?Number(answers[k]):0),0);
  const closing=row.experience_sale_closings?.[0];
