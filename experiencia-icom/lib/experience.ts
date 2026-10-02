@@ -28,6 +28,7 @@ export interface Alert { id: string; experience_id: string; alert_level: string;
 export const resolutions = ['Novo','Em análise','Contato iniciado','Aguardando cliente','Resolvido','Não resolvido'];
 export const statuses = ['criada','enviada','aberta','iniciada','respondida','atendimento necessário','em tratamento','resolvida','arquivada'];
 export function analytics(rows: Experience[]) {
+  rows=rows.filter(r=>r.status!=='arquivada');
   const responses = rows.flatMap(row => row.experience_responses.map(r=>({...r,rating_scale:row.rating_scale}))).filter(r => typeof r.nps_score === 'number' && Number.isInteger(r.nps_score));
   const count = responses.length;
   const promoters = responses.filter(r => r.nps_score >= 9).length;

@@ -10,7 +10,7 @@ export async function GET() {try {
   const profile=await authorize();
   const raw=await db<Experience[]>('customer_experiences?select=*,customers(*),salespeople(*),vehicles(*),experience_responses(*),experience_alerts(*,experience_alert_events(*)),experience_warranty_sessions(*),experience_referrals(*),experience_referral_reminders(*),experience_sale_closings(*)&order=created_at.desc'+sellerFilter(profile));
   raw.forEach(r=>{r.experience_sale_closings=relationArray(r.experience_sale_closings);r.experience_responses=relationArray(r.experience_responses);r.experience_alerts=relationArray(r.experience_alerts);r.experience_warranty_sessions=relationArray(r.experience_warranty_sessions);r.experience_referrals=relationArray(r.experience_referrals);r.experience_referral_reminders=relationArray(r.experience_referral_reminders)});
-  const rows=scopeRows(profile,raw);
+  const rows=scopeRows(profile,profile.role==='seller'?raw.filter(r=>r.status!=='arquivada'):raw);
   if(profile.role==='seller') {
     const unique=(key:'customer_id'|'vehicle_id',relation:'customers'|'vehicles')=>[...new Map(rows.map(r=>[r[key],{id:r[key],...r[relation]}])).values()];
     return Response.json({profile,rows,connection:await sellerConnection(profile),settings:[],users:[],accesses:[],customers:unique('customer_id','customers'),salespeople:[{id:profile.salesperson_id,name:profile.name}],vehicles:unique('vehicle_id','vehicles')});

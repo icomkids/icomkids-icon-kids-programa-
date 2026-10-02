@@ -66,3 +66,5 @@ test('seller registration ignores forged owner, seller and dates and normalizes 
  assert.deepEqual(sellerRegistration(profile,payload),{p_user:'authenticated-user',p_customer:'Maria',p_vehicle:'Compass',p_plate:'ABC1234',p_request:request,p_phone:'5512999991234'});
  assert.equal(sellerRegistration(profile,{...payload,vehicle_plate:'abc1d23'}).p_plate,'ABC1D23');assert.throws(()=>sellerRegistration(profile,{...payload,vehicle_plate:'bad'}));assert.throws(()=>sellerRegistration(profile,{...payload,customer_name:'x'}));assert.throws(()=>sellerRegistration({...profile,role:'owner'},payload));assert.throws(()=>sellerRegistration(profile,{...payload,request_id:'bad'}));
 });
+
+test('archived experiences do not affect dashboard metrics or alerts',()=>{const rows=[{status:'arquivada',experience_responses:[{nps_score:10,answers:{overall_rating:5}}],experience_alerts:[{resolution_status:'Novo'}]}] as unknown as Experience[];const s=analytics(rows);assert.equal(s.count,0);assert.equal(s.mean('overall_rating'),null);assert.equal(s.nps,null)});
