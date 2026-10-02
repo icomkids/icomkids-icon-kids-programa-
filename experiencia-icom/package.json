@@ -13,7 +13,7 @@
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test --test-isolation=none tests/experience.test.ts tests/warranty.test.ts",
+    "test": "node --experimental-strip-types --test --test-isolation=none tests/experience.test.ts tests/warranty.test.ts tests/whatsapp-connections.test.ts",
     "dev:next": "next dev --webpack",
     "build:next": "next build --webpack",
     "preview:local": "node scripts/preview-next.mjs"

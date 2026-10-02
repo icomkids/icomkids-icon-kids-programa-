@@ -4,6 +4,7 @@ import {assertManagement,scopeRows,sellerFilter,sellerRegistration} from '@/lib/
 import {appPath} from '@/lib/paths';
 import {warrantySettings} from '@/lib/warranty';
 import {sellerConnection,sendSurvey} from '@/lib/whatsapp-server';
+import {scheduledDate} from '@/lib/whatsapp-schedule';
 export async function GET() {try {
   const profile=await authorize();
   const raw=await db<Experience[]>('customer_experiences?select=*,customers(*),salespeople(*),vehicles(*),experience_responses(*),experience_alerts(*,experience_alert_events(*)),experience_warranty_sessions(*),experience_referrals(*),experience_referral_reminders(*)&order=created_at.desc'+sellerFilter(profile));
@@ -20,14 +21,15 @@ export async function POST(req:Request) {try {
   const user=await authorize(); const body=await req.json() as Record<string,unknown>; const action=String(body.action);
   if(action==='seller_create') {
     const params=sellerRegistration(user,body);
-    const token=await db<string>('rpc/experience_seller_create_with_phone','POST',params);
-    const [experience]=await db<{id:string;created_at:string;sent_at:string|null}[]>(`customer_experiences?token=eq.${encodeURIComponent(token)}${sellerFilter(user)}&select=id,created_at,sent_at`);
+    const due=scheduledDate(body.scheduled_at);
+    const token=await db<string>('rpc/experience_seller_create_scheduled','POST',{...params,p_due:due});
+    const [experience]=await db<{id:string;created_at:string;sent_at:string|null;whatsapp_due_at:string|null}[]>(`customer_experiences?token=eq.${encodeURIComponent(token)}${sellerFilter(user)}&select=id,created_at,sent_at,whatsapp_due_at`);
     if(!experience)throw new Error('Não foi possível localizar o atendimento salvo.');
     let delivery;
-    try{delivery=await sendSurvey(user,experience.id)}catch{delivery={whatsapp_status:'unknown',message:'Cliente salvo. Não foi possível confirmar o envio. Atualize para conferir antes de reenviar.'}}
+    try{delivery=experience.whatsapp_due_at&&Date.parse(experience.whatsapp_due_at)>Date.now()?{whatsapp_status:'not_sent',message:'Pesquisa agendada. O sistema enviará pelo seu número no horário escolhido, desde que seu WhatsApp esteja conectado.'}:await sendSurvey(user,experience.id)}catch{delivery={whatsapp_status:'unknown',message:'Cliente salvo. Não foi possível confirmar o envio. Atualize para conferir antes de reenviar.'}}
     return Response.json({token,...experience,...delivery});
   }
-  if(action==='seller_connection')return Response.json({connection:await sellerConnection(user,body.connect===true)});
+  if(action==='seller_connection')return Response.json({connection:await sellerConnection(user,body.connect===true,body.phone)});
   if(action==='seller_whatsapp')return Response.json(await sendSurvey(user,String(body.id||'')));
   if(action==='seller_sent') {
     if(user.role!=='seller')throw new Error('Acesso não autorizado.');

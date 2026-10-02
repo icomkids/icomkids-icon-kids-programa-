@@ -5,7 +5,7 @@ export function phoneBR(raw:unknown):string {
  return phone;
 }
 export type WhatsappStatus='not_sent'|'sending'|'accepted'|'failed'|'unknown';
-export type Connection={configured:boolean;connected:boolean;phone?:string;qr?:string;paircode?:string;message:string};
+export type Connection={configured:boolean;connected:boolean;canProvision?:boolean;connecting?:boolean;wrongNumber?:boolean;phone?:string;qr?:string;paircode?:string;message:string};
 export type SellerInstance={url:string;token:string;phone:string};
 export function sellerInstance(seller:string,raw:string|undefined):SellerInstance|null {
  if(!raw)return null;
@@ -21,11 +21,11 @@ export function connection(raw:unknown,expectedPhone:string):Connection {
  const root=record(raw),instance=record(root.instance??root.data??root),status=record(root.status);
  const state=String(instance.status??instance.state??'').toLowerCase();
  const connected=status.connected===true||['connected','open','online','ready'].includes(state);
- let phone='';try{phone=phoneBR(String(instance.owner??instance.phone??'').split('@')[0])}catch{}
+ let phone='';for(const candidate of [instance.owner,instance.phone,record(status.jid??root.jid).user]){try{phone=phoneBR(String(candidate??'').split('@')[0].split(':')[0]);break}catch{}}
  const owns=phone===expectedPhone;
  const qr=String(instance.qrcode??instance.qr??root.qr??'');
  const safeQr=/^(?:data:image\/(?:png|jpeg);base64,)?[A-Za-z0-9+/=\s]+$/.test(qr)&&qr.length<1000000?qr:undefined;
- return {configured:true,connected:connected&&owns,phone:expectedPhone,...(!connected&&safeQr?{qr:safeQr.startsWith('data:')?safeQr:`data:image/png;base64,${safeQr}`}:{ }),...(!connected&&typeof instance.paircode==='string'&&/^[A-Za-z0-9-]{4,20}$/.test(instance.paircode)?{paircode:instance.paircode}:{}),message:connected?(owns?'WhatsApp conectado. As pesquisas saem do seu número.':'O número conectado não corresponde ao vendedor. Contate a gestão.'):'Seu WhatsApp está desconectado. Conecte antes do envio automático.'};
+ return {configured:true,connected:connected&&owns,connecting:state==='connecting',wrongNumber:connected&&!owns,phone:expectedPhone,...(!connected&&safeQr?{qr:safeQr.startsWith('data:')?safeQr:`data:image/png;base64,${safeQr}`}:{ }),...(!connected&&typeof instance.paircode==='string'&&/^[A-Za-z0-9-]{4,20}$/.test(instance.paircode)?{paircode:instance.paircode}:{}),message:connected?(owns?'WhatsApp conectado. As pesquisas saem do seu número.':'O número conectado não corresponde ao vendedor. Contate a gestão.'):'Seu WhatsApp está desconectado. Conecte antes do envio automático.'};
 }
 export function surveyMessage(name:string,url:string){return `Olá, ${name.trim().split(' ')[0]}! Como foi sua experiência com a Icom? Sua opinião é muito importante para nós. Responda pelo link: ${url}`;}
 export async function sendText(config:SellerInstance,phone:string,text:string,transport:typeof fetch=fetch):Promise<{status:'accepted'|'failed'|'unknown';providerId?:string}> {

@@ -1,0 +1,15 @@
+# WhatsApp por vendedor
+
+A gestão ativa a integração em Configurações → WhatsApp dos vendedores, informando o Admin Token da Uazapi. O servidor autorizado é `https://logosiabrasilcom.uazapi.com`. A chave é validada por consulta administrativa antes de ser salva; um token de instância não substitui o Admin Token.
+
+Cada vendedor abre Meu WhatsApp, informa seu próprio número com DDD e gera o QR Code. O backend cria uma instância identificada pelo projeto e pelo `salesperson_id`, salva seu token protegido e valida o número efetivamente conectado antes de qualquer envio. A tela consulta o estado a cada oito segundos durante o pareamento. Não é preciso cadastrar um JSON por vendedor no Easypanel.
+
+As credenciais são cifradas com AES-256-GCM, contexto próprio por vendedor e chave derivada com HKDF. Apenas o servidor pode ler as tabelas. `ICOM_WHATSAPP_ENCRYPTION_KEY` permite uma chave independente; quando ausente usa a credencial privada do servidor do Supabase como material de derivação. Preserve o material de cifragem em backups: antes de trocar essa chave ou a credencial usada na derivação, recifre as credenciais salvas. Nada é enviado ao navegador, logs ou repositório. A configuração anterior `ICOM_WHATSAPP_SELLERS` continua compatível quando não existe vínculo gerenciado para o vendedor.
+
+O cadastro permite envio imediato ou agendado em horário de Brasília, até 30 dias no futuro. O cadastro e a fila são gravados na mesma transação. O processamento autenticado roda a cada minuto junto ao job `experience-referral-reminders`. Somente novos cadastros feitos por esse fluxo entram automaticamente na fila: clientes históricos não são disparados retroativamente. A fila aguarda a conexão por até sete dias após o horário previsto. O envio efetivo pode acontecer depois do horário escolhido, conforme a fila e a disponibilidade da conexão.
+
+Uma única tentativa por atendimento pode ser processada. A aceitação com identificador do provedor não comprova entrega nem leitura. Respostas incertas e tentativas interrompidas ficam em conferência e não são reenviadas automaticamente. Recusas definitivas também não são repetidas pelo robô; o vendedor pode tentar explicitamente. Pesquisas concluídas, arquivadas e dados DEMO não são enviadas.
+
+Criações de instância simultâneas são bloqueadas no banco. Após uma resposta incerta, a reconciliação procura somente instâncias com nome e campos administrativos exatos do projeto e vendedor. Ela não se apropria de instâncias de outros projetos. O endpoint atual é `/instance/create`; servidores antigos usam `/instance/init`, aplicado como alternativa somente após HTTP 404 definitivo. A API de conexão recebe corpo vazio para produzir QR Code, em vez de solicitar código por telefone.
+
+Verificação: 34 testes de aplicação; testes SQL com rollback para vínculo, concorrência, horário, autorização e respostas incertas. A criação de instâncias e o envio reais dependem da ativação do Admin Token e do pareamento dos celulares. Nenhuma mensagem a cliente real é enviada como parte da validação técnica.

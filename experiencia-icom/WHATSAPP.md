@@ -1,3 +1,7 @@
+# Registro da integração anterior (01/10/2026)
+
+O fluxo atual está em [WHATSAPP-VENDEDORES.md](WHATSAPP-VENDEDORES.md): gestão da chave e criação de instâncias pelo sistema, aba Meu WhatsApp e agendamento. As instruções abaixo registram a configuração manual anterior.
+
 O envio automático pelo número do vendedor exige uma instância Uazapi própria, pareada ao WhatsApp dele. A sessão compartilhada já existente no Supabase não é usada como alternativa.
 
 No servidor Easypanel, configure `ICOM_WHATSAPP_SELLERS` como JSON indexado pelo `salesperson_id`, com `url`, `token` e `phone` para cada vendedor. O token fica exclusivamente no ambiente do servidor. O número cadastrado deve ser o próprio número do vendedor; a consulta de status valida essa correspondência antes de enviar.

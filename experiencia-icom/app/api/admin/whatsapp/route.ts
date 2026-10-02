@@ -1,0 +1,5 @@
+import {authorize,errorResponse,log} from '@/lib/server';
+import {sellerConnection} from '@/lib/whatsapp-server';
+import {configureProvider,providerStatus} from '@/lib/whatsapp-instances';
+export async function GET(){try{const user=await authorize();if(user.role==='seller')return Response.json({connection:await sellerConnection(user)});if(!['owner','admin'].includes(user.role))throw new Error('Acesso não autorizado.');return Response.json(await providerStatus());}catch(e){return errorResponse(e)}}
+export async function POST(req:Request){try{const user=await authorize();const body=await req.json() as Record<string,unknown>;if(user.role==='seller')return Response.json({connection:await sellerConnection(user,body.connect===true,body.phone)});if(!['owner','admin'].includes(user.role))throw new Error('Acesso não autorizado.');await configureProvider(user,body.token);await log(user.id,'whatsapp_provider_configured','1');return Response.json({ok:true,...await providerStatus()});}catch(e){return errorResponse(e)}}
