@@ -13,7 +13,7 @@
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test --test-isolation=none tests/experience.test.ts tests/warranty.test.ts tests/whatsapp-connections.test.ts tests/sales-points.test.ts tests/quality.test.ts tests/rating-scale.test.ts tests/sales-history.test.ts tests/icom-bank.test.ts tests/icom-bank-contracts.test.ts",
+    "test": "node --experimental-strip-types --test --test-isolation=none tests/experience.test.ts tests/warranty.test.ts tests/whatsapp-connections.test.ts tests/sales-points.test.ts tests/quality.test.ts tests/rating-scale.test.ts tests/sales-history.test.ts tests/icom-bank.test.ts tests/icom-bank-contracts.test.ts tests/icom-bank-settings.test.ts",
     "dev:next": "next dev --webpack",
     "build:next": "next build --webpack",
     "preview:local": "node scripts/preview-next.mjs"

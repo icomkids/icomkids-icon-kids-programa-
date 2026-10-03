@@ -1,0 +1,34 @@
+begin;
+do $$ declare owner_id uuid;other_id uuid;begin
+ select user_id into owner_id from public.icom_bank_user_access where role='OWNER' and active limit 1;
+ select id into other_id from auth.users where id<>owner_id and not exists(select 1 from public.icom_bank_user_access a where a.user_id=id) limit 1;
+ if owner_id is null or other_id is null then raise exception 'Test identities missing';end if;
+ perform set_config('test.bank_owner',owner_id::text,true);perform set_config('test.bank_other',other_id::text,true);
+ insert into public.icom_bank_user_access(user_id,name,role) values(other_id,'TESTE CONFIG','FINANCEIRO');
+end $$;
+set local role authenticated;
+do $$ declare expected timestamptz;result jsonb;begin
+ perform set_config('request.jwt.claim.sub',current_setting('test.bank_owner'),true);
+ select updated_at into expected from public.icom_bank_system_settings where id=1;
+ result:=public.icom_bank_set_receiving_settings('EMAIL','teste@example.invalid',expected,'Conta teste','1801','98030-9');
+ if result->>'pix_key'<>'teste@example.invalid' or result->>'account_holder'<>'Conta teste' then raise exception 'Save failed';end if;
+ begin perform public.icom_bank_set_receiving_settings('EMAIL','outro@example.invalid',expected,'Conta teste','1801','98030-9');raise exception 'Stale update accepted';exception when raise_exception then if SQLERRM<>'BANK_SETTINGS_CHANGED' then raise;end if;end;
+ expected:=(result->>'updated_at')::timestamptz;
+ result:=public.icom_bank_set_receiving_settings('EMAIL','alterado@example.invalid',expected,'Conta teste','1801','98030-9');
+ result:=public.icom_bank_set_receiving_settings(null,null,(result->>'updated_at')::timestamptz,'Conta teste','1801','98030-9');
+ if result->>'pix_key' is not null or result->>'pix_type' is not null then raise exception 'Removal failed';end if;
+ if (select count(*) from public.icom_bank_audit_logs where actor_id=current_setting('test.bank_owner')::uuid and action='DADOS_RECEBIMENTO_CONFIGURADOS')<3 then raise exception 'Audit missing';end if;
+ begin update public.icom_bank_system_settings set pix_key='direct' where id=1;raise exception 'Direct update allowed';exception when insufficient_privilege then null;end;
+ perform set_config('request.jwt.claim.sub',current_setting('test.bank_other'),true);
+ begin perform public.icom_bank_set_receiving_settings('EMAIL','forged@example.invalid',(result->>'updated_at')::timestamptz,'','','');raise exception 'Finance modified settings';exception when insufficient_privilege then null;end;
+end $$;
+reset role;
+do $$ begin update public.icom_bank_user_access set role='VENDEDOR' where user_id=current_setting('test.bank_other')::uuid;end $$;
+set local role authenticated;
+do $$ begin perform set_config('request.jwt.claim.sub',current_setting('test.bank_other'),true);begin perform public.icom_bank_set_pix('EMAIL','forged@example.invalid',now());raise exception 'Seller modified settings';exception when insufficient_privilege then null;end;end $$;
+reset role;
+set local role anon;
+do $$ begin begin perform public.icom_bank_set_pix(null,null,now());raise exception 'Anonymous modified settings';exception when insufficient_privilege then null;end;end $$;
+reset role;
+rollback;
+select 'Receiving settings save/change/remove, concurrency, audit and permission tests passed; changes rolled back' as result;
