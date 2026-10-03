@@ -1,3 +1,2 @@
 import {redirect} from 'next/navigation';
-import {bankPath} from '@/lib/icom-bank/model';
-export default function Page(){redirect(bankPath('/dashboard'));}
+export default function Page(){redirect('/icom-bank/dashboard');}

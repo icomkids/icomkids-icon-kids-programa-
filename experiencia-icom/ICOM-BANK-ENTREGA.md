@@ -56,7 +56,7 @@ Novos diretórios: `app/icom-bank/` (layout, CSS, login, APIs e páginas protegi
 
 ## Validação
 
-56 testes passaram, incluindo os testes anteriores. ESLint completo e TypeScript passaram. Teste SQL real confirmou isolamento de vendedor, bloqueio de não membro e anônimo, impossibilidade de elevar o próprio perfil, bloqueio de pagamento direto e revogação imediata do acesso inativo. Advisor de segurança não apontou problemas específicos nas novas tabelas. Build e conferência da publicação serão registrados após a implantação.
+56 testes passaram, incluindo os testes anteriores. ESLint completo e TypeScript passaram. Teste SQL real confirmou isolamento de vendedor, bloqueio de não membro e anônimo, impossibilidade de elevar o próprio perfil, bloqueio de pagamento direto e revogação imediata do acesso inativo. Advisor de segurança não apontou problemas específicos nas novas tabelas. Build Docker de produção passou, incluindo TypeScript e 56 testes, em 03/10/2026. A conferência no domínio identificou duplicação do basePath no redirecionamento: corrigida usando caminhos relativos à aplicação nas chamadas de redirect do Next.js. A busca desta fase é por nome ou CPF; placa e contrato ficam para a próxima etapa.
 
 ## Próximas etapas
 
