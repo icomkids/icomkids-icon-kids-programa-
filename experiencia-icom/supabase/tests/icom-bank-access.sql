@@ -1,0 +1,24 @@
+begin;
+-- Fixtures are transaction-only; no accounts, customers or grants remain after rollback.
+select set_config('banktest.owner',(select user_id::text from public.icom_bank_user_access where role='OWNER' limit 1),true);
+select set_config('banktest.seller',(select id::text from auth.users where id<>(current_setting('banktest.owner'))::uuid order by id limit 1),true);
+select set_config('banktest.other',(select id::text from auth.users where id not in((current_setting('banktest.owner'))::uuid,(current_setting('banktest.seller'))::uuid) order by id limit 1),true);
+insert into public.icom_bank_user_access(user_id,name,role) values(current_setting('banktest.seller')::uuid,'TESTE TRANSACIONAL','VENDEDOR');
+select set_config('request.jwt.claim.sub',current_setting('banktest.owner'),true);
+insert into public.icom_bank_customers(name,cpf,assigned_to,created_by) values('TESTE OWNER','52998224725',current_setting('banktest.owner')::uuid,current_setting('banktest.owner')::uuid);
+set local role authenticated;
+do $$ begin if (select count(*) from public.icom_bank_customers)<>1 then raise exception 'Owner cannot read';end if;end $$;
+select set_config('request.jwt.claim.sub',current_setting('banktest.other'),true);
+do $$ begin if exists(select 1 from public.icom_bank_user_access) or exists(select 1 from public.icom_bank_customers) then raise exception 'Nonmember read allowed';end if;begin insert into public.icom_bank_customers(name,cpf,created_by) values('UNAUTHORIZED','11111111111',auth.uid());raise exception 'Nonmember write allowed';exception when insufficient_privilege then null;end;end $$;
+select set_config('request.jwt.claim.sub',current_setting('banktest.seller'),true);
+do $$ begin if exists(select 1 from public.icom_bank_customers) then raise exception 'Seller sees owner client';end if;end $$;
+insert into public.icom_bank_customers(name,cpf,assigned_to,created_by) values('TESTE SELLER','11144477735',auth.uid(),auth.uid());
+do $$ begin if (select count(*) from public.icom_bank_customers)<>1 then raise exception 'Seller own read failed';end if;begin insert into public.icom_bank_customers(name,cpf,assigned_to,created_by) values('FORGED','12345678901',current_setting('banktest.owner')::uuid,auth.uid());raise exception 'Forged seller allowed';exception when insufficient_privilege then null;end;begin update public.icom_bank_user_access set role='OWNER' where user_id=auth.uid();raise exception 'Self escalation allowed';exception when insufficient_privilege then null;end;begin insert into public.icom_bank_payments(installment_id,paid_at,amount_cents,approved_by) values(gen_random_uuid(),current_date,100,auth.uid());raise exception 'Payment write allowed';exception when insufficient_privilege then null;end;end $$;
+reset role;
+do $$ begin if (select count(*) from public.icom_bank_audit_logs where action='CLIENTE_CRIADO')<>2 then raise exception 'Audit missing';end if;if has_table_privilege('anon','public.icom_bank_customers','select') then raise exception 'Anon grant';end if;end $$;
+update public.icom_bank_user_access set active=false where user_id=current_setting('banktest.seller')::uuid;
+set local role authenticated;
+do $$ begin if exists(select 1 from public.icom_bank_customers) then raise exception 'Revoked access still reads';end if;end $$;
+reset role;
+select 'Owner, nonmember, seller isolation, forged ownership, escalation, payment writes, audit, revocation: passed' result;
+rollback;

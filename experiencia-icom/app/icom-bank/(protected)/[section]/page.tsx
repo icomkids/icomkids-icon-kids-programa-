@@ -1,0 +1,4 @@
+import {notFound} from 'next/navigation';
+import {bankAuthorize,BankError} from '@/lib/icom-bank/server';
+import {bankMenu} from '@/lib/icom-bank/model';
+export default async function Page({params}:{params:Promise<{section:string}>}){const {section}=await params;const entry=bankMenu.find(([key])=>key===section);if(!entry)notFound();try{await bankAuthorize(section);}catch(error){if(error instanceof BankError)return <section className="bank-panel"><h1>Acesso restrito</h1><p>Sua conta não possui permissão para esta área.</p></section>;throw error;}return <><div className="bank-heading"><div><p className="bank-eyebrow">ICOM BANK · PRIMEIRA FASE</p><h1>{entry[1]}</h1><p>Área protegida pela sua permissão específica.</p></div></div><section className="bank-panel bank-empty"><h2>Próxima etapa do módulo</h2><p>A estrutura está preparada. A operação de {entry[1].toLowerCase()} será implementada após a validação desta primeira entrega.</p></section></>;}
