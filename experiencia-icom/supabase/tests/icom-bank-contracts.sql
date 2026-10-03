@@ -32,10 +32,12 @@ do $$ declare owner_id uuid;other_id uuid;client_id uuid:=gen_random_uuid();req 
  begin perform public.icom_bank_create_contract(client_id,gen_random_uuid(),vehicle,finance);raise exception 'Finance created contract';exception when insufficient_privilege then null;end;
  update public.icom_bank_user_access set role='VENDEDOR',active=false where user_id=other_id;
  begin perform public.icom_bank_create_contract(client_id,gen_random_uuid(),vehicle,finance);raise exception 'Inactive created contract';exception when insufficient_privilege then null;end;
+update public.icom_bank_customers set assigned_to=owner_id where id=client_id;
 end $$;
 set local role authenticated;
 do $$ begin
  perform set_config('request.jwt.claim.sub',current_setting('test.bank_owner'),true);
+ perform public.icom_bank_create_contract(current_setting('test.bank_customer')::uuid,gen_random_uuid(),'{"brand":"Teste","model":"Teste","plate":"TST9Z96"}','{"vehicle_cents":1000000,"down_payment_cents":100000,"count":3,"installment_cents":300000,"sale_date":"2026-10-03","first_due":"2028-01-31","period":"MENSAL","interest_bps":0,"fine_bps":0,"late_interest_bps":0}');
  begin insert into public.icom_bank_installments(contract_id,number,due_date,original_cents,updated_cents) values(gen_random_uuid(),1,current_date,100,100);raise exception 'Direct installment insert accepted';exception when insufficient_privilege then null;end;
  perform set_config('request.jwt.claim.sub',current_setting('test.bank_other'),true);
  if exists(select 1 from public.icom_bank_contracts) or exists(select 1 from public.icom_bank_installments) then raise exception 'Inactive reads leaked';end if;

@@ -38,3 +38,9 @@ Alterados, somente no módulo: modelo, servidor, CSS, ficha e lista de clientes,
 ## Próxima etapa
 
 Configuração da chave Pix fixa, envio e análise de comprovantes e confirmação de pagamentos. Depois, inadimplência detalhada, relatórios, edição e gestão de funcionários. Busca global ainda por nome ou CPF; pesquisa por placa/contrato e dados pessoais complementares ficam pendentes. Não foram integrados bancos, boletos, assinatura digital ou WhatsApp.
+
+## Publicação e conferência
+
+Build Docker de produção concluído com sucesso em 03/10/2026 às 17h03 (Brasília), com TypeScript e 59 testes. Conferência autenticada no domínio passou para Clientes, ficha, cadastro do veículo, condições, revisão, Contratos, Parcelas, Veículos e dashboard. A revisão mostrou 31/01, 29/02 e 31/03/2028 corretamente. O formulário de teste foi abandonado antes de salvar; nenhum contrato foi adicionado ao cadastro do usuário. A API de criação é validada pelo teste SQL transacional, inclusive com a role authenticated.
+
+O advisor assinala a RPC como SECURITY DEFINER executável por authenticated. Essa exposição é intencional para permitir a gravação atômica sem conceder escrita direta nas tabelas: função usa search_path vazio, exige auth.uid(), verifica perfil ativo e responsável do cliente, revoga execução pública/anônima e registra auditoria. O teste confirma rejeição para usuários sem autorização. Referência do [advisor do Supabase](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable).
