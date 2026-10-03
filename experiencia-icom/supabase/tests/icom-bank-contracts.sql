@@ -1,0 +1,48 @@
+begin;
+-- Every test record and temporary membership is rolled back.
+do $$ declare owner_id uuid;other_id uuid;client_id uuid:=gen_random_uuid();req uuid:=gen_random_uuid();result jsonb; again jsonb; finance jsonb;vehicle jsonb;before_count bigint;begin
+ select user_id into owner_id from public.icom_bank_user_access where role='OWNER' and active limit 1;
+ select id into other_id from auth.users where id<>owner_id and not exists(select 1 from public.icom_bank_user_access a where a.user_id=id) limit 1;
+ if owner_id is null or other_id is null then raise exception 'Test identities missing';end if;
+ perform set_config('test.bank_owner',owner_id::text,true);perform set_config('test.bank_other',other_id::text,true);
+ perform set_config('request.jwt.claim.sub',owner_id::text,true);
+ insert into public.icom_bank_customers(id,name,cpf,assigned_to,created_by) values(client_id,'TESTE TRANSACIONAL CONTRATO','00000000191',owner_id,owner_id);
+ perform set_config('test.bank_customer',client_id::text,true);
+ finance:='{"vehicle_cents":1000000,"down_payment_cents":100000,"count":3,"installment_cents":300000,"sale_date":"2026-10-03","first_due":"2028-01-31","period":"MENSAL","interest_bps":0,"fine_bps":0,"late_interest_bps":0}'::jsonb;
+ vehicle:='{"brand":"Teste","model":"Teste","plate":"TST9Z99"}'::jsonb;
+ result:=public.icom_bank_create_contract(client_id,req,vehicle,finance);
+ again:=public.icom_bank_create_contract(client_id,req,vehicle,finance);
+ if result<>again or (select count(*) from public.icom_bank_contracts where id=req)<>1 then raise exception 'Idempotency failed';end if;
+ if (select array_agg(due_date order by number) from public.icom_bank_installments where contract_id=req)<>array['2028-01-31'::date,'2028-02-29'::date,'2028-03-31'::date] then raise exception 'Monthly anchor failed';end if;
+ if (select sum(original_cents) from public.icom_bank_installments where contract_id=req)<>900000 or (select count(*) from public.icom_bank_payments where installment_id in(select id from public.icom_bank_installments where contract_id=req))<>0 then raise exception 'Amounts/payment separation failed';end if;
+ if (select count(*) from public.icom_bank_audit_logs where entity_id=req and action in('CONTRATO_CRIADO','PARCELAS_GERADAS'))<>2 then raise exception 'Audit failed';end if;
+ before_count:=(select count(*) from public.icom_bank_vehicles);
+ begin perform public.icom_bank_create_contract(client_id,gen_random_uuid(),vehicle||'{"plate":"TST9Z98"}',finance||'{"count":0}');raise exception 'Invalid count accepted';exception when raise_exception then if SQLERRM='Invalid count accepted' then raise;end if;end;
+ if (select count(*) from public.icom_bank_vehicles)<>before_count then raise exception 'Atomicity failed';end if;
+ begin perform public.icom_bank_create_contract(client_id,req,vehicle,finance||'{"count":4}');raise exception 'Changed retry accepted';exception when raise_exception then if SQLERRM<>'BANK_REQUEST_CONFLICT' then raise;end if;end;
+ begin perform public.icom_bank_create_contract(client_id,gen_random_uuid(),vehicle,finance);raise exception 'Duplicate plate accepted';exception when raise_exception then if SQLERRM<>'BANK_PLATE_ACTIVE' then raise;end if;end;
+ perform set_config('request.jwt.claim.sub',other_id::text,true);
+ begin perform public.icom_bank_create_contract(client_id,gen_random_uuid(),vehicle,finance);raise exception 'Nonmember accepted';exception when insufficient_privilege then null;end;
+ insert into public.icom_bank_user_access(user_id,name,role) values(other_id,'TESTE VENDEDOR','VENDEDOR');
+ begin perform public.icom_bank_create_contract(client_id,gen_random_uuid(),vehicle,finance);raise exception 'Seller used another customer';exception when insufficient_privilege then null;end;
+ update public.icom_bank_customers set assigned_to=other_id where id=client_id;
+ result:=public.icom_bank_create_contract(client_id,gen_random_uuid(),vehicle||'{"plate":"TST9Z97"}',finance||'{"first_due":"2027-01-31"}');
+ if (select seller_id from public.icom_bank_contracts where id=(result->>'id')::uuid)<>other_id then raise exception 'Seller attribution failed';end if;
+ update public.icom_bank_user_access set role='FINANCEIRO' where user_id=other_id;
+ begin perform public.icom_bank_create_contract(client_id,gen_random_uuid(),vehicle,finance);raise exception 'Finance created contract';exception when insufficient_privilege then null;end;
+ update public.icom_bank_user_access set role='VENDEDOR',active=false where user_id=other_id;
+ begin perform public.icom_bank_create_contract(client_id,gen_random_uuid(),vehicle,finance);raise exception 'Inactive created contract';exception when insufficient_privilege then null;end;
+end $$;
+set local role authenticated;
+do $$ begin
+ perform set_config('request.jwt.claim.sub',current_setting('test.bank_owner'),true);
+ begin insert into public.icom_bank_installments(contract_id,number,due_date,original_cents,updated_cents) values(gen_random_uuid(),1,current_date,100,100);raise exception 'Direct installment insert accepted';exception when insufficient_privilege then null;end;
+ perform set_config('request.jwt.claim.sub',current_setting('test.bank_other'),true);
+ if exists(select 1 from public.icom_bank_contracts) or exists(select 1 from public.icom_bank_installments) then raise exception 'Inactive reads leaked';end if;
+end $$;
+reset role;
+set local role anon;
+do $$ begin begin perform public.icom_bank_create_contract(gen_random_uuid(),gen_random_uuid(),'{}','{}');raise exception 'Anonymous RPC accepted';exception when insufficient_privilege then null;end;end $$;
+reset role;
+rollback;
+select 'Atomicity, idempotency, calendar, amount, audit and authorization tests passed; all test data rolled back' as result;
