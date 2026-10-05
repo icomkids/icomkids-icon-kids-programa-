@@ -1,0 +1,3 @@
+import {bankAuthorize,bankOrigin,bankError,bankQuery,BankError} from '@/lib/icom-bank/server';
+import {customerProfileInput,type RiskProfile} from '@/lib/icom-bank/risk';
+export async function POST(req:Request){try{bankOrigin(req);const {token}=await bankAuthorize('clientes');const text=await req.text();if(text.length>1000)throw new BankError('Solicitação acima do limite.',400);let input;try{input=customerProfileInput(JSON.parse(text));}catch(e){throw new BankError(e instanceof Error?e.message:'Confira o perfil.',400);}const result=await bankQuery<{risk_profile:RiskProfile|null;updated_at:string}>(token,'rpc/icom_bank_update_customer_profile','POST',input);return Response.json(result,{headers:{'Cache-Control':'no-store'}});}catch(e){return bankError(e);}}
