@@ -1,4 +1,5 @@
 import {parseRiskProfile,type RiskProfile} from './risk.ts';
+import type {VehicleSpec} from './vehicle-catalog.ts';
 export type BankRole='OWNER'|'ADMIN'|'GERENTE'|'FINANCEIRO'|'VENDEDOR';
 export type BankProfile={user_id:string;name:string;role:BankRole;active:boolean};
 export const bankMenu=[['dashboard','Visão Geral'],['clientes','Clientes'],['contratos','Contratos'],['administrativo','Administrativo'],['parcelas','Parcelas'],['pagamentos','Pagamentos'],['comprovantes','Comprovantes'],['inadimplencia','Inadimplência'],['veiculos','Veículos'],['relatorios','Relatórios'],['funcionarios','Funcionários'],['configuracoes','Configurações']] as const;
@@ -15,7 +16,7 @@ export type BankContract={id:string;customer_id:string;vehicle_id:string;number:
 export type BankInstallment={id:string;contract_id:string;number:number;due_date:string;original_cents:number;updated_cents:number;paid_cents:number;paid_at:string|null;status:string};
 export type BankPayment={id:string;installment_id:string;amount_cents:number;paid_at:string;created_at:string;status?:'CONFIRMADO'|'ESTORNADO';reversed_at?:string|null;reversal_reason?:string|null};
 export type BankProof={id:string;installment_id:string;informed_cents:number;status:string;created_at:string};
-export type BankData={customers:BankCustomer[];contracts:BankContract[];installments:BankInstallment[];payments:BankPayment[];proofs:BankProof[];vehicles:{id:string;customer_id:string;brand:string;model:string;plate:string}[];settings:{company_name:string;pix_key:string|null;pix_type:string|null}|null};
+export type BankData={customers:BankCustomer[];contracts:BankContract[];installments:BankInstallment[];payments:BankPayment[];proofs:BankProof[];vehicles:{id:string;customer_id:string;brand:string;model:string;plate:string;details?:{version?:string;model_year?:number;catalog?:VehicleSpec}}[];settings:{company_name:string;pix_key:string|null;pix_type:string|null}|null};
 export function installmentStatus(row:BankInstallment,today=brazilDay()){if(['PAGO','CANCELADO','RENEGOCIADO','COMPROVANTE_ENVIADO'].includes(row.status))return row.status;return row.due_date<today?'ATRASADO':row.due_date===today?'VENCE_HOJE':'A_VENCER';}
 export function dashboard(data:BankData,today=brazilDay()){
  const month=today.slice(0,7),contracts=data.contracts.filter(c=>c.status==='ATIVO'),active=new Set(contracts.map(c=>c.id));

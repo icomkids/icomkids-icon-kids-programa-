@@ -1,0 +1,38 @@
+'use client';
+import {useEffect,useRef,useState} from 'react';
+import {bankPath,currency} from '@/lib/icom-bank/model';
+import {brandLabel,modelFamily,type CatalogOption,type VehicleSpec} from '@/lib/icom-bank/vehicle-catalog';
+type CatalogReply={options:CatalogOption[];error?:string};
+const catalogReply=async(r:Response)=>{const d=await r.json() as CatalogReply;if(!r.ok||!Array.isArray(d.options))throw new Error(d.error||'Catálogo indisponível.');return d;};
+const empty:VehicleSpec={brand:'',model:'',version:'',year:null};
+export default function BankVehiclePicker({value,onChange,label='Veículo',disabled=false}:{value?:VehicleSpec;onChange:(v:VehicleSpec)=>void;label?:string;disabled?:boolean}){
+ const v=value||empty,[manual,setManual]=useState(!!value&&!value.selection),[brands,setBrands]=useState<CatalogOption[]>([]),[models,setModels]=useState<CatalogOption[]>([]),[years,setYears]=useState<CatalogOption[]>([]),[family,setFamily]=useState(value?.model||''),[error,setError]=useState(''),[loading,setLoading]=useState(false),[retry,setRetry]=useState(0);
+ const revision=useRef(0),change=useRef(onChange);useEffect(()=>{change.current=onChange;},[onChange]);
+ const brand=v.selection?.brand_id||'',model=v.selection?.model_id||'',year=v.selection?.year_id||'';
+ useEffect(()=>{let live=true;const controller=new AbortController();if(manual)return;
+  fetch(bankPath('/api/vehicle-catalog'),{signal:controller.signal}).then(catalogReply).then(d=>{if(live){if(d.error)throw new Error(d.error);setBrands(d.options);}}).catch(e=>{if(live&&e.name!=='AbortError')setError('Não foi possível carregar as marcas. Você pode tentar novamente ou cadastrar manualmente.');});
+  return()=>{live=false;controller.abort();};
+ },[manual,retry]);
+ useEffect(()=>{if(manual||!brand)return;let live=true;const controller=new AbortController();
+  fetch(bankPath('/api/vehicle-catalog?brand='+brand),{signal:controller.signal}).then(catalogReply).then(d=>{if(live){if(d.error)throw new Error(d.error);setModels(d.options);}}).catch(e=>{if(live&&e.name!=='AbortError')setError(e.message);}).finally(()=>{if(live)setLoading(false);});return()=>{live=false;controller.abort();};
+ },[brand,manual,retry]);
+ useEffect(()=>{if(manual||!brand||!model)return;let live=true;const controller=new AbortController();
+  fetch(bankPath(`/api/vehicle-catalog?brand=${brand}&model=${model}`),{signal:controller.signal}).then(catalogReply).then(d=>{if(live){if(d.error)throw new Error(d.error);setYears(d.options);}}).catch(e=>{if(live&&e.name!=='AbortError')setError(e.message);}).finally(()=>{if(live)setLoading(false);});return()=>{live=false;controller.abort();};
+ },[brand,model,manual,retry]);
+ async function quote(nextYear:string){const current=++revision.current;setLoading(true);setError('');onChange({...v,year:Number(nextYear.split('-')[0])===32000?null:Number(nextYear.split('-')[0]),selection:{brand_id:brand,model_id:model,year_id:nextYear},fipe:undefined});
+  try{const r=await fetch(bankPath(`/api/vehicle-catalog?brand=${brand}&model=${model}&year=${nextYear}`));const d=await r.json() as {vehicle?:VehicleSpec;error?:string};if(!r.ok||!d.vehicle)throw new Error(d.error||'FIPE indisponível.');if(current===revision.current){change.current(d.vehicle);setFamily(d.vehicle.model);}}catch(e){if(current===revision.current)setError(e instanceof Error?e.message:'FIPE indisponível.');}finally{if(current===revision.current)setLoading(false);}
+ }
+ const reset=(next:VehicleSpec)=>{revision.current++;setError('');onChange(next);};
+ const preferred=['GM - Chevrolet','Fiat','VW - VolksWagen','Jeep','Honda','Toyota','Hyundai','Ford','Renault','Nissan'];
+ const sorted=[...brands].sort((a,b)=>{const x=preferred.indexOf(a.name),y=preferred.indexOf(b.name);return (x<0?999:x)-(y<0?999:y)||a.name.localeCompare(b.name,'pt-BR');});
+ const families=[...new Set(models.map(x=>modelFamily(x.name)))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+ return <section className="bank-vehicle-picker" aria-label={label}><div className="bank-vehicle-picker-head"><h3>{label}</h3><button type="button" disabled={disabled||loading} onClick={()=>{setManual(!manual);reset(empty);setFamily('');}}>{manual?'Usar catálogo e FIPE':'Cadastrar manualmente'}</button></div><div className="bank-vehicle-picker-layout"><div className="bank-form-grid">
+ {manual?<><label>Marca<input required disabled={disabled} maxLength={160} value={v.brand} onChange={e=>reset({...v,brand:e.target.value,selection:undefined,fipe:undefined})}/></label><label>Modelo<input required disabled={disabled} maxLength={160} value={v.model} onChange={e=>reset({...v,model:e.target.value,selection:undefined,fipe:undefined})}/></label><label>Versão<input disabled={disabled} maxLength={160} value={v.version} onChange={e=>reset({...v,version:e.target.value,selection:undefined,fipe:undefined})}/></label><label>Ano modelo<input required disabled={disabled} type="number" min={1900} max={2100} value={v.year??''} onChange={e=>reset({...v,year:e.target.value?Number(e.target.value):null,selection:undefined,fipe:undefined})}/></label></>:<>
+ <label>Marca<select required disabled={disabled||loading} value={brand} onChange={e=>{const b=brands.find(b=>b.code===e.target.value);setFamily('');setModels([]);setYears([]);setLoading(!!b);reset({...empty,brand:b?.name||'',selection:{brand_id:e.target.value,model_id:'',year_id:''}});}}><option value="">Selecione a marca</option>{sorted.map(b=><option key={b.code} value={b.code}>{brandLabel(b.name)}</option>)}</select></label>
+ <label>Modelo<select required disabled={disabled||loading||!brand} value={family} onChange={e=>{setFamily(e.target.value);setYears([]);reset({...v,model:e.target.value,version:'',year:null,selection:{brand_id:brand,model_id:'',year_id:''},fipe:undefined});}}><option value="">Selecione o modelo</option>{families.map(f=><option key={f}>{f}</option>)}</select></label>
+ <label>Versão<select required disabled={disabled||loading||!family} value={model} onChange={e=>{setYears([]);setLoading(!!e.target.value);reset({...v,version:models.find(m=>m.code===e.target.value)?.name||'',year:null,selection:{brand_id:brand,model_id:e.target.value,year_id:''},fipe:undefined});}}><option value="">Selecione a versão</option>{models.filter(m=>modelFamily(m.name)===family).map(m=><option key={m.code} value={m.code}>{m.name}</option>)}</select></label>
+ <label>Ano modelo / combustível<select required disabled={disabled||loading||!model} value={year} onChange={e=>{if(e.target.value)void quote(e.target.value);else reset({...v,year:null,selection:{brand_id:brand,model_id:model,year_id:''},fipe:undefined});}}><option value="">Selecione ano e combustível</option>{years.map(y=><option key={y.code} value={y.code}>{y.name.replace(/^32000/,"Zero km")}</option>)}</select></label></>}
+ </div><aside className="bank-fipe-card" aria-live="polite"><span>REFERÊNCIA FIPE</span>{v.fipe?<><strong>{currency(v.fipe.price_cents)}</strong><small>{v.fipe.reference} · código {v.fipe.code}</small><small>Consultado em {new Date(v.fipe.consulted_at).toLocaleDateString('pt-BR')}</small></>:<><strong>{loading?'Consultando…':'Sem referência'}</strong><small>{manual?'Cadastro manual, sem consulta automática.':'Selecione marca, modelo, versão, ano e combustível.'}</small></>}<small>Referência informativa. O valor negociado continua sendo definido por você.</small>{v.fipe&&<small>Consulta via Parallelum · <a href="https://veiculos.fipe.org.br/" target="_blank" rel="noreferrer">Conferir na FIPE</a></small>}</aside></div>
+ {error&&<p className="bank-error" role="alert">{error} <button type="button" disabled={disabled||loading} onClick={()=>year?void quote(year):setRetry(x=>x+1)}>Tentar novamente</button></p>}
+ </section>;
+}

@@ -1,5 +1,6 @@
 import {brazilDay} from './model.ts';
 import {realDate,validId,moneyInput} from './contracts.ts';
+import {vehicleSpec,type VehicleSpec} from './vehicle-catalog.ts';
 import {validVehicleBank} from './vehicle-banks.ts';
 
 export const defaultSaleCommission=165000;
@@ -36,17 +37,17 @@ export const adminKinds=['VENDA','ENTRADA','CUSTO','RETORNO','TROCA','MENSAL','P
 export type AdminKind=(typeof adminKinds)[number];
 export type AdminScope='LOJA'|'PESSOAL';
 export type AdminStatus='PREVISTO'|'REALIZADO';
-export type AdminDetails={trade_in?:boolean;trade_has_debts?:boolean;trade_has_payoff?:boolean;trade_plate?:string;trade_year?:number;trade_value_cents?:number;trade_ipva_cents?:number;trade_fines_cents?:number;trade_payoff_cents?:number;trade_payoff_bank?:string;trade_payoff_bank_other?:string;payment_bank?:string;payment_bank_other?:string;vehicle?:string;trade_vehicle?:string;plate?:string;seller?:string;bank?:string;return_level?:number;notes?:string;payment_method?:string;purchase_cents?:number;vehicle_cost_cents?:number;commission_cents?:number;sale_cents?:number;financed_cents?:number;tax_cents?:number;manager_cents?:number;seller_cents?:number;paid_cents?:number;debt_cents?:number;document_cents?:number;cc_cents?:number;discount_cents?:number;division_cents?:number;profit_share_cents?:number;due_day?:number};
+export type AdminDetails={stock_id?:string;vehicle_spec?:VehicleSpec;trade_spec?:VehicleSpec;trade_in?:boolean;trade_has_debts?:boolean;trade_has_payoff?:boolean;trade_plate?:string;trade_year?:number;trade_value_cents?:number;trade_ipva_cents?:number;trade_fines_cents?:number;trade_payoff_cents?:number;trade_payoff_bank?:string;trade_payoff_bank_other?:string;payment_bank?:string;payment_bank_other?:string;vehicle?:string;trade_vehicle?:string;plate?:string;seller?:string;bank?:string;return_level?:number;notes?:string;payment_method?:string;purchase_cents?:number;vehicle_cost_cents?:number;commission_cents?:number;sale_cents?:number;financed_cents?:number;tax_cents?:number;manager_cents?:number;seller_cents?:number;paid_cents?:number;debt_cents?:number;document_cents?:number;cc_cents?:number;discount_cents?:number;division_cents?:number;profit_share_cents?:number;due_day?:number};
 export type AdminEntry={id:string;kind:AdminKind;scope:AdminScope;entry_date:string;description:string;category:string;status:AdminStatus;amount_cents:number|null;details:AdminDetails;active:boolean;created_at:string;updated_at:string};
 export type AdminReference={closing:{source:string;period:string|null;income_cents:number;expense_cents:number;subtotal_cents:number;returns_cents:number;personal_cents:number};monthly:{label:string;due_day:number}[];sources:{file:string;purpose:string}[]};
 
 const moneyKeys=['trade_value_cents','trade_ipva_cents','trade_fines_cents','trade_payoff_cents','purchase_cents','vehicle_cost_cents','commission_cents','sale_cents','financed_cents','tax_cents','manager_cents','seller_cents','paid_cents','debt_cents','document_cents','cc_cents','discount_cents','division_cents','profit_share_cents'] as const;
-const textKeys=['trade_plate','trade_payoff_bank','trade_payoff_bank_other','payment_bank','payment_bank_other','vehicle','trade_vehicle','plate','seller','bank','notes','payment_method'] as const;
+const textKeys=['stock_id','trade_plate','trade_payoff_bank','trade_payoff_bank_other','payment_bank','payment_bank_other','vehicle','trade_vehicle','plate','seller','bank','notes','payment_method'] as const;
 const allowed:Record<AdminKind,readonly (keyof AdminDetails)[]>={
- VENDA:['trade_in','trade_has_debts','trade_has_payoff','trade_plate','trade_year','trade_value_cents','trade_ipva_cents','trade_fines_cents','trade_payoff_cents','trade_payoff_bank','trade_payoff_bank_other','payment_bank','payment_bank_other','vehicle','trade_vehicle','plate','seller','purchase_cents','vehicle_cost_cents','commission_cents','sale_cents','notes','payment_method'],
- ENTRADA:['notes','payment_method'],CUSTO:['vehicle','plate','notes','payment_method'],
- RETORNO:['vehicle','plate','seller','bank','return_level','financed_cents','tax_cents','manager_cents','seller_cents','notes'],
- TROCA:['vehicle','plate','paid_cents','debt_cents','document_cents','cc_cents','discount_cents','division_cents','profit_share_cents','notes'],
+ VENDA:['stock_id','vehicle_spec','trade_spec','trade_in','trade_has_debts','trade_has_payoff','trade_plate','trade_year','trade_value_cents','trade_ipva_cents','trade_fines_cents','trade_payoff_cents','trade_payoff_bank','trade_payoff_bank_other','payment_bank','payment_bank_other','vehicle','trade_vehicle','plate','seller','purchase_cents','vehicle_cost_cents','commission_cents','sale_cents','notes','payment_method'],
+ ENTRADA:['notes','payment_method'],CUSTO:['stock_id','vehicle_spec','vehicle','plate','notes','payment_method'],
+ RETORNO:['vehicle_spec','vehicle','plate','seller','bank','return_level','financed_cents','tax_cents','manager_cents','seller_cents','notes'],
+ TROCA:['vehicle_spec','vehicle','plate','paid_cents','debt_cents','document_cents','cc_cents','discount_cents','division_cents','profit_share_cents','notes'],
  MENSAL:['due_day','notes','payment_method'],PESSOAL:['notes','payment_method'],
 };
 function amount(value:unknown,nullable=false){if(nullable&&(value===null||value===undefined||value===''))return null;if(typeof value!=='number'||!Number.isSafeInteger(value)||value<0||value>1000000000)throw new Error('Confira os valores em reais.');return value;}
@@ -61,12 +62,16 @@ export function adminInput(body:Record<string,unknown>){
  const details:AdminDetails={};
  for(const key of allowed[kind]){
   const value=(raw as Record<string,unknown>)[key];if(value===undefined)continue;
-  if((moneyKeys as readonly string[]).includes(key))Object.assign(details,{[key]:amount(value)});
+  if(key==='vehicle_spec'||key==='trade_spec')Object.assign(details,{[key]:vehicleSpec(value)});
+  else if((moneyKeys as readonly string[]).includes(key))Object.assign(details,{[key]:amount(value)});
   else if((textKeys as readonly string[]).includes(key))Object.assign(details,{[key]:text(value,key==='notes'?2000:key==='plate'?7:160)});
   else if(['trade_in','trade_has_debts','trade_has_payoff'].includes(key)){if(typeof value!=='boolean')throw new Error('Selecione Sim ou Não para a troca e os débitos.');Object.assign(details,{[key]:value});}
   else if(key==='trade_year'){if(typeof value!=='number'||!Number.isInteger(value)||value<1900||value>2100)throw new Error('Confira o ano do carro da troca.');details.trade_year=value;}
   else {const max=key==='due_day'?31:3;if(typeof value!=='number'||!Number.isInteger(value)||value<1||value>max)throw new Error('Confira dia do vencimento ou tipo de retorno.');Object.assign(details,{[key]:value});}
  }
+ if(details.stock_id&&!validId(details.stock_id))throw new Error('Veículo de estoque inválido.');
+ if(details.vehicle_spec)details.vehicle=(details.vehicle_spec.brand+' '+(details.vehicle_spec.version||details.vehicle_spec.model)).slice(0,160);
+ if(details.trade_spec){details.trade_vehicle=(details.trade_spec.brand+' '+(details.trade_spec.version||details.trade_spec.model)).slice(0,160);if(details.trade_spec.year!==null)details.trade_year=details.trade_spec.year;}
  if(details.plate){details.plate=details.plate.toUpperCase();if(!/^[A-Z]{3}\d[A-Z0-9]\d{2}$/.test(details.plate))throw new Error('Confira a placa.');}
  if(['VENDA','RETORNO','TROCA'].includes(kind)&&!details.vehicle)throw new Error('Informe o carro.');
  if(kind==='VENDA'&&['purchase_cents','vehicle_cost_cents','commission_cents','sale_cents'].some(k=>details[k as keyof AdminDetails]===undefined))throw new Error('Informe compra, custos, comissão e venda.');
