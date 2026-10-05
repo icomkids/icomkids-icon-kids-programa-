@@ -20,4 +20,5 @@ O Security Advisor lista as RPCs autenticadas SECURITY DEFINER. São intencionai
 
 Referência de convites: [Supabase Auth Admin API](https://supabase.com/docs/reference/javascript/auth-admin-inviteuserbyemail).
 
-Publicação e verificação online: pendentes na preparação deste documento.
+Publicado no Easypanel em 05/10/2026 às 16:22:09 UTC, commit de implementação `e6c20a20640818e9b42a44e7fe6b1f6e18f9c5d3`. A compilação do servidor passou no TypeScript, nos 70 testes e no build Next. A tela autenticada de Relatórios foi conferida online: 1 venda no período, R$ 70.000 financiados, R$ 126.000 de carteira atual e R$ 0 recebido. CSV baixado e validado (UTF-8/BOM, delimitador, valores, CPF protegido e ausência de recebimentos fictícios). Página pública de criação de senha carregou corretamente. A sessão administrativa expirou durante a conferência; validação visual das telas Funcionários/Inadimplência aguarda novo login, embora as rotas tenham passado no build e suas regras tenham sido validadas no SQL transacional.
+
