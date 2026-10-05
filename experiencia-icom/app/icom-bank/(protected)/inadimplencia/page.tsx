@@ -1,0 +1,3 @@
+import {bankPage,bankData,bankQuery} from '@/lib/icom-bank/server';
+import BankArrears,{type CollectionContact} from '@/components/icom-bank/BankArrears';
+export default async function Page({searchParams}:{searchParams:Promise<{faixa?:string}>}){const {token,profile}=await bankPage('inadimplencia'),{faixa}=await searchParams;const [data,contacts]=await Promise.all([bankData(token,profile.role),bankQuery<CollectionContact[]>(token,'rpc/icom_bank_collection_contacts','POST',{})]);return <BankArrears data={data} contacts={contacts} band={faixa&&['1-5','6-15','16-30','31+'].includes(faixa)?faixa:'TODOS'}/>;}
