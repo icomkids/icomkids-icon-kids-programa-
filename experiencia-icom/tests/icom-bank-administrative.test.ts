@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {adminInput,adminArchiveInput,adminYear,adminStats,saleCost,saleProfit,returnNet,returnStore,adminMoneyInput,adminMoneyText,adminSaleCalculation,adminSaleReceived,defaultSaleCommission,type AdminEntry} from '../lib/icom-bank/administrative.ts';
+import {adminInput,adminArchiveInput,adminYear,adminStats,saleCost,saleProfit,returnNet,returnStore,adminMoneyInput,adminMoneyText,adminSaleCalculation,adminSaleSettlement,adminSaleReceived,defaultSaleCommission,type AdminEntry} from '../lib/icom-bank/administrative.ts';
 const id='aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa';
 const base={id,kind:'VENDA',scope:'LOJA',entry_date:'2026-10-05',description:'Venda teste',category:'',status:'REALIZADO',amount_cents:400000,details:{vehicle:'Teste',plate:'ABC1234',purchase_cents:800000,vehicle_cost_cents:10000,commission_cents:20000,sale_cents:1000000},expected_updated_at:null};
 const row=(override:Partial<AdminEntry>={})=>({...adminInput(base),active:true,created_at:'2026-10-05T12:00:00Z',updated_at:'2026-10-05T12:00:00Z',...override}) as AdminEntry;
@@ -23,4 +23,26 @@ test('Bruno sale example includes only incremental vehicle costs and the fixed s
  assert.throws(()=>adminSaleReceived(c.sale,'PARCIAL','102.000,01'));assert.throws(()=>adminSaleCalculation({purchase_cents:'85.00'}));
  const e=row({details:{vehicle:'Teste',purchase_cents:c.purchase,vehicle_cost_cents:c.cost,commission_cents:c.commission,sale_cents:c.sale},amount_cents:adminSaleReceived(c.sale,'PARCIAL','50.000,00')});
  assert.equal(saleProfit(e),1285000);assert.equal(adminStats([e],'2026-10').income,5000000);
+});
+
+const trade={trade_in:true,trade_vehicle:'Carro recebido',trade_plate:'XYZ9A99',trade_year:2020,trade_value_cents:5000000,trade_has_debts:true,trade_ipva_cents:100000,trade_fines_cents:50000,trade_has_payoff:true,trade_payoff_cents:350000,trade_payoff_bank:'Safra',payment_method:'FINANCIAMENTO',payment_bank:'Itaú'};
+test('Trade deducts IPVA, fines and payoff once and does not change sale profit',()=>{
+ const d={...base.details,...trade,sale_cents:10200000};const c=adminSaleSettlement(d.sale_cents,d);assert.deepEqual(c,{trade:5000000,debt:500000,credit:4500000,remaining:5700000});
+ const input=adminInput({...base,details:d,amount_cents:c.remaining});assert.equal(input.details.payment_bank,'Itaú');assert.equal(adminStats([row({...input})],'2026-10').income,5700000);
+ assert.equal(adminSaleSettlement(10200000,{...trade,trade_has_debts:false}).remaining,5200000);
+ assert.equal(adminSaleSettlement(10200000,{...trade,trade_in:false}).remaining,10200000);
+ assert.equal(saleProfit(row({details:d})),9370000);
+});
+test('Trade rejects missing data, invalid debts, excessive cash and financing without bank',()=>{
+ const d={...base.details,...trade,sale_cents:10200000};
+ for(const changed of [{trade_plate:'wrong'},{trade_year:1800},{trade_in:'true'},{trade_vehicle:''},{trade_value_cents:0},{trade_ipva_cents:5000001},{trade_payoff_bank:''},{payment_bank:'fake'},{payment_bank:'OUTRO',payment_bank_other:''},{trade_has_debts:true,trade_ipva_cents:0,trade_fines_cents:0,trade_has_payoff:false}])assert.throws(()=>adminInput({...base,details:{...d,...changed}}));
+ assert.throws(()=>adminInput({...base,details:d,amount_cents:5700001}));assert.throws(()=>adminSaleSettlement(100000,{...trade,trade_value_cents:700000}));
+});
+test('Inactive trade and financing branches are removed, other banks and legacy rows remain supported',()=>{
+ const d={...base.details,...trade,sale_cents:10200000};
+ const no=adminInput({...base,details:{...d,trade_in:false,payment_method:'PIX'}}).details;
+ assert.deepEqual(Object.keys(no).filter(k=>k.startsWith('trade_')),['trade_in']);assert.equal(no.payment_bank,undefined);
+ const clear=adminInput({...base,details:{...d,trade_has_debts:false,payment_method:'CARTAO'}}).details;assert.equal(clear.trade_payoff_bank,undefined);assert.equal(clear.trade_ipva_cents,undefined);
+ const other=adminInput({...base,details:{...d,payment_bank:'OUTRO',payment_bank_other:'Banco de montadora',trade_payoff_bank:'OUTRO',trade_payoff_bank_other:'Banco anterior'}}).details;assert.equal(other.payment_bank_other,'Banco de montadora');
+ assert.equal(adminInput({...base,details:{...base.details,trade_vehicle:'Registro antigo',payment_method:'Transferência'}}).details.trade_vehicle,'Registro antigo');
 });

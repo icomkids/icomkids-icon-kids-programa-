@@ -48,3 +48,18 @@ Publicado no Easypanel em 05/10/2026 às 16:05:04 (São Paulo), commit `e6ccdada
 Na interface publicada, um registro técnico previsto de R$ 0 foi criado, editado, arquivado e localizado na lista de arquivados com opção de restauração. O histórico registra as três ações. Esse registro permanece arquivado e não entra nos totais. Nenhuma movimentação financeira foi realizada no teste.
 
 A grade de contas mensais abriu o formulário com descrição e vencimento do modelo, exigindo escolher Loja ou Pessoal; o formulário foi cancelado sem lançamento. A exportação gerou `icom-administrativo-2026-10.csv`, com cabeçalho de 33 colunas, sem incluir o registro arquivado. Capturas finais salvas: `icom-administrativo-fechamento.jpg` e `icom-administrativo-contas-mensais.jpg`.
+
+### Ajuste do formulário de venda — 05/10/2026
+
+Publicado às 16:48:14 (São Paulo), commit `301f6e57479ef714e50ed933927b55967d3cbb6a`. TypeScript, ESLint, build local e build no servidor passaram, assim como os 83 testes. A prévia local compilou o próprio componente publicado, sem salvar vendas: verificou formatação `85000` → `85.000,00`, custo do vendedor somente leitura, ausência de descrição/categoria, três opções de recebimento e o lucro do exemplo de R$ 12.850,00. Captura: `icom-administrativo-venda-atualizada.jpg`. A sessão OWNER expirou durante o trabalho; a revisão visual desta mudança em produção aguarda nova entrada do proprietário.
+
+Os três vendedores ativos da Experiência ICOM receberam perfil VENDEDOR no Bank pela RPC de gestão de acessos, preservando as mesmas contas e registrando auditoria. O gerente indicado pelo proprietário recebeu convite de criação de senha com redirect explícito para `/experiencia-icom/icom-bank/criar-senha` e perfil GERENTE. Nenhuma senha foi definida pelo agente. Os testes SQL com as contas de vendedor e gerente confirmaram que o Administrativo não é legível nem gravável por esses perfis. Não houve mudança nas políticas de acesso existentes.
+
+## Troca recebida e pagamento da diferença — 05/10/2026
+
+- Sim/Não abre modelo, placa, ano e valor bruto negociado da troca.
+- IPVA, multas e quitação são separados; quitação inclui banco e valor. Crédito líquido = troca − débitos; diferença = venda − crédito líquido. Exemplo: 102.000 − (50.000 − 5.000) = 57.000 reais.
+- Pix, dinheiro, cartão e financiamento. Banco obrigatório para financiamento, incluindo Outro banco com nome. Lista de 13 instituições pesquisadas em fontes oficiais, com URLs em lib/icom-bank/vehicle-banks.ts; não pretende esgotar todo o mercado. Seleção registra o negócio, sem contratar crédito ou quitar dívidas automaticamente.
+- Caixa considera só a diferença efetivamente recebida; o veículo não entra como dinheiro. Lucro mantém venda menos compra e custos originais. Débitos informados não geram baixa automática; registre seu pagamento efetivo em custos quando ocorrer.
+- Novos detalhes persistem na venda e no CSV para futura área dos veículos recebidos, sem criar automaticamente outro lançamento. Registros antigos continuam legíveis; ao editar troca antiga, é necessário completar os novos dados.
+- Validação TypeScript, ESLint, 86 testes e build de produção aprovados. Testes SQL de salvamento, idempotência, limites, bancos e restrições de vendedores/gerentes passaram; dados de teste revertidos. Interface testada localmente com o componente real; sessão administrativa de produção precisa de novo login.
