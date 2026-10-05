@@ -1,0 +1,3 @@
+import {bankAuthorize,bankOrigin,bankQuery,bankError,BankError} from '@/lib/icom-bank/server';
+import {reviewInput} from '@/lib/icom-bank/proofs';
+export async function POST(req:Request){try{bankOrigin(req);const {token}=await bankAuthorize('comprovantes');const text=await req.text();if(text.length>2500)throw new BankError('Solicitação acima do limite.',400);let input;try{input=reviewInput(JSON.parse(text));}catch(e){throw new BankError(e instanceof Error?e.message:'Confira os dados.',400);}const result=await bankQuery(token,'rpc/icom_bank_review_proof','POST',input);return Response.json(result,{headers:{'Cache-Control':'no-store'}});}catch(e){return bankError(e);}}

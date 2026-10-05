@@ -14,4 +14,6 @@ Validação: 61 testes passaram; TypeScript e ESLint passaram. Teste SQL autenti
 
 O advisor identifica SECURITY DEFINER executável por authenticated, como esperado para essas operações atômicas: chamadas exigem identidade e perfil OWNER/ADMIN ativos, usam search_path vazio e negam acesso anônimo. Referência: [advisor Supabase](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable).
 
-Próximas funcionalidades ainda pendentes: orientação Pix por parcela, comprovantes, análise/aprovação, confirmação de pagamentos e inadimplência detalhada. Classificação interna de risco continua registrada para etapa posterior em `ICOM-BANK-PROXIMAS-ETAPAS.md`.
+Publicação concluída em 03/10/2026 às 17h37 (Brasília). Build Docker passou com TypeScript e 61 testes. A tela autenticada foi conferida no domínio, com Pix ainda sem chave cadastrada. Dados de recebimento enviados por voz foram confirmados pelo usuário e salvos no Supabase em 05/10/2026.
+
+Orientação Pix por parcela, comprovantes, análise e confirmação estão descritos em `ICOM-BANK-ETAPA-3.md`. Inadimplência detalhada continua para uma próxima etapa. Classificação interna de risco continua registrada para etapa posterior em `ICOM-BANK-PROXIMAS-ETAPAS.md`.
