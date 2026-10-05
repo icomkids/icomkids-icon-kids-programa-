@@ -14,4 +14,6 @@ Advisor do Bank apresenta somente o aviso esperado de funções SECURITY DEFINER
 
 Funcionários e Inadimplência da etapa anterior foram conferidos no navegador com acesso OWNER ativo: cadastro/perfis/proteção do proprietário e faixas/estado vazio de atraso carregaram corretamente. Nenhum funcionário foi autorizado durante essa conferência.
 
-Publicação desta etapa e convite real de teste ainda pendentes na preparação deste documento.
+Publicado no Easypanel em 05/10/2026 às 18:08:54 UTC, commit de implementação `846afda44f489ec0338fa11f1c1341fd1cb9fe6f`. TypeScript, 73 testes e build também passaram no servidor. Verificação online confirmou a ficha com perfil opcional, opções A/B/C/D, botão desabilitado enquanto não há alteração, campo de perfil junto aos juros no novo contrato e indicação Sem classificação no contrato antigo, preservando os valores anteriores. Nenhum contrato foi criado nessa conferência; dados de veículo digitados para navegar na prévia não foram salvos.
+
+Um cadastro de teste com perfil Vendedor foi preenchido e revisado na tela de Funcionários, aguardando confirmação final da autorização. Ainda não foi concedido acesso ou enviado convite. Recebimento do e-mail e criação da senha pelo destinatário continuam pendentes.
