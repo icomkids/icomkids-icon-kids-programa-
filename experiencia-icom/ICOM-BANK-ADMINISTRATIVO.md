@@ -5,7 +5,7 @@
 ## Telas e operações
 
 - Fechamento por mês ou ano, entradas, custos e despesas pessoais separados.
-- Vendas: data, carro, placa, vendedor, compra, custo do veículo, comissão, custo real, preço de venda, lucro, dinheiro recebido e troca.
+- Vendas: data, carro, placa, vendedor da Experiência ICOM, compra, custos adicionais, custo fixo do vendedor, custo total, preço de venda, lucro, recebimento integral/parcial/pendente e troca. Descrição e categoria da venda são preenchidas automaticamente.
 - Custos loja, variáveis e pós-venda, com busca e filtro.
 - Retornos por vendedor, carro e banco, tipos 1/2/3, financiado, valor bruto, imposto e repasses manuais.
 - Trocas: pagamento, débito, documentação, CC, desconto, divisão e lucro por pessoa manuais.
@@ -15,7 +15,9 @@
 
 ## Cálculos e limites
 
-- Custo real = compra + custo do veículo + comissão. Lucro = preço de venda − custo real.
+- Custo total = compra + custos adicionais do veículo + custo do vendedor. Lucro = preço de venda − custo total. Nas novas vendas, o custo do vendedor vem fixo em R$ 1.650,00; registros anteriores preservam o valor original. Exemplo: R$ 85.000,00 + R$ 2.500,00 + R$ 1.650,00 = R$ 89.150,00; venda por R$ 102.000,00 resulta em R$ 12.850,00 de lucro.
+- Todos os campos monetários do Administrativo aceitam reais com agrupamento brasileiro e vírgula de centavos; ao sair do campo, exibem duas casas (ex.: `85000` vira `85.000,00`). Valores inválidos ficam visíveis para correção e não viram zero silenciosamente. Cálculos e salvamento usam centavos inteiros.
+- Recebimento integral usa automaticamente o preço da venda; parcial pede só o valor já recebido; pendente registra zero recebido. Ao editar, a escolha é inferida dos valores existentes e não substitui recebimentos parciais por integrais. Nenhuma das opções altera o lucro calculado.
 - Caixa considera o recebido explicitamente informado na venda, outras entradas e retornos brutos realizados. Não presume que preço de venda seja dinheiro disponível.
 - Saídas da loja = custos e contas da loja realizados + impostos e repasses informados nos retornos realizados. Custos da venda calculam lucro; seus pagamentos são lançados em Custos da loja, evitando soma automática em duplicidade.
 - Retorno líquido = bruto − imposto; parte da loja = líquido − gerente − vendedor. A metade do líquido é referência matemática, sem repasse automático. Regras de 70% e 90% aguardam esclarecimento.
@@ -38,3 +40,11 @@ Entradas, referências e histórico detalhado são legíveis somente por OWNER a
 Verificados: TypeScript, ESLint, build de produção e 81 testes automatizados. Testes SQL transacionais verificaram validação, RLS para todos os perfis, proprietário inativo, anon, escrita direta bloqueada, repetição, edição desatualizada, arquivo, restauração, histórico e duplicidade mensal; todos os dados de teste foram revertidos. Avisos do advisor para RPCs SECURITY DEFINER autenticadas foram revisados: são intencionais para impedir escrita direta e impor versão/histórico; a checagem de OWNER ocorre em cada chamada.
 
 Referências de segurança: [RLS](https://supabase.com/docs/guides/database/postgres/row-level-security) e [advisor de funções autenticadas](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable).
+
+## Publicação e teste na interface
+
+Publicado no Easypanel em 05/10/2026 às 16:05:04 (São Paulo), commit `e6ccdada0832fd8c4fa452258f5e1a59e5c9e0df`. O build do servidor também passou TypeScript, os 81 testes e compilação de produção.
+
+Na interface publicada, um registro técnico previsto de R$ 0 foi criado, editado, arquivado e localizado na lista de arquivados com opção de restauração. O histórico registra as três ações. Esse registro permanece arquivado e não entra nos totais. Nenhuma movimentação financeira foi realizada no teste.
+
+A grade de contas mensais abriu o formulário com descrição e vencimento do modelo, exigindo escolher Loja ou Pessoal; o formulário foi cancelado sem lançamento. A exportação gerou `icom-administrativo-2026-10.csv`, com cabeçalho de 33 colunas, sem incluir o registro arquivado. Capturas finais salvas: `icom-administrativo-fechamento.jpg` e `icom-administrativo-contas-mensais.jpg`.

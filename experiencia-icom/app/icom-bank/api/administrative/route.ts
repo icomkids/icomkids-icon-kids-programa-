@@ -1,4 +1,4 @@
-import {bankAuthorize,bankOrigin,bankQuery,bankAll,bankError,BankError} from '@/lib/icom-bank/server';
+import {bankAuthorize,bankOrigin,bankQuery,bankAll,bankError,BankError,bankAdminSellers} from '@/lib/icom-bank/server';
 import {adminInput,adminArchiveInput,adminYear,saleCost,saleProfit,returnNet,returnStore,type AdminEntry,type AdminReference} from '@/lib/icom-bank/administrative';
 import {csv} from '@/lib/icom-bank/management';
 
@@ -15,7 +15,7 @@ export async function GET(req:Request){try{
   return new Response(csv(output),{headers:{'Content-Type':'text/csv;charset=utf-8','Content-Disposition':`attachment; filename="icom-administrativo-${year}-${month}.csv"`,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'}});
  }
  const [reference]=await bankQuery<{content:AdminReference}[]>(token,'icom_bank_admin_references?id=eq.1&select=content');
- return Response.json({rows,reference:reference?.content||null},{headers:{'Cache-Control':'private, no-store'}});
+ return Response.json({rows,reference:reference?.content||null,sellers:await bankAdminSellers(token)},{headers:{'Cache-Control':'private, no-store'}});
 }catch(e){return bankError(e);}}
 
 export async function POST(req:Request){try{

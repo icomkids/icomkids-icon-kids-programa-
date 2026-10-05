@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {adminInput,adminArchiveInput,adminYear,adminStats,saleCost,saleProfit,returnNet,returnStore,type AdminEntry} from '../lib/icom-bank/administrative.ts';
+import {adminInput,adminArchiveInput,adminYear,adminStats,saleCost,saleProfit,returnNet,returnStore,adminMoneyInput,adminMoneyText,adminSaleCalculation,adminSaleReceived,defaultSaleCommission,type AdminEntry} from '../lib/icom-bank/administrative.ts';
 const id='aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa';
 const base={id,kind:'VENDA',scope:'LOJA',entry_date:'2026-10-05',description:'Venda teste',category:'',status:'REALIZADO',amount_cents:400000,details:{vehicle:'Teste',plate:'ABC1234',purchase_cents:800000,vehicle_cost_cents:10000,commission_cents:20000,sale_cents:1000000},expected_updated_at:null};
 const row=(override:Partial<AdminEntry>={})=>({...adminInput(base),active:true,created_at:'2026-10-05T12:00:00Z',updated_at:'2026-10-05T12:00:00Z',...override}) as AdminEntry;
@@ -11,3 +11,16 @@ test('Monthly OK without amount remains unknown; explicit zero remains a valid k
 test('Administrative input rejects malformed dates, negative/fractional money, invalid scope and over-allocation',()=>{for(const changed of [{entry_date:'2026-02-30'},{entry_date:'1999-12-31'},{amount_cents:-1},{amount_cents:1.5},{amount_cents:1000000001},{scope:'PESSOAL'},{details:{...base.details,purchase_cents:'100'}},{details:{...base.details,plate:'invalid'}},{kind:'RETORNO',details:{vehicle:'Teste',tax_cents:400001}}])assert.throws(()=>adminInput({...base,...changed}));const v=adminInput({...base,created_by:'forged',active:false,details:{...base.details,secret:'discard'}});assert.equal('created_by' in v,false);assert.equal('active' in v,false);assert.equal('secret' in v.details,false);});
 test('Administrative edit/archive requires version and years cannot exceed supported range',()=>{assert.throws(()=>adminInput({...base,expected_updated_at:'invalid'}));assert.throws(()=>adminArchiveInput({id,active:false}));assert.equal(adminArchiveInput({id,active:false,expected_updated_at:'2026-10-05T12:00:00Z'}).active,false);assert.equal(adminYear('2026'),2026);assert.throws(()=>adminYear('2101'));assert.throws(()=>adminYear('bad'));});
 test('Trade sheet does not invent a cash movement from vehicle debt or manual divisions',()=>{const e=row({kind:'TROCA',amount_cents:null,details:{vehicle:'Teste',paid_cents:10000,debt_cents:20000,profit_share_cents:5000}}),s=adminStats([e],'2026-10');assert.equal(s.income,0);assert.equal(s.expenses,0);assert.equal(s.profit,0);});
+test('Brazilian administrative amounts preserve reais and cents through formatted inputs',()=>{
+ for(const [input,cents] of [['85000',8500000],['85.000,00',8500000],['2.500',250000],['1650,5',165050],['0',0],['0,01',1],['R$ 1.650,00',165000],['10.000.000,00',1000000000]] as const){assert.equal(adminMoneyInput(input),cents);assert.equal(adminMoneyInput(adminMoneyText(cents)),cents);}
+ assert.equal(adminMoneyText(8500000),'85.000,00');assert.equal(adminMoneyText(0),'0,00');
+ for(const bad of ['', '-1', '85.00', '1.2.3', '1,234', '10000000,01','abc'])assert.throws(()=>adminMoneyInput(bad));
+});
+test('Bruno sale example includes only incremental vehicle costs and the fixed seller cost',()=>{
+ const c=adminSaleCalculation({purchase_cents:'85.000,00',vehicle_cost_cents:'2.500,00',commission_cents:adminMoneyText(defaultSaleCommission),sale_cents:'102.000,00'});
+ assert.equal(c.total,8915000);assert.equal(c.profit,1285000);
+ assert.equal(adminSaleReceived(c.sale,'INTEGRAL',''),10200000);assert.equal(adminSaleReceived(c.sale,'PARCIAL','50.000,00'),5000000);assert.equal(adminSaleReceived(c.sale,'PENDENTE',''),0);
+ assert.throws(()=>adminSaleReceived(c.sale,'PARCIAL','102.000,01'));assert.throws(()=>adminSaleCalculation({purchase_cents:'85.00'}));
+ const e=row({details:{vehicle:'Teste',purchase_cents:c.purchase,vehicle_cost_cents:c.cost,commission_cents:c.commission,sale_cents:c.sale},amount_cents:adminSaleReceived(c.sale,'PARCIAL','50.000,00')});
+ assert.equal(saleProfit(e),1285000);assert.equal(adminStats([e],'2026-10').income,5000000);
+});
