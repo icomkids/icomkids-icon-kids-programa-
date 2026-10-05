@@ -1,8 +1,8 @@
 import {parseRiskProfile,type RiskProfile} from './risk.ts';
 export type BankRole='OWNER'|'ADMIN'|'GERENTE'|'FINANCEIRO'|'VENDEDOR';
 export type BankProfile={user_id:string;name:string;role:BankRole;active:boolean};
-export const bankMenu=[['dashboard','Visão Geral'],['clientes','Clientes'],['contratos','Contratos'],['parcelas','Parcelas'],['pagamentos','Pagamentos'],['comprovantes','Comprovantes'],['inadimplencia','Inadimplência'],['veiculos','Veículos'],['relatorios','Relatórios'],['funcionarios','Funcionários'],['configuracoes','Configurações']] as const;
-const permissions:Record<BankRole,string[]>={OWNER:bankMenu.map(([key])=>key),ADMIN:bankMenu.map(([key])=>key),GERENTE:['dashboard','clientes','contratos','parcelas','pagamentos','comprovantes','inadimplencia','veiculos','relatorios'],FINANCEIRO:['dashboard','parcelas','pagamentos','comprovantes','inadimplencia'],VENDEDOR:['dashboard','clientes','contratos']};
+export const bankMenu=[['dashboard','Visão Geral'],['clientes','Clientes'],['contratos','Contratos'],['administrativo','Administrativo'],['parcelas','Parcelas'],['pagamentos','Pagamentos'],['comprovantes','Comprovantes'],['inadimplencia','Inadimplência'],['veiculos','Veículos'],['relatorios','Relatórios'],['funcionarios','Funcionários'],['configuracoes','Configurações']] as const;
+const permissions:Record<BankRole,string[]>={OWNER:bankMenu.map(([key])=>key),ADMIN:bankMenu.filter(([key])=>key!=='administrativo').map(([key])=>key),GERENTE:['dashboard','clientes','contratos','parcelas','pagamentos','comprovantes','inadimplencia','veiculos','relatorios'],FINANCEIRO:['dashboard','parcelas','pagamentos','comprovantes','inadimplencia'],VENDEDOR:['dashboard','clientes','contratos']};
 export const canBank=(role:BankRole,section:string)=>permissions[role]?.includes(section)||false;
 export const bankPath=(path='')=>'/experiencia-icom/icom-bank'+path;
 export const currency=(cents:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(cents/100);
