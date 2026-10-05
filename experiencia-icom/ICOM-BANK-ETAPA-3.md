@@ -22,4 +22,6 @@ Advisor de segurança revisado: para o módulo, apontou as funções SECURITY DE
 
 Pendências futuras: inadimplência detalhada, relatórios avançados, classificação interna de risco, alterações/estornos/renegociação e portal do cliente. A classificação registrada em `ICOM-BANK-PROXIMAS-ETAPAS.md` será manual e não consulta score.
 
-Publicação e teste autenticado do envio binário ainda precisam ser confirmados antes de declarar esta etapa pronta em produção.
+Publicação concluída no Easypanel em 05/10/2026 às 12h26 (Brasília): Docker passou TypeScript, 64 testes e build; logs terminaram em Success. As telas autenticadas de Comprovantes, contrato e parcela foram verificadas no domínio, incluindo dados Pix confirmados.
+
+Teste binário online realizado em registro técnico separado: arquivo fictício JPG enviado pelo formulário autenticado, armazenado no bucket privado, finalizado como COMPROVANTE_ENVIADO e baixado pelo endpoint autenticado. SHA-256 do arquivo baixado corresponde ao original. Uma imagem com extensão diferente do formato foi corretamente rejeitada antes da reserva. Recusa com motivo funcionou, devolvendo a parcela ao status anterior, sem gerar pagamento (paid_cents=0, payment_count=0). O contrato técnico foi CANCELADO e o cliente INATIVO, com auditoria, preservando o histórico privado e excluindo o teste dos saldos ativos. O contrato de teste criado pelo usuário permaneceu ATIVO e não foi alterado. Aprovação/quitação foram testadas na transação SQL com rollback; não foi confirmado pagamento real pela interface.
