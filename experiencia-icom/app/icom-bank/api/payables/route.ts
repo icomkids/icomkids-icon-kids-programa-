@@ -10,7 +10,7 @@ export async function GET(req:Request){try{
 export async function POST(req:Request){try{
  bankOrigin(req);const {token}=await bankAuthorize('administrativo');const text=await req.text();if(text.length>6000)throw new BankError('Dados acima do limite.',413);
  let parsed;try{parsed=payableInput(JSON.parse(text));}catch(e){throw new BankError(e instanceof Error?e.message:'Confira os dados.',400);}
- const names={schedule:'icom_bank_schedule_payable',pay:'icom_bank_pay_trade_debt',reverse:'icom_bank_reverse_payable'};
+ const names={schedule:'icom_bank_schedule_payable',pay:'icom_bank_pay_trade_debt',reverse:'icom_bank_reverse_payable',expense:'icom_bank_save_expense',archive:'icom_bank_archive_expense'};
  const row=await bankQuery(token,'rpc/'+names[parsed.action],'POST',parsed.args);
  return Response.json({row},{headers:{'Cache-Control':'no-store'}});
 }catch(e){return bankError(e);}}
