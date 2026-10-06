@@ -1,0 +1,71 @@
+-- Synthetic cash/stock/security checks; the inner subtransaction always rolls back.
+do $$ declare owner_id uuid;staff uuid;origin uuid:=gen_random_uuid();paid_id uuid:=gen_random_uuid();cost_id uuid:=gen_random_uuid();receipt_id uuid:=gen_random_uuid();other uuid:=gen_random_uuid();repasse_id uuid:=gen_random_uuid();second_paid uuid:=gen_random_uuid();repasse_receipt uuid:=gen_random_uuid();payload jsonb;cost_payload jsonb;next_payload jsonb;items jsonb;item jsonb;e public.icom_bank_admin_entries;st public.icom_bank_stock_vehicles;r public.icom_bank_receivables;today date:=(now() at time zone 'America/Sao_Paulo')::date;begin
+ select user_id into strict owner_id from public.icom_bank_user_access where active and role='OWNER' limit 1;
+ begin
+  perform set_config('request.jwt.claim.sub',owner_id::text,true);
+  payload:=jsonb_build_object('id',origin,'kind','VENDA','scope','LOJA','entry_date',today,'description','TESTE CAIXA ROLLBACK','category','Venda','status','REALIZADO','amount_cents',3000000,'details',jsonb_build_object('plate','TST8C01','vehicle','Carro teste','sale_cents',10000000,'purchase_cents',9000000,'vehicle_cost_cents',100000,'commission_cents',165000,'sale_owner','INVESTIDOR','investor_name','Investidor teste','sale_mode','NORMAL','trade_in',true,'trade_destination','INVESTIDOR','trade_investor_name','Investidor teste','trade_plate','TST8C02','trade_vehicle','Troca teste','trade_year',2020,'trade_value_cents',5000000,'trade_has_debts',false,'payment_method','PIX'));
+  perform public.icom_bank_save_admin_entry(payload,null);
+  perform public.icom_bank_save_admin_entry(payload,null);
+  select * into strict st from public.icom_bank_stock_vehicles where origin_entry_id=origin;
+  if st.source_details->>'trade_destination'<>'INVESTIDOR' then raise exception 'Stock destination lost';end if;
+  cost_payload:=jsonb_build_object('id',paid_id,'kind','CUSTO','scope','LOJA','entry_date',today,'description','TESTE DEVOLUCAO ROLLBACK','category','Capital investidor','status','REALIZADO','amount_cents',3000001,'details',jsonb_build_object('sale_cost_id',origin,'settlement_part','INVESTIDOR','payment_method','PIX'));
+  begin perform public.icom_bank_save_admin_entry(cost_payload,null);raise exception 'Returned uncollected money';exception when raise_exception then if sqlerrm<>'BANK_CASH_LIMIT' then raise;end if;end;
+  select * into strict r from public.icom_bank_receivables where source_entry_id=origin;
+  perform public.icom_bank_receive(r.id,receipt_id,2000000,today,'PIX',null,r.updated_at);
+  items:=public.icom_bank_cash_entries();
+  select value into strict item from jsonb_array_elements(items) where value->>'id'=receipt_id::text;
+  if item->>'cash_source_id'<>origin::text then raise exception 'Receipt source missing';end if;
+  perform public.icom_bank_save_admin_entry(cost_payload||'{"amount_cents":4000000}',null);
+  perform public.icom_bank_save_admin_entry(cost_payload||'{"amount_cents":4000000}',null);
+  begin perform public.icom_bank_save_admin_entry(cost_payload||jsonb_build_object('id',other,'amount_cents',1),null);raise exception 'Investor principal paid twice';exception when raise_exception then if sqlerrm<>'BANK_CASH_LIMIT' then raise;end if;end;
+  select * into strict e from public.icom_bank_admin_entries where id=origin;
+  begin perform public.icom_bank_archive_admin_entry(origin,false,e.updated_at);raise exception 'Payout source archived';exception when raise_exception then if sqlerrm<>'BANK_CASH_LOCKED' then raise;end if;end;
+  cost_payload:=cost_payload||jsonb_build_object('id',cost_id,'amount_cents',265000,'details',jsonb_build_object('sale_cost_id',origin,'settlement_part','CUSTOS','payment_method','PIX'));
+  perform public.icom_bank_save_admin_entry(cost_payload,null);
+  begin perform public.icom_bank_save_admin_entry(cost_payload||jsonb_build_object('id',other,'amount_cents',1),null);raise exception 'Costs paid twice';exception when raise_exception then if sqlerrm<>'BANK_CASH_LIMIT' then raise;end if;end;
+  select * into strict e from public.icom_bank_admin_entries where id=cost_id;
+  begin perform public.icom_bank_save_admin_entry(cost_payload||'{"amount_cents":100000}',e.updated_at-interval '1 second');raise exception 'Stale cost update';exception when raise_exception then if sqlerrm<>'BANK_ADMIN_CHANGED' then raise;end if;end;
+  perform public.icom_bank_archive_admin_entry(cost_id,false,e.updated_at);
+  select * into strict e from public.icom_bank_admin_entries where id=cost_id;
+  perform public.icom_bank_archive_admin_entry(cost_id,true,e.updated_at);
+  cost_payload:=cost_payload||jsonb_build_object('id',other,'details',jsonb_build_object('stock_id',st.id,'vehicle','Teste','plate',st.plate,'payment_method','PIX'));
+  begin perform public.icom_bank_save_admin_entry(cost_payload,null);raise exception 'Prepared investor car';exception when raise_exception then if sqlerrm<>'BANK_CASH_STOCK' then raise;end if;end;
+  -- A different trade stays at the store for repasse.
+  next_payload:=payload||jsonb_build_object('id',other,'amount_cents',5000000,'details',(payload->'details')||'{"plate":"TST8C03","sale_owner":"INVESTIDOR","trade_destination":"REPASSE","trade_plate":"TST8C04"}');
+  perform public.icom_bank_save_admin_entry(next_payload,null);
+  select * into strict st from public.icom_bank_stock_vehicles where origin_entry_id=other;
+  perform public.icom_bank_update_stock(st.id,'DISPONIVEL','Teste repasse',st.updated_at);
+  next_payload:=jsonb_build_object('id',repasse_id,'kind','VENDA','scope','LOJA','entry_date',today,'description','TESTE REPASSE ROLLBACK','category','Repasse','status','REALIZADO','amount_cents',4000000,'details',jsonb_build_object('stock_id',st.id,'vehicle','Troca teste','plate',st.plate,'purchase_cents',st.purchase_cents,'vehicle_cost_cents',0,'commission_cents',0,'sale_cents',5100000,'sale_owner','LOJA','sale_mode','REPASSE','trade_in',false,'payment_method','PIX'));
+  perform public.icom_bank_save_admin_entry(next_payload,null);
+  select * into strict st from public.icom_bank_stock_vehicles where id=st.id;
+  if st.sold_entry_id<>repasse_id or st.status<>'VENDIDO' then raise exception 'Repasse stock not closed';end if;
+  select * into strict e from public.icom_bank_admin_entries where id=repasse_id;
+  begin perform public.icom_bank_save_admin_entry(next_payload||jsonb_build_object('details',(next_payload->'details')||'{"commission_cents":165000}'),e.updated_at);raise exception 'Fixed commission forced on repasse';exception when raise_exception then if sqlerrm<>'BANK_CASH_INVALID' then raise;end if;end;
+  select * into strict r from public.icom_bank_receivables where source_entry_id=repasse_id;
+  perform public.icom_bank_receive(r.id,repasse_receipt,1100000,today,'PIX',null,r.updated_at);
+  if icom_bank_internal.cash_collected(other,today)<>10000000 then raise exception 'Trade capital not forwarded to original investor operation';end if;
+  items:=public.icom_bank_cash_entries();select value into strict item from jsonb_array_elements(items) where value->>'id'=repasse_id::text;
+  if item->>'cash_stock_origin_id'<>other::text then raise exception 'Trade parent link missing';end if;
+  perform public.icom_bank_save_admin_entry(jsonb_build_object('id',second_paid,'kind','CUSTO','scope','LOJA','entry_date',today,'description','TESTE INVESTIDOR VIA TROCA','category','Capital','status','REALIZADO','amount_cents',9000000,'details',jsonb_build_object('sale_cost_id',other,'settlement_part','INVESTIDOR','payment_method','PIX')),null);
+  select * into strict e from public.icom_bank_admin_entries where id=repasse_id;
+  begin perform public.icom_bank_archive_admin_entry(repasse_id,false,e.updated_at);raise exception 'Resold capital source reversed after payout';exception when raise_exception then if sqlerrm<>'BANK_CASH_LOCKED' then raise;end if;end;
+  select * into strict r from public.icom_bank_receivables where id=r.id;
+  begin perform public.icom_bank_reverse_receipt(r.id,repasse_receipt,'Teste rollback',r.updated_at);raise exception 'Trade receipt reversed after investor payout';exception when raise_exception then if sqlerrm<>'BANK_CASH_LOCKED' then raise;end if;end;
+  -- Changing investor/destination validates even through direct RPC.
+  begin perform public.icom_bank_save_admin_entry(payload||jsonb_build_object('id',gen_random_uuid(),'details',(payload->'details')||'{"trade_plate":"TST8C05","sale_owner":"OTHER"}'),null);raise exception 'Invalid owner';exception when raise_exception then if sqlerrm<>'BANK_CASH_INVALID' then raise;end if;end;
+  for staff in select user_id from public.icom_bank_user_access where active and role<>'OWNER' loop
+   perform set_config('request.jwt.claim.sub',staff::text,true);execute 'set local role authenticated';
+   begin perform public.icom_bank_cash_entries();raise exception 'Staff read private cash';exception when insufficient_privilege then null;end;
+   begin perform public.icom_bank_save_admin_entry(payload,null);raise exception 'Staff changed private ownership';exception when insufficient_privilege then null;end;
+   if exists(select 1 from public.icom_bank_admin_history) then raise exception 'Private financial history leaked';end if;
+   execute 'reset role';
+  end loop;
+  perform set_config('request.jwt.claim.sub','',true);
+  begin perform public.icom_bank_cash_entries();raise exception 'Missing auth read';exception when insufficient_privilege then null;end;
+  execute 'set local role anon';
+  begin perform public.icom_bank_cash_entries();raise exception 'Anon read';exception when insufficient_privilege then null;end;
+  execute 'reset role';
+  raise exception using errcode='P0002',message='ROLLBACK_CASH_VALIDATION';
+ exception when no_data_found then if sqlerrm<>'ROLLBACK_CASH_VALIDATION' then raise;end if;end;
+ if exists(select 1 from public.icom_bank_admin_entries where id in(origin,paid_id,cost_id,receipt_id,other,repasse_id)) then raise exception 'Cash fixture persisted';end if;
+end $$;

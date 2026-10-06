@@ -1,10 +1,10 @@
-import {bankAuthorize,bankOrigin,bankAll,bankQuery,bankError,BankError} from '@/lib/icom-bank/server';
+import {bankAuthorize,bankOrigin,bankAll,bankCashEntries,bankQuery,bankError,BankError} from '@/lib/icom-bank/server';
 import {validId} from '@/lib/icom-bank/contracts';
 import {payableInput} from '@/lib/icom-bank/payables';
 export async function GET(req:Request){try{
  const {token}=await bankAuthorize('administrativo'),id=new URL(req.url).searchParams.get('id');
  if(id){if(!validId(id))throw new BankError('Conta inválida.',400);const [history,files]=await Promise.all([bankAll(token,`icom_bank_payable_history?payable_id=eq.${id}&select=*&order=created_at.desc,id.asc`),bankAll(token,`icom_bank_payable_files?payable_id=eq.${id}&status=eq.ANEXADO&select=id,payable_id,mime_type,size_bytes,created_at&order=created_at.desc,id.asc`)]);return Response.json({history,files},{headers:{'Cache-Control':'no-store'}});}
- const [rows,stock,entries]=await Promise.all([bankAll(token,'icom_bank_payables?select=*&order=created_at.desc,id.asc'),bankAll(token,'icom_bank_stock_vehicles?select=*&order=entry_date.desc,id.asc'),bankAll(token,'icom_bank_admin_entries?select=*&order=entry_date.desc,id.asc')]);
+ const [rows,stock,entries]=await Promise.all([bankAll(token,'icom_bank_payables?select=*&order=created_at.desc,id.asc'),bankAll(token,'icom_bank_stock_vehicles?select=*&order=entry_date.desc,id.asc'),bankCashEntries(token)]);
  return Response.json({rows,stock,entries},{headers:{'Cache-Control':'no-store'}});
 }catch(e){return bankError(e);}}
 export async function POST(req:Request){try{

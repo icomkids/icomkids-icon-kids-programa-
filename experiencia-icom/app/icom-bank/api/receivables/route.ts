@@ -1,10 +1,10 @@
-import {bankAuthorize,bankOrigin,bankAll,bankQuery,bankError,BankError} from '@/lib/icom-bank/server';
+import {bankAuthorize,bankOrigin,bankAll,bankCashEntries,bankQuery,bankError,BankError} from '@/lib/icom-bank/server';
 import {validId} from '@/lib/icom-bank/contracts';
 import {receivableInput} from '@/lib/icom-bank/receivables';
 export async function GET(req:Request){try{
  const {token}=await bankAuthorize('administrativo'),id=new URL(req.url).searchParams.get('id');
  if(id){if(!validId(id))throw new BankError('Conta inválida.',400);const history=await bankAll(token,`icom_bank_receivable_history?receivable_id=eq.${id}&select=*&order=created_at.desc,id.asc`);return Response.json({history},{headers:{'Cache-Control':'no-store'}});}
- const [rows,receipts,entries]=await Promise.all([bankAll(token,'icom_bank_receivables?select=*&order=created_at.desc,id.asc'),bankAll(token,'icom_bank_receipts?select=*&order=created_at.desc,id.asc'),bankAll(token,'icom_bank_admin_entries?select=*&order=entry_date.desc,id.asc')]);
+ const [rows,receipts,entries]=await Promise.all([bankAll(token,'icom_bank_receivables?select=*&order=created_at.desc,id.asc'),bankAll(token,'icom_bank_receipts?select=*&order=created_at.desc,id.asc'),bankCashEntries(token)]);
  return Response.json({rows,receipts,entries},{headers:{'Cache-Control':'no-store'}});
 }catch(e){return bankError(e);}}
 export async function POST(req:Request){try{
