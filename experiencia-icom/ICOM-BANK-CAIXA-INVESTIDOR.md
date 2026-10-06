@@ -1,41 +1,44 @@
 # Caixa, investidores e destino da troca
 
+## Regra confirmada por Bruno · 06/10/2026
+
+O lucro registrado já é líquido: venda − compra − custos adicionais − vendedor. Os custos não são reservados novamente fora do valor do investidor.
+
+Quando o mesmo investidor recebe a troca e todo o restante foi recebido em dinheiro:
+
+- Recebimento: R$ 72.000,00.
+- Lucro líquido da loja: R$ 14.150,00.
+- Dinheiro a devolver ao investidor: R$ 57.850,00.
+- O carro da troca também fica com o investidor; não representa saldo de caixa.
+
+O alvo de devolução é custo total da venda menos crédito líquido da troca destinada ao mesmo investidor. IDs cadastrados identificam o mesmo investidor; nomes normalizados são fallback para registros anteriores. Recebimentos parciais reservam primeiro esse alvo, liberando somente o excedente recebido para a loja.
+
+Custos e débitos pagos pela loja em nome do investidor abatem o valor a devolver, sem descontar novamente o lucro. Após devolver integralmente o dinheiro, o sistema impede pagar os mesmos custos novamente em nome dele. Despesas gerais sem vínculo continuam sendo saídas reais adicionais.
+
+Se a troca fica para revenda ou vai a outro investidor, ela não abate a devolução do investidor original. Débitos de uma troca retida pela loja continuam reservados separadamente. Capital recebido na revenda da troca se associa à operação original sem duplicar entradas ou reservas.
+
 ## Uso
 
-1. Administrativo → Vendas: informe se o carro vendido é da loja ou de um investidor; identifique o investidor.
-2. Na troca, escolha Loja, Repasse ou Investidor. Se o mesmo investidor recebe a troca, use o mesmo nome nos dois campos.
-3. Veículos mostra o destino junto ao carro. Um carro destinado ao investidor não oferece preparação ou revenda pela loja.
-4. Para repassar, marque o carro como Disponível e use Registrar repasse. Compra e preparação são preenchidas do estoque; informe preço, recebimento e data. O custo fixo do vendedor é zero neste fluxo.
-5. Custos da loja → Novo lançamento: selecione a venda e a finalidade ao pagar custos, devolver capital ao investidor ou retirar capital reservado do repasse. IPVA, multas e quitação continuam em Contas a pagar.
+1. Administrativo → Vendas: informe o dono do carro e selecione o investidor quando aplicável.
+2. Na troca, escolha Loja, Repasse ou Investidor e selecione o destinatário. O formulário mostra “Valor a devolver ao investidor” e “Lucro líquido disponível da loja”.
+3. Para registrar uma devolução efetivamente feita, use Custos da loja → Novo lançamento → Venda vinculada → Pagar valor reservado ao investidor. Não há transferência bancária automática.
+4. Um custo pago em nome do investidor deve ser vinculado à mesma venda, finalidade CUSTOS. IPVA, multas e quitação são baixados em Contas a pagar.
+5. Carros destinados ao investidor não oferecem preparação/revenda pela loja. Para repasse da loja, marque Disponível e use Registrar repasse: compra/preparação vêm do estoque, vendedor custa zero.
 
-## Separação do dinheiro
+Venda de veículo próprio conserva o caixa recebido, descontados débitos reservados e saídas. Repasse R$ 30 mil → R$ 31 mil reserva R$ 30 mil e libera R$ 1 mil; preparação reduz esse resultado. Prejuízos concluídos são descontados uma vez. Previsto, arquivado e estoque não viram dinheiro recebido.
 
-O cálculo do lucro permanece venda − compra − custos adicionais − vendedor. Recebimentos previstos, carros em estoque e contas ainda pendentes não viram dinheiro recebido.
-
-- Venda de carro da loja: dinheiro efetivamente recebido pertence à loja, descontados os débitos da troca ainda reservados e as saídas registradas.
-- Venda de investidor: reserva primeiro o capital, depois os custos não pagos. Somente o excedente recebido fica disponível.
-- Exemplo confirmado: venda R$ 100 mil, compra R$ 90 mil, custo R$ 1 mil, vendedor R$ 1.650, troca R$ 50 mil para o mesmo investidor e recebimento R$ 50 mil. Reserva de investidor R$ 40 mil, custos R$ 2.650, disponível R$ 7.350.
-- Repasse R$ 30 mil → R$ 31 mil: R$ 30 mil ficam como capital reservado, R$ 1 mil como disponível. Preparação reduz esse resultado. Prejuízo de repasse concluído é descontado uma vez, inclusive depois de pagar os custos.
-- Se a troca de uma venda de investidor fica para revenda, seu capital recebido é associado à operação original. Não há entrada duplicada nem duas reservas para o mesmo capital.
-- Devolver capital reduz o dinheiro registrado e a reserva correspondente; não diminui novamente o lucro. Pagar um custo vinculado consome a reserva e registra a saída uma vez.
-- Vendas anteriores sem dono/destino definidos ficam sinalizadas. Seus recebimentos não são considerados livres até o proprietário revisar o cadastro. A publicação não escolhe esses dados pelo usuário.
-
-O saldo disponível acumula registros até hoje, incluindo despesas pessoais já pagas. O fechamento mensal conserva o movimento bruto do período, claramente identificado. Não há saldo bancário inicial, consulta ao banco ou transferência automática neste recurso.
-
-Custos devem ser vinculados à venda para consumir a reserva. Uma despesa geral sem vínculo continua sendo uma saída geral; o sistema não presume que duas despesas com o mesmo valor são a mesma coisa. A preparação já ligada ao estoque e a baixa de débitos em Contas a pagar são reconhecidas pelos vínculos do banco de dados.
+Saldo disponível é acumulado até hoje, com despesas pessoais pagas. Fechamento mensal mostra o movimento bruto. Vendas anteriores sem dono/destino definidos ficam retidas até revisão do proprietário; a publicação não preenche esses dados por ele.
 
 ## Integridade e acesso
 
-Dados mantidos no livro e históricos privados existentes, com RLS do proprietário. `icom_bank_cash_entries` verifica usuário autenticado e perfil OWNER, usa search_path vazio e nega anon. Associações de caixa são geradas pelo servidor e não aceitas no payload de escrita.
+Livro e históricos privados conservam RLS OWNER. `icom_bank_cash_entries` exige usuário autenticado OWNER; vínculos de caixa são gerados no banco, não aceitos no payload. Helpers novos ficam em schema interno com EXECUTE negado a PUBLIC/anon/authenticated e search_path vazio.
 
-Saídas vinculadas validam limites, origem realizada, data, concorrência e duplicação. Uma venda com devoluções não pode ser alterada/arquivada sem corrigir essas saídas. Recebimentos e revendas que sustentam capital já devolvido também ficam protegidos; primeiro corrija a devolução.
+Saídas validam dinheiro recebido, finalidade, origem, data, duplicação e concorrência. Custos, devoluções e débitos pagos para o mesmo investidor compartilham um limite. Vendas, recebimentos e revendas que sustentam pagamentos ficam protegidos até corrigir seus vínculos.
 
-Advisor aponta a execução autenticada de SECURITY DEFINER intencional. A autorização interna OWNER foi testada para todos os perfis ativos; não houve ampliação de acesso. Referência: [orientação do Supabase](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable).
+Advisor conserva os avisos anteriores de RPCs SECURITY DEFINER intencionais com autorização interna; novos helpers não ampliam acesso. [Referência do Supabase](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable).
 
 ## Validação
 
-126 testes unitários aprovados, incluindo 19 casos de caixa. Fixtures SQL de caixa, contas a receber e contas a pagar foram executadas com rollback, sem registros financeiros de teste persistidos. Cobrem capital parcial, pagamento de custos, repetição, conflito de versão, destino investidor, repasse, associação da revenda à origem, reversão após devolução e acesso negado para funcionários/anon.
+136 testes unitários, incluindo 72.000/14.150/57.850, recebimento parcial, despesa vinculada, débitos, IDs de investidores, repasse/revenda e prejuízo sem duplicação. Fixtures SQL de caixa, lucro líquido, contas a pagar/receber e investidores verificadas com rollback: limites após devolução integral, custos/débitos antes da devolução, reversão de débito, idempotência e acesso negado. Nenhum lançamento de teste persiste.
 
-Build Next.js e TypeScript aprovados. Prévia isolada confirmou R$ 7.350 disponíveis no exemplo, R$ 1 mil adicionais no repasse e ausência de novo desconto ao pagar R$ 2.650 de custos. Layout móvel com largura útil 375px e scrollWidth 375px.
-
-Migrações criadas via CLI: 20261006163916, 20261006165712 e 20261006170027. Nenhuma venda real foi reclassificada ou alterada para testes.
+Migração: `20261006190615_icom_bank_investor_net_profit.sql`. Nenhuma venda existente, propriedade ou pagamento foi alterado nos testes.

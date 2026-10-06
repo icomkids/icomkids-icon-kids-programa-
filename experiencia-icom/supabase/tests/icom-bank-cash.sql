@@ -17,7 +17,7 @@ do $$ declare owner_id uuid;staff uuid;origin uuid:=gen_random_uuid();paid_id uu
   if item->>'cash_source_id'<>origin::text then raise exception 'Receipt source missing';end if;
   perform public.icom_bank_save_admin_entry(cost_payload||'{"amount_cents":4000000}',null);
   perform public.icom_bank_save_admin_entry(cost_payload||'{"amount_cents":4000000}',null);
-  begin perform public.icom_bank_save_admin_entry(cost_payload||jsonb_build_object('id',other,'amount_cents',1),null);raise exception 'Investor principal paid twice';exception when raise_exception then if sqlerrm<>'BANK_CASH_LIMIT' then raise;end if;end;
+  begin perform public.icom_bank_save_admin_entry(cost_payload||jsonb_build_object('id',other,'amount_cents',265001),null);raise exception 'Investor net return limit exceeded';exception when raise_exception then if sqlerrm<>'BANK_CASH_LIMIT' then raise;end if;end;
   select * into strict e from public.icom_bank_admin_entries where id=origin;
   begin perform public.icom_bank_archive_admin_entry(origin,false,e.updated_at);raise exception 'Payout source archived';exception when raise_exception then if sqlerrm<>'BANK_CASH_LOCKED' then raise;end if;end;
   cost_payload:=cost_payload||jsonb_build_object('id',cost_id,'amount_cents',265000,'details',jsonb_build_object('sale_cost_id',origin,'settlement_part','CUSTOS','payment_method','PIX'));
