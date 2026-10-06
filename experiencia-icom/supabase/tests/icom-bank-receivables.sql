@@ -1,0 +1,77 @@
+-- Every fixture and financial movement is rolled back inside the subtransaction.
+do $$ declare owner_id uuid;staff uuid;origin uuid:=gen_random_uuid();manual uuid:=gen_random_uuid();cash uuid:=gen_random_uuid();existing uuid:=gen_random_uuid();second uuid:=gen_random_uuid();legacy uuid:=gen_random_uuid();payload jsonb;bad jsonb;r public.icom_bank_receivables;e public.icom_bank_admin_entries;stamp timestamptz;n bigint;today date:=(now() at time zone 'America/Sao_Paulo')::date;begin
+ select user_id into owner_id from public.icom_bank_user_access where active and role='OWNER' limit 1;
+ if owner_id is null then raise exception 'Owner fixture missing';end if;
+ begin
+  perform set_config('request.jwt.claim.sub',owner_id::text,true);
+  payload:=jsonb_build_object('id',origin,'kind','VENDA','scope','LOJA','entry_date',today,'description','TESTE RECEBER ROLLBACK','category','Venda','status','PREVISTO','amount_cents',2000000,'details',jsonb_build_object('plate','TST4R56','vehicle','Carro teste','sale_cents',10200000,'purchase_cents',8500000,'vehicle_cost_cents',250000,'commission_cents',165000,'trade_in',true,'trade_plate','TST4R57','trade_vehicle','Troca teste','trade_year',2018,'trade_value_cents',5000000,'trade_has_debts',true,'trade_ipva_cents',200000,'trade_fines_cents',100000,'trade_has_payoff',true,'trade_payoff_cents',200000,'trade_payoff_bank','Itaú','payment_method','FINANCIAMENTO','payment_bank','Itaú'));
+  perform public.icom_bank_save_admin_entry(payload,null);
+  select * into strict r from public.icom_bank_receivables where source_entry_id=origin;
+  if r.amount_cents<>5700000 or r.kind<>'BANCO' or r.bank<>'Itaú' or r.due_date is not null then raise exception 'Wrong planned balance or guessed due date';end if;
+  begin perform public.icom_bank_receive(r.id,cash,1000000,today,'PIX',null,r.updated_at);raise exception 'Planned received';exception when raise_exception then if sqlerrm<>'BANK_RECEIVABLE_INVALID' then raise;end if;end;
+  select * into strict e from public.icom_bank_admin_entries where id=origin;
+  perform public.icom_bank_save_admin_entry(payload||'{"status":"REALIZADO"}',e.updated_at);
+  select * into strict r from public.icom_bank_receivables where source_entry_id=origin;
+  if r.amount_cents<>3700000 then raise exception 'Initial sale cash not deducted';end if;
+  stamp:=r.updated_at;
+  perform public.icom_bank_receive(r.id,cash,1000000,today,'PIX',null,stamp);
+  perform public.icom_bank_receive(r.id,cash,1000000,today,'PIX',null,stamp);
+  select * into strict r from public.icom_bank_receivables where id=r.id;
+  if r.received_cents<>1000000 or (select count(*) from public.icom_bank_receipts where id=cash)<>1 or (select amount_cents from public.icom_bank_admin_entries where id=origin)<>2000000 or (select amount_cents from public.icom_bank_admin_entries where id=cash)<>1000000 or (select count(*) from public.icom_bank_admin_history where entry_id=cash)<>1 then raise exception 'Duplicate or overwritten initial cash';end if;
+  begin perform public.icom_bank_receive(r.id,gen_random_uuid(),1,today,'PIX',null,stamp);raise exception 'Stale receipt accepted';exception when raise_exception then if sqlerrm<>'BANK_RECEIVABLE_CHANGED' then raise;end if;end;
+  begin perform public.icom_bank_receive(r.id,gen_random_uuid(),2700001,today,'PIX',null,r.updated_at);raise exception 'Overpaid';exception when raise_exception then if sqlerrm<>'BANK_RECEIVABLE_INVALID' then raise;end if;end;
+  begin perform public.icom_bank_receive(r.id,gen_random_uuid(),1.5,today,'PIX',null,r.updated_at);raise exception 'Fractional receipt';exception when raise_exception then if sqlerrm<>'BANK_RECEIVABLE_INVALID' then raise;end if;end;
+  begin perform public.icom_bank_receive(r.id,gen_random_uuid(),1,today+1,'PIX',null,r.updated_at);raise exception 'Future receipt';exception when raise_exception then if sqlerrm<>'BANK_RECEIVABLE_INVALID' then raise;end if;end;
+  select * into strict e from public.icom_bank_admin_entries where id=origin;
+  begin perform public.icom_bank_save_admin_entry(payload||'{"status":"REALIZADO","amount_cents":2100000}',e.updated_at);raise exception 'Paid origin changed';exception when raise_exception then if sqlerrm<>'BANK_RECEIVABLE_SOURCE_LOCKED' then raise;end if;end;
+  begin perform public.icom_bank_archive_admin_entry(e.id,false,e.updated_at);raise exception 'Paid origin archived';exception when raise_exception then if sqlerrm<>'BANK_RECEIVABLE_SOURCE_LOCKED' then raise;end if;end;
+  select * into strict e from public.icom_bank_admin_entries where id=cash;
+  begin perform public.icom_bank_archive_admin_entry(e.id,false,e.updated_at);raise exception 'Receipt independently archived';exception when raise_exception then if sqlerrm<>'BANK_RECEIVABLE_LEDGER_LOCKED' then raise;end if;end;
+  perform public.icom_bank_reverse_receipt(r.id,cash,'Correção teste',r.updated_at);
+  select * into strict r from public.icom_bank_receivables where id=r.id;select * into strict e from public.icom_bank_admin_entries where id=cash;
+  if r.received_cents<>0 or e.active or (select active from public.icom_bank_receipts where id=cash) then raise exception 'Partial reversal inconsistent';end if;
+  begin perform public.icom_bank_archive_admin_entry(e.id,true,e.updated_at);raise exception 'Receipt restored independently';exception when raise_exception then if sqlerrm<>'BANK_RECEIVABLE_LEDGER_LOCKED' then raise;end if;end;
+  perform public.icom_bank_save_admin_entry(jsonb_build_object('id',existing,'kind','ENTRADA','scope','LOJA','entry_date',today,'description','TESTE ENTRADA ROLLBACK','category','','status','REALIZADO','amount_cents',1000000,'details','{"payment_method":"PIX"}'::jsonb),null);
+  select count(*) into n from public.icom_bank_admin_entries;
+  perform public.icom_bank_receive(r.id,second,1000000,today,'PIX',existing,r.updated_at);
+  if (select count(*) from public.icom_bank_admin_entries)<>n or (select ledger_entry_id from public.icom_bank_receipts where id=second)<>existing then raise exception 'Existing cash duplicated';end if;
+  select * into strict r from public.icom_bank_receivables where id=r.id;
+  perform public.icom_bank_reverse_receipt(r.id,second,'Correção vínculo teste',r.updated_at);select * into strict r from public.icom_bank_receivables where id=r.id;
+  begin perform public.icom_bank_receive(r.id,gen_random_uuid(),1000000,today,'PIX',existing,r.updated_at);raise exception 'Reversed cash linked twice';exception when raise_exception then if sqlerrm<>'BANK_RECEIVABLE_EXISTING' then raise;end if;end;
+  perform public.icom_bank_receive(r.id,gen_random_uuid(),3700000,today,'PIX',null,r.updated_at);select * into strict r from public.icom_bank_receivables where id=r.id;
+  if r.received_cents<>r.amount_cents then raise exception 'Full settlement failed';end if;
+  begin perform public.icom_bank_receive(r.id,gen_random_uuid(),1,today,'PIX',null,r.updated_at);raise exception 'Already settled received';exception when raise_exception then if sqlerrm<>'BANK_RECEIVABLE_INVALID' then raise;end if;end;
+  payload:=jsonb_build_object('id',manual,'title','TESTE MANUAL ROLLBACK','payer','Cliente','kind','CLIENTE','bank','','notes','','amount_cents',20000,'due_date',today);
+  select count(*) into n from public.icom_bank_admin_entries;
+  perform public.icom_bank_save_receivable(payload,null);perform public.icom_bank_save_receivable(payload,null);
+  if (select count(*) from public.icom_bank_admin_entries)<>n then raise exception 'Unpaid manual obligation moved cash';end if;
+  for bad in select value from jsonb_array_elements('[{"amount_cents":0},{"amount_cents":1.5},{"amount_cents":"100"},{"due_date":null},{"due_date":"2026-02-30"},{"kind":"OTHER"},{"title":true}]'::jsonb) loop
+   begin perform public.icom_bank_save_receivable(payload||jsonb_build_object('id',gen_random_uuid())||bad,null);raise exception 'Invalid manual account';exception when raise_exception then if sqlerrm<>'BANK_RECEIVABLE_INVALID' then raise;end if;end;
+  end loop;
+  select * into strict r from public.icom_bank_receivables where id=manual;
+  perform public.icom_bank_archive_receivable(manual,false,r.updated_at);select * into strict r from public.icom_bank_receivables where id=manual;
+  perform public.icom_bank_archive_receivable(manual,true,r.updated_at);select * into strict r from public.icom_bank_receivables where id=manual;
+  if not r.active then raise exception 'Manual restore failed';end if;
+  for staff in select user_id from public.icom_bank_user_access where active and role<>'OWNER' loop
+   perform set_config('request.jwt.claim.sub',staff::text,true);execute 'set local role authenticated';
+   if exists(select 1 from public.icom_bank_receivables) or exists(select 1 from public.icom_bank_receipts) or exists(select 1 from public.icom_bank_receivable_history) then raise exception 'Staff saw private receivables';end if;
+   begin perform public.icom_bank_save_receivable(payload,null);raise exception 'Staff created receivable';exception when insufficient_privilege then null;end;
+   begin perform public.icom_bank_receive(manual,gen_random_uuid(),1,today,'PIX',null,r.updated_at);raise exception 'Staff received';exception when insufficient_privilege then null;end;
+   begin perform public.icom_bank_reverse_receipt(manual,cash,'teste',r.updated_at);raise exception 'Staff reversed';exception when insufficient_privilege then null;end;
+   begin perform public.icom_bank_archive_receivable(manual,false,r.updated_at);raise exception 'Staff archived';exception when insufficient_privilege then null;end;
+   execute 'reset role';
+  end loop;
+  perform set_config('request.jwt.claim.sub',owner_id::text,true);
+  -- Legacy fields remain incomplete; they must never invent an amount to receive.
+  insert into public.icom_bank_admin_entries(id,kind,scope,entry_date,description,category,status,amount_cents,details,created_by) values(legacy,'VENDA','LOJA',today,'TESTE LEGACY ROLLBACK','','REALIZADO',0,'{"sale_cents":10200000}',owner_id);
+  if exists(select 1 from public.icom_bank_receivables where source_entry_id=legacy) then raise exception 'Legacy unknown trade imported';end if;
+  select * into strict e from public.icom_bank_admin_entries where id=legacy;
+  e.details:='{"sale_cents":10200000,"trade_in":true,"trade_value_cents":5000000,"trade_has_debts":true,"trade_has_payoff":false}';
+  if icom_bank_internal.sale_receivable_amount(e) is not null then raise exception 'Missing trade debts invented';end if;
+  e.details:='{"sale_cents":10200000.5,"trade_in":false}';if icom_bank_internal.sale_receivable_amount(e) is not null then raise exception 'Fractional source accepted';end if;
+  if exists(select 1 from public.icom_bank_audit_logs where entity_id in(manual,(select id from public.icom_bank_receivables where source_entry_id=origin)) and details<>'{"module":"CONTAS_A_RECEBER"}'::jsonb) then raise exception 'Financial details leaked to general audit';end if;
+  if not exists(select 1 from public.icom_bank_receivable_history where receivable_id=manual) then raise exception 'Private history missing';end if;
+  raise exception using errcode='P0002',message='ROLLBACK_RECEIVABLE_VALIDATION';
+ exception when no_data_found then if sqlerrm<>'ROLLBACK_RECEIVABLE_VALIDATION' then raise;end if;end;
+ if exists(select 1 from public.icom_bank_admin_entries where id in(origin,cash,existing,legacy)) or exists(select 1 from public.icom_bank_receivables where id=manual or source_entry_id=origin) then raise exception 'Receivable fixture persisted';end if;
+end $$;

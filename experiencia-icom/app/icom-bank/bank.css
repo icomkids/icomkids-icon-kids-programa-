@@ -39,3 +39,11 @@
 @media(max-width:700px){.bank-agenda-days{grid-template-columns:repeat(8,110px)}.bank-agenda-alert{align-items:stretch;flex-direction:column}.bank-agenda-person{align-items:stretch;flex-direction:column}.bank-agenda-tabs button{flex:1}.bank-payable-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.bank-agenda-card strong{font-size:22px}.bank-agenda-card{padding:15px}}
 
 .bank-app button.bank-agenda-card{display:block;padding:22px 18px}.bank-app button.bank-agenda-card small{display:block}
+
+/* Receivables share the daily agenda without inheriting global form borders. */
+.bank-receivable-form fieldset{border:0;padding:0;margin:0;min-width:0}
+.bank-receivable-form textarea{width:100%;min-height:72px;resize:vertical;font:inherit;border:1px solid #cbd5e1;border-radius:8px;padding:10px}
+.bank-receipt-history-row{display:flex;justify-content:space-between;align-items:center;gap:16px;border-bottom:1px solid #e2e8f0;padding:12px 0}
+.bank-receipt-history-row small{display:block;color:#64748b;margin-top:4px}
+.bank-receivable-legacy summary{cursor:pointer;font-weight:700;color:#334155}
+@media(max-width:640px){.bank-receipt-history-row{align-items:flex-start;flex-direction:column}.bank-receivable-form .bank-panel-title{align-items:flex-start;flex-direction:column}}
