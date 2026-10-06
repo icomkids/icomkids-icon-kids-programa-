@@ -8,7 +8,7 @@ O botão Contas a pagar do Administrativo agora usa texto branco sobre o fundo a
 2. Escolha Loja ou Pessoal. No pessoal, identifique Bruno, Gisela ou Bruno e Gisela.
 3. Informe descrição, valor e primeiro vencimento. Valores são formatados em reais, com duas casas decimais.
 4. Escolha Avulsa ou Mensal e a quantidade explícita de meses (2 a 60). O formulário informa a data final; não existe repetição indefinida. Em meses curtos, dia 30/31 usa o último dia, voltando ao dia original nos meses seguintes.
-5. Após pagar fora do sistema, confirme o pagamento. O cadastro de vencimentos não cria saída de caixa; a baixa cria ou vincula uma única saída, no escopo correto. Não há transferência bancária automática.
+5. Cada conta pendente tem um botão verde “Pagar conta” junto do valor. Clique nele, informe data e forma de pagamento e confirme que já pagou fora do sistema. Finalize em “Confirmar pagamento”. A agenda e o saldo livre são atualizados após a baixa. O cadastro de vencimentos não cria saída de caixa; a baixa cria ou vincula uma única saída, no escopo correto. Não há transferência bancária automática.
 
 A agenda destaca vencidos, hoje, próximos sete dias e o mês. Cada dia pode ser selecionado. Os filtros Loja/Pessoal/Veículos, identificação pessoal, busca, mês, data específica, pagos e arquivados ficam na mesma página. Contas sem vencimento continuam visíveis nas prioridades e têm aviso para definir a data.
 
