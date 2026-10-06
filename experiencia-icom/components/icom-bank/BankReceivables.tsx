@@ -1,4 +1,5 @@
 'use client';
+import BankFinancialNavigation from './BankFinancialNavigation';
 import {useEffect,useRef,useState} from 'react';
 import BankReceivableForm,{receiptMethodLabels} from './BankReceivableForm';
 import {bankPath,brazilDay,currency} from '@/lib/icom-bank/model';
@@ -21,7 +22,8 @@ export default function BankReceivables({initial}:{initial:ReceivablesData}){
  function open(id:string,action:'save'|'receive'|'reverse',receipt?:string){close();setForm({id,action,receipt});}
  const cards=[{key:'overdue' as const,label:'EM ATRASO',tone:'red',hint:'Vencimento anterior a hoje'},{key:'today' as const,label:'VENCEM HOJE',tone:'gold',hint:day(today)},{key:'week' as const,label:'PRÓXIMOS 7 DIAS',tone:'navy',hint:`Até ${day(addPayableDays(today,7))}`},{key:'month' as const,label:'A RECEBER NO MÊS',tone:'green',hint:month.split('-').reverse().join('/')}];
  return <><div className="bank-heading"><div><p className="bank-eyebrow">ADMINISTRATIVO · AGENDA DE RECEBIMENTOS</p><h1>Contas a receber</h1><p>Organize os valores de clientes, financiamentos e cartões. Confirme somente o que já entrou.</p></div><span className="bank-pill gold">Saldo pendente: {currency(stats.pending)}</span></div>
- <div className="bank-actions"><a href={bankPath('/administrativo')}>← Administrativo</a><a href={bankPath('/administrativo/contas-a-pagar')}>Contas a pagar</a><button className="bank-primary" disabled={busy} onClick={()=>open('new','save')}>+ Cadastrar conta</button><button disabled={busy} onClick={()=>void refresh()}>Atualizar lista</button></div>
+ <BankFinancialNavigation active="receivables"/>
+ <div className="bank-actions"><a href={bankPath('/administrativo')}>← Administrativo</a><button className="bank-primary" disabled={busy} onClick={()=>open('new','save')}>+ Cadastrar conta</button><button disabled={busy} onClick={()=>void refresh()}>Atualizar lista</button></div>
  <div className="bank-agenda-tabs" role="group" aria-label="Quem paga">{[['all','Todas'],['CLIENTE','Clientes'],['BANCO','Financiamentos'],['CARTAO','Cartões']].map(([value,label])=><button key={value} aria-pressed={kind===value} className={kind===value?'bank-agenda-selected':''} onClick={()=>setKind(value)}>{label}</button>)}</div>
  <div className="bank-kpis bank-payable-kpis">{cards.map(c=><button className={'bank-kpi bank-agenda-card '+c.tone} key={c.key} aria-pressed={view===c.key} onClick={()=>setView(c.key)}><span>{c.label}</span><strong>{currency(stats[c.key].amount)}</strong><small>{stats[c.key].count} conta(s) · {c.hint}</small></button>)}</div>
  {stats.overdue.count>0&&<div className="bank-payable-warning bank-agenda-alert" role="status"><strong>Atenção: {stats.overdue.count} conta(s) em atraso · {currency(stats.overdue.amount)}</strong><button onClick={()=>setView('overdue')}>Ver contas atrasadas</button></div>}
