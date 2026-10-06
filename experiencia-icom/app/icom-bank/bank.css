@@ -29,7 +29,7 @@
 .bank-app a.bank-payable-shortcut{color:#fff}
 .bank-agenda-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0}
 .bank-agenda-tabs button,.bank-agenda-days button{border:1px solid #dce2e9;background:#fff;color:#24354c;border-radius:12px;padding:12px 16px;cursor:pointer}
-.bank-agenda-tabs button.selected,.bank-agenda-days button.selected{background:#10223c;color:#fff;border-color:#10223c}
+.bank-agenda-tabs button.bank-agenda-selected,.bank-agenda-days button.bank-agenda-selected{background:#10223c;color:#fff;border-color:#10223c}
 .bank-agenda-person{display:flex;align-items:center;gap:12px;margin:12px 0}.bank-agenda-person select{padding:10px;border:1px solid #dce2e9;border-radius:8px}
 .bank-agenda-card{text-align:left;width:100%;cursor:pointer;font:inherit}.bank-agenda-card[aria-pressed=true]{outline:2px solid #24354c;outline-offset:3px}
 .bank-agenda-alert{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:18px 0}.bank-agenda-alert button{border:1px solid #bd7336;background:#fff;border-radius:8px;padding:10px;color:#7c3919;cursor:pointer}
@@ -37,3 +37,5 @@
 .bank-agenda-form-anchor{scroll-margin-top:20px}.bank-agenda-date{white-space:nowrap;font-size:16px}.bank-agenda-overdue td:first-child{border-left:4px solid #c44747;background:#fff4f2}.bank-agenda-today td:first-child{border-left:4px solid #cf9c48;background:#fffaf0}
 .bank-expense-form fieldset{border:0;padding:0;margin:0}.bank-filters select[aria-label="Mostrar contas"]{width:320px;max-width:100%}
 @media(max-width:700px){.bank-agenda-days{grid-template-columns:repeat(8,110px)}.bank-agenda-alert{align-items:stretch;flex-direction:column}.bank-agenda-person{align-items:stretch;flex-direction:column}.bank-agenda-tabs button{flex:1}.bank-payable-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.bank-agenda-card strong{font-size:22px}.bank-agenda-card{padding:15px}}
+
+.bank-app button.bank-agenda-card{display:block;padding:22px 18px}.bank-app button.bank-agenda-card small{display:block}
