@@ -1,4 +1,6 @@
 import {catalogSelection,fipePrice,modelFamily,type CatalogOption,type FipeSelection,type VehicleSpec} from './vehicle-catalog.ts';
+import bundledBrands from './vehicle-brands.json' with {type:'json'};
+import bundledModels from './vehicle-models.json' with {type:'json'};
 const base='https://fipe.parallelum.com.br/api/v2';
 const cache=new Map<string,{until:number;promise:Promise<unknown>}>();
 export async function fipeGet(path:string):Promise<unknown>{
@@ -10,6 +12,9 @@ export async function fipeGet(path:string):Promise<unknown>{
 }
 export function catalogOptions(value:unknown):CatalogOption[]{if(!Array.isArray(value)||value.length>15000)throw new Error('Catálogo indisponível.');return value.map(v=>{if(!v||typeof v.code!=='string'||typeof v.name!=='string'||v.code.length>20||v.name.length>160)throw new Error('Catálogo inválido.');return {code:v.code,name:v.name};});}
 export async function latestReference(){const rows=await fipeGet('references') as {code:string;month:string}[];if(!Array.isArray(rows)||!rows.length||!/^\d{1,6}$/.test(rows[0].code))throw new Error('Referência FIPE indisponível.');return rows[0].code;}
+// Catalogues are bundled independently of prices, so a provider outage never empties
+// the brand/model selectors. Quotes still come from the provider and are never guessed.
+export function bundledCatalog(brand?:string):CatalogOption[]{return brand?((bundledModels as Record<string,CatalogOption[]>)[brand]||[]):bundledBrands;}
 export async function fipeQuote(selection:FipeSelection):Promise<VehicleSpec>{
  const s=catalogSelection(selection),reference=await latestReference();
  const data=await fipeGet(`cars/brands/${s.brand_id}/models/${s.model_id}/years/${s.year_id}?reference=${reference}`) as Record<string,unknown>;
