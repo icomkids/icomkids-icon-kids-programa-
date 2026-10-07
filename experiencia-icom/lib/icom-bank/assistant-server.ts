@@ -2,8 +2,10 @@ import {createHash,randomUUID} from 'node:crypto';
 import {callIdFromLocation,createVoiceLimiter,VoiceError,voiceDurationMs,voiceSession} from './assistant-session.ts';
 import type {BankRole} from './model.ts';
 
-const limiter=createVoiceLimiter();
-const calls=new Map<string,{user:string;callId:string;expiresAt:number;reads:number;timer:ReturnType<typeof setTimeout>}>();
+type VoiceCall={user:string;callId:string;expiresAt:number;reads:number;timer:ReturnType<typeof setTimeout>};
+const runtime=globalThis as unknown as {[key:symbol]:{limiter:ReturnType<typeof createVoiceLimiter>;calls:Map<string,VoiceCall>}|undefined};
+const state=runtime[Symbol.for('icom-bank.voice-state.v2')]??={limiter:createVoiceLimiter(),calls:new Map<string,VoiceCall>()};
+const {limiter,calls}=state;
 export function claimVoiceRead(user:string,id:string){
  const call=calls.get(id);
  if(!call||call.user!==user||call.expiresAt<=Date.now())throw new VoiceError('Inicie uma nova conversa para consultar os dados.',403);

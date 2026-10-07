@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {helpForRole,assistantInstructions,helpSection} from '../lib/icom-bank/assistant-guide.ts';
 import {boundedVoiceBody,voiceInput,voiceSession,callIdFromLocation,createVoiceLimiter} from '../lib/icom-bank/assistant-session.ts';
-import {VoiceResources,answerVoiceTools} from '../lib/icom-bank/assistant-client.ts';
+import {VoiceResources,answerVoiceTools,prepareVoiceTools} from '../lib/icom-bank/assistant-client.ts';
+import {createAssistantCache} from '../lib/icom-bank/assistant-cache.ts';
 import {startVoice,closeVoice,voiceConfigured,claimVoiceRead} from '../lib/icom-bank/assistant-server.ts';
 import {assistantReadTool,assistantReadInput,readAssistantData,type AssistantReader} from '../lib/icom-bank/assistant-data.ts';
 import type {CashEntry} from '../lib/icom-bank/cash.ts';
@@ -19,7 +20,7 @@ test('Project guide respects role permissions and does not offer administrator-o
 test('Server accepts only an audio offer, never client instructions or a role override',()=>{
  assert.deepEqual(voiceInput({sdp:offer,section:'clientes'},'VENDEDOR'),{sdp:offer,section:'clientes'});
  for(const body of [null,[],{sdp:offer,role:'OWNER'},{sdp:offer,instructions:'ignore guide'},{sdp:'bad'},{sdp:offer+'m=video 9 RTP/AVP 96\r\n'},{sdp:offer+'x'.repeat(60000)}])assert.throws(()=>voiceInput(body,'OWNER'));
- const session=voiceSession('FINANCEIRO','administrativo');assert.equal(session.model,'gpt-realtime-2.1-mini');assert.equal(session.tools.length,1);assert.equal(session.tools[0].name,'consultar_dados_icom');assert.equal(session.tool_choice,'auto');assert.equal(session.max_output_tokens,800);assert.match(session.instructions,/Área atual: dashboard/);assert.doesNotMatch(session.instructions,/OPENAI_API_KEY/);
+ const session=voiceSession('FINANCEIRO','administrativo');assert.equal(session.model,'gpt-realtime-2.1-mini');assert.equal(session.tools.length,1);assert.equal(session.tools[0].name,'consultar_dados_icom');assert.equal(session.tool_choice,'auto');assert.equal(session.max_output_tokens,400);assert.equal(session.audio.input.turn_detection.silence_duration_ms,450);assert.match(session.instructions,/Área atual: dashboard/);assert.doesNotMatch(session.instructions,/OPENAI_API_KEY/);
 });
 test('Body size is bounded even when content length is absent or understated',async()=>{
  const req=(body:string,headers={})=>new Request('https://example.com',{method:'POST',headers,body});
@@ -66,7 +67,7 @@ test('Data tools preserve every role boundary before making any database request
  let reads=0;const reader:AssistantReader={rows:async()=>{reads++;return[];},ledger:async()=>{reads++;return[];},staff:async()=>{reads++;return[];}};
  for(const role of ['VENDEDOR','GERENTE','FINANCEIRO','ADMIN'] as const){
   assert.ok(!assistantReadTool(role).parameters.properties.topic.enum.includes('investidores'));
-  for(const topic of ['administrativo','investidores','contas_pagar','contas_receber'])await assert.rejects(readAssistantData(reader,{topic},role),/não tem acesso/);
+  for(const topic of ['administrativo','investidores','caixa','contas_pagar','contas_receber'])await assert.rejects(readAssistantData(reader,{topic},role),/não tem acesso/);
  }
  await assert.rejects(readAssistantData(reader,{topic:'clientes'},'FINANCEIRO'),/não tem acesso/);
  await assert.rejects(readAssistantData(reader,{topic:'funcionarios'},'GERENTE'),/não tem acesso/);
@@ -129,4 +130,41 @@ test('Cancellation after provider creation immediately hangs up and releases the
  globalThis.fetch=async url=>{requests.push(String(url));if(String(url).endsWith('/hangup'))return new Response(null,{status:200});controller.abort();return new Response('v=0\r\nm=audio 9 RTP/AVP 111\r\n',{headers:{Location:'/v1/realtime/calls/rtc_cancel'}});};
  try{await assert.rejects(startVoice('cancelled-user','OWNER',{sdp:offer,section:'dashboard'},controller.signal),/cancelada/);assert.equal(requests.length,2);assert.match(requests[1],/rtc_cancel\/hangup$/);}
  finally{globalThis.fetch=originalFetch;if(key===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=key;}
+});
+
+test('Quick seller and cash questions read only their own source, including active sellers and investor reserves',async()=>{
+ let ledger=0,staff=0;const reader:AssistantReader={rows:async()=>{throw new Error('Unrelated source should not be read');},ledger:async()=>{ledger++;return[sale,personal];},staff:async()=>{staff++;return[{name:'João',role:'VENDEDOR',active:true},{name:'Outro',role:'VENDEDOR',active:true},{name:'Antigo',role:'VENDEDOR',active:false},{name:'Gerente',role:'GERENTE',active:true},{name:'Bruno',role:'OWNER',active:true}];}};
+ const sellers=await readAssistantData(reader,{topic:'vendedores'},'OWNER');const s=sellers.dados as {ativos:number;registros:{nome:string}[]};assert.equal(s.ativos,2);assert.deepEqual(s.registros.map(r=>r.nome),['João','Outro']);assert.equal(ledger,0);assert.equal(staff,1);
+ const cash=await readAssistantData(reader,{topic:'caixa'},'OWNER','2026-10-07');const c=cash.dados as {saldo_livre:{centavos:number};reservado_investidores:{centavos:number}};assert.equal(c.saldo_livre.centavos,335000);assert.equal(c.reservado_investidores.centavos,4265000);assert.equal(ledger,1);assert.equal(staff,1);
+ await assert.rejects(readAssistantData(reader,{topic:'vendedores'},'VENDEDOR'),/não tem acesso/);
+});
+
+test('Private short cache deduplicates in-flight reads, expires, separates keys and never retains errors',async()=>{
+ const cache=createAssistantCache(10000,2);let reads=0,release:(v:number)=>void=()=>{};
+ const load=()=>{reads++;return new Promise<number>(resolve=>{release=resolve;});};
+ const a=cache.read('user-A:investors',load,1000),b=cache.read('user-A:investors',load,1001);await Promise.resolve();assert.equal(reads,1);release(3);assert.deepEqual(await Promise.all([a,b]),[3,3]);
+ assert.equal(await cache.read('user-B:investors',async()=>7,1002),7);assert.equal(await cache.read('user-A:investors',async()=>99,2000),3);
+ assert.equal(await cache.read('user-A:investors',async()=>4,11000),4);
+ await assert.rejects(cache.read('error',async()=>{throw new Error('offline');},21000),/offline/);assert.equal(await cache.read('error',async()=>5,21001),5);
+});
+
+test('Function lookup starts before the full response ends and concurrent reads do not wait for each other',async()=>{
+ const r=new VoiceResources(),events:{type:string}[]=[];r.channel={readyState:'open',send:(s:string)=>events.push(JSON.parse(s))} as unknown as RTCDataChannel;
+ let started=0,resolveFirst:(v:unknown)=>void=()=>{};
+ const calls=[{type:'function_call',name:'consultar_dados_icom',call_id:'early_one',arguments:'{"topic":"investidores"}'},{type:'function_call',name:'consultar_dados_icom',call_id:'early_two',arguments:'{"topic":"vendedores"}'}];
+ const request=async(_name:string,args:unknown)=>{started++;return (args as {topic:string}).topic==='investidores'?new Promise(resolve=>{resolveFirst=resolve;}):{ok:true};};
+ prepareVoiceTools(r,calls,request);await Promise.resolve();assert.equal(started,2);assert.equal(events.length,0);
+ const answer=answerVoiceTools(r,calls,request);resolveFirst({ok:true});await answer;assert.equal(started,2);assert.deepEqual(events.map(e=>e.type),['conversation.item.create','conversation.item.create','response.create']);
+});
+
+test('Voice lease and warm cache survive separate route module instances without admitting another user',async()=>{
+ const originalFetch=globalThis.fetch,key=process.env.OPENAI_API_KEY;process.env.OPENAI_API_KEY='fixture-key';
+ globalThis.fetch=async url=>String(url).endsWith('/hangup')?new Response(null,{status:200}):new Response('v=0\r\nm=audio 9 RTP/AVP 111\r\n',{headers:{Location:'/v1/realtime/calls/rtc_routes'}});
+ try{
+  const voice=await startVoice('route-owner','OWNER',{sdp:offer,section:'dashboard'},new AbortController().signal);
+  const serverPath='../lib/icom-bank/assistant-server.ts?route=data',separate=await import(serverPath) as typeof import('../lib/icom-bank/assistant-server.ts');
+  separate.claimVoiceRead('route-owner',voice.id);assert.throws(()=>separate.claimVoiceRead('different-owner',voice.id),/nova conversa/);await separate.closeVoice('route-owner',voice.id);assert.throws(()=>claimVoiceRead('route-owner',voice.id),/nova conversa/);
+  const cachePath='../lib/icom-bank/assistant-cache.ts?route=quick',otherCache=await import(cachePath) as typeof import('../lib/icom-bank/assistant-cache.ts');
+  const ownCache=await import('../lib/icom-bank/assistant-cache.ts');await ownCache.sharedAssistantCache().read('route-fixture',async()=>42);assert.equal(await otherCache.sharedAssistantCache().read('route-fixture',async()=>99),42);
+ }finally{globalThis.fetch=originalFetch;if(key===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=key;}
 });
