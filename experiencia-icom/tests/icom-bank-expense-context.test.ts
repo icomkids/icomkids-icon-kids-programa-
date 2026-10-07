@@ -29,6 +29,9 @@ test('Context preserves independent category, family, trip and adjustable option
  assert.deepEqual(expenseContext('Parque com minha família','Lazer'),{expense_audience:'FAMILIA',expense_nature:'OPCIONAL'});
  assert.equal(expenseContext('Restaurante','Restaurante').expense_nature,'NAO_CLASSIFICADO');
  assert.equal(expenseContext('Escola da filha','Escola / educação').expense_nature,'ESSENCIAL');
+ assert.equal(expenseContext('Pix para Gisela','Retirada / Pix').expense_audience,'NAO_INFORMADO');
+ assert.equal(expenseContext('Esta viagem foi necessária','Viagem / hospedagem').expense_nature,'ESSENCIAL');
+ assert.equal(expenseContext('Gasto só para mim','Restaurante').expense_audience,'INDIVIDUAL');
  const rows=[{...payload,active:true,created_at:'',updated_at:'',details:{...payload.details,trip_name:'Disney'}},{...payload,id:'other',active:true,amount_cents:3000,description:'Gasolina',category:'Combustível',details:{expense_audience:'INDIVIDUAL',expense_nature:'ESSENCIAL'}},{...payload,id:'inactive',active:false}] as AdminEntry[];
  assert.equal(personalSummary(rows,'Lazer','Disney',undefined,undefined,'FAMILIA','OPCIONAL').amount_cents,23000);
  assert.equal(personalSummary(rows,'','',undefined,undefined,'INDIVIDUAL').amount_cents,3000);
