@@ -8,7 +8,6 @@ import {expensePayload} from '@/lib/icom-bank/whatsapp-expenses';
 import {sharedAssistantCache} from '@/lib/icom-bank/assistant-cache';
 import {brazilDay} from '@/lib/icom-bank/model';
 import type {AdminEntry} from '@/lib/icom-bank/administrative';
-import type {StockRow} from '@/lib/icom-bank/stock';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -32,8 +31,6 @@ export async function POST(req:Request){try{
  }
  if(raw.name!=='preparar_despesa_icom')throw new BankError('Pedido inválido.',400);
  const transcript=expenseVoiceText(raw.arguments),today=brazilDay(),draft=await extractExpense(transcript,today,key);
- const stocks=draft.plate?await bankQuery<StockRow[]>(token,'icom_bank_stock_vehicles?active=eq.true&plate=eq.'+encodeURIComponent(draft.plate.replace(/[^a-z0-9]/gi,'').toUpperCase())+'&select=id,plate,vehicle,entry_date,status,active&limit=2'):[];
- const {expected_updated_at:_,...payload}=expensePayload(draft,transcript,randomUUID(),stocks,today);void _;
- payload.details.notes='Origem: ICOM IA por voz · confirmação no painel';
- return Response.json({ok:true,saved:false,pending:{payload,confirmation:signVoiceExpense(payload,profile.user_id,key)},message:'Despesa preparada. Ainda não foi salva. Confira o resumo e toque em Confirmar lançamento.'},{headers});
+ const {expected_updated_at:_,...payload}=expensePayload(draft,transcript,randomUUID(),[],today,'VOICE');void _;
+ return Response.json({ok:true,saved:false,pending:{payload,confirmation:signVoiceExpense(payload,profile.user_id,key)},message:'Confira o resumo e toque em Confirmar lançamento. Ainda não foi salva.'},{headers});
 }catch(e){return bankError(e instanceof VoiceError?new BankError(e.message,e.status):e instanceof BankError?e:new BankError(e instanceof Error?e.message:'Não foi possível lançar. Confira o histórico antes de repetir.',400));}}

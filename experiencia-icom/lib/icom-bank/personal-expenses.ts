@@ -9,7 +9,7 @@ const aliases:[RegExp,(typeof personalCategories)[number]][]=[
  [/\b(escola|educacao|faculdade|curso|material escolar|creche)\b/,'Escola / educação'],[/\b(plano (de )?(saude|medico)|convenio|unimed)\b/,'Plano de saúde'],[/\b(saude|medicamento|medicamentos|farmacia|medico|dentista|consulta|exame)\b/,'Saúde / medicamentos'],
  [/\b(aluguel|moradia|prestacao da casa)\b/,'Aluguel / moradia'],[/\b(condominio)\b/,'Condomínio'],[/\b(agua|sabesp)\b/,'Água'],[/\b(energia|luz|eletricidade)\b/,'Energia elétrica'],[/\b(gas|botijao)\b/,'Gás'],[/\b(internet|telefone|celular)\b/,'Internet / telefone'],
  [/\b(combustivel|gasolina|etanol|diesel|abasteci|abastecimento)\b/,'Combustível'],[/\b(uber|taxi|onibus|transporte|estacionamento|pedagio)\b/,'Transporte / estacionamento'],[/\b(pneu|oficina|manutencao|carro pessoal|veiculo pessoal)\b/,'Veículo pessoal'],
- [/\b(hotel|hospedagem|passagem|viagem|viagens)\b/,'Viagem / hospedagem'],[/\b(lazer|cinema|parque|show)\b/,'Lazer'],[/\b(roupa|vestuario|calcado|compras)\b/,'Vestuário / compras'],[/\b(salao|cabelo|barbeiro|academia|cuidados pessoais)\b/,'Cuidados pessoais'],
+ [/\b(hotel|hospedagem|passagem|viagem|viagens)\b/,'Viagem / hospedagem'],[/\b(lazer|cinema|parque|show)\b/,'Lazer'],[/\b(roupa|vestuario|calcado|compras)\b/,'Vestuário / compras'],[/\b(salao|cabelo|barbeiro|academia|manicure|pedicure|unhas|cuidados pessoais)\b/,'Cuidados pessoais'],
  [/\b(diarista|empregada|servicos domesticos)\b/,'Serviços domésticos'],[/\b(pet|pets|racao|veterinario)\b/,'Pets'],[/\b(seguro|seguros)\b/,'Seguros'],[/\b(imposto|ipva|iptu|taxa|multa)\b/,'Impostos / taxas'],[/\b(assinatura|streaming|netflix|spotify)\b/,'Assinaturas'],
 ];
 export function personalCategory(category:string,description=''){

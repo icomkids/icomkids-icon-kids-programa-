@@ -6,7 +6,6 @@ import {brazilDay} from './model';
 import {botConfig,botCredentials,readBotConnection,type BotConfig} from './whatsapp-bot-server';
 import {extractExpense,transcribeExpense} from './whatsapp-ai';
 import {expensePayload,expenseReply} from './whatsapp-expenses';
-import type {StockRow} from './stock';
 import type {AdminEntry} from './administrative';
 import {currency} from './model';
 import {assistantReadInput} from './assistant-data';
@@ -57,8 +56,7 @@ export async function processExpenses(){
     const message=`Você gastou ${currency(summary.amount_cents)} em ${category||'despesas pessoais'}${trip?' na viagem '+trip:''}${input.audience?' · '+audienceLabel(input.audience):''}${input.nature?' · '+natureLabel(input.nature):''}.\nPeríodo: ${period} · ${summary.count} pagamento(s).${summary.missing?' Total parcial: há registros sem valor.':''}\nSó entram pagamentos realizados e ativos.${input.nature?' O total segue as classificações registradas ou as regras exibidas no painel; gastos sem classificação ficam separados.':''} Nenhum lançamento foi criado por esta consulta.`;
     await patch(m,{status:'RESOLVIDO',reply:message});m.reply=message;await reply(b,m);continue;
    }
-   const stocks=draft.plate?await botDb<StockRow[]>('icom_bank_stock_vehicles?active=eq.true&plate=eq.'+encodeURIComponent(draft.plate.replace(/[^a-z0-9]/gi,'').toUpperCase())+'&select=id,plate,vehicle,entry_date,status,active&limit=2'):[];
-   const p=expensePayload(draft,source,m.id,stocks,today),message=expenseReply(p);
+   const p=expensePayload(draft,source,m.id,[],today),message=expenseReply(p);
    await patch(m,{reply:message});const {expected_updated_at:_,...payload}=p;void _;
    await botDb('rpc/icom_bank_whatsapp_commit',{p_id:m.id,p_claim:m.claim_id,p_payload:payload});
    sharedAssistantCache().clear();m.reply=message;await reply(b,m);

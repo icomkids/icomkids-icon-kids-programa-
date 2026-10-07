@@ -13,6 +13,17 @@ const today='2026-10-07',id='0261ab47-da5a-4ea8-8462-7b6bc26354d3';
 const actual='Faz um favor pra mim, eu acabei de gastar 230 reais num parque de diversão aqui com a minha família. Lança pra mim, por favor.';
 const draft:ExpenseDraft={intent:'DESPESA',scope:'PESSOAL',description:'Parque de diversão com a família',category:'Lazer',amount:'230,00',amount_excerpt:'230',paid:true,payment_method:null,date:'2023-10-07',date_excerpt:'acabei de gastar',plate:null,confidence:'ALTA',question:''};
 const payload=expensePayload(draft,actual,id,[],today);
+
+test('Voice records store light bills, personal care and unknown plates in separate scopes',()=>{
+ const light=expensePayload({...draft,scope:'LOJA',description:'Conta de luz da loja',category:'Energia elétrica',amount:'500,00',amount_excerpt:'500'},'Lança 500 da conta de luz da loja',id,[],today,'VOICE');
+ assert.equal(light.kind,'CUSTO');assert.equal(light.scope,'LOJA');assert.equal(light.amount_cents,50000);assert.equal(light.category,'Energia elétrica');assert.equal(light.details.expense_audience,undefined);
+ const tyre=expensePayload({...draft,scope:'LOJA',description:'Troca de pneu',category:'Manutenção de veículo',amount:'500,00',amount_excerpt:'500',plate:'GHF 5D 3 2'},'Paguei 500 no pneu da placa GHF 5D 3 2 ontem',id,[],today,'VOICE');
+ assert.equal(tyre.details.plate,'GHF5D32');assert.equal(tyre.details.stock_id,undefined);assert.equal(tyre.entry_date,'2026-10-06');assert.match(tyre.details.notes!,/ICOM IA por voz/);assert.match(tyre.details.notes!,/GHF5D32 em 06\/10\/2026/);
+ const personal=expensePayload({...draft,description:'Manicure da filha',category:'manicure',amount:'17,00',amount_excerpt:'17'},'Gastei 17 com minha filha na manicure',id,[],today,'VOICE');
+ assert.equal(personal.scope,'PESSOAL');assert.equal(personal.category,'Cuidados pessoais');assert.equal(personal.details.expense_audience,'FAMILIA');
+ const {expected_updated_at:_,...p}=tyre;void _;assert.deepEqual(readVoiceExpense(signVoiceExpense(p,'owner','secret',1000),'owner','secret',2000),p);
+ assert.throws(()=>expensePayload({...draft,paid:false},actual,id,[],today,'VOICE'));
+});
 test('Actual park audio launches on the message day despite a non-date or fabricated model excerpt',()=>{
  assert.equal(payload.entry_date,today);assert.equal(payload.amount_cents,23000);assert.equal(payload.details.expense_audience,'FAMILIA');assert.equal(payload.details.expense_nature,'OPCIONAL');
  for(const excerpt of [null,'hoje','acabei de gastar','ontem','2023-10-07','há poucos minutos'])assert.equal(expenseDate(actual,excerpt,today),today);

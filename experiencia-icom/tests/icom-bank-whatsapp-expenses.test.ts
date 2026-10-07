@@ -16,12 +16,13 @@ test('WhatsApp rejects missing, contradictory, uncertain or unpaid financial ins
  assert.equal(payload({amount:'2500,00',amount_excerpt:'2.500,00'},'Paguei 2.500,00 no Pix').amount_cents,250000);
  assert.equal(payload({amount_excerpt:'duzentos e cinquenta'},'Paguei duzentos e cinquenta reais').amount_cents,25000);
 });
-test('Vehicle expenses link only to one active, unsold stock vehicle and valid dates',()=>{
+test('Vehicle expenses record an administrative plate without requiring or modifying stock',()=>{
  const car={id,plate:'ABC1D23',active:true,status:'DISPONIVEL',entry_date:'2026-10-01',vehicle:{brand:'GM - Chevrolet',model:'ONIX',version:'ONIX LT'}} as StockRow;
  const d={...draft,scope:'LOJA' as const,description:'Pneu',plate:'abc-1d23'};
- const p=expensePayload(d,'Paguei 250 no pneu da loja',id,[car],today);assert.equal(p.kind,'CUSTO');assert.equal(p.details.stock_id,id);assert.equal(p.details.plate,'ABC1D23');
- for(const cars of [[],[car,car],[{...car,active:false}],[{...car,status:'VENDIDO'}],[{...car,status:'PREVISTO'}]])assert.throws(()=>expensePayload(d,'Paguei 250',id,cars as StockRow[],today));
- assert.throws(()=>expensePayload({...d,date:'2026-09-30',date_excerpt:'30/09/2026'},'Paguei 250 em 30/09/2026',id,[car],today));assert.throws(()=>payload({plate:'XXX'}));
+ for(const cars of [[],[car],[car,car],[{...car,active:false}],[{...car,status:'VENDIDO'}],[{...car,status:'PREVISTO'}]]){
+ const p=expensePayload(d,'Paguei 250 no pneu da loja',id,cars as StockRow[],today);assert.equal(p.kind,'CUSTO');assert.equal(p.scope,'LOJA');assert.equal(p.details.stock_id,undefined);assert.equal(p.details.plate,'ABC1D23');assert.match(p.details.notes!,/sem vínculo com estoque/);assert.match(p.details.notes!,/07\/10\/2026/);
+ }
+ assert.equal(expensePayload({...d,date:'2026-09-30',date_excerpt:'30/09/2026'},'Paguei 250 em 30/09/2026',id,[car],today).entry_date,'2026-09-30');assert.throws(()=>payload({plate:'XXX'}));
  const personal=expensePayload({...d,scope:'PESSOAL'},'Paguei 250 no meu carro',id,[car],today);assert.equal(personal.details.stock_id,undefined);assert.match(personal.details.notes!,/veículo pessoal ABC1D23/);
 });
 const now=Date.parse('2026-10-07T20:00:00Z'),phone='5511999999999',sender='5511988888888';
