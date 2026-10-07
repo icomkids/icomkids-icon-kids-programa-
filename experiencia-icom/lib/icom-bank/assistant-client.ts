@@ -5,6 +5,8 @@ export class VoiceResources {
  peer:RTCPeerConnection|null=null;
  channel:RTCDataChannel|null=null;
  audio:HTMLAudioElement|null=null;
+ speakerMuted=false;
+ setSpeakerMuted(value:boolean){this.speakerMuted=value;if(this.audio)this.audio.muted=value;}
  abort=new AbortController();
  timer:ReturnType<typeof setTimeout>|null=null;
  handledTools=new Set<string>();

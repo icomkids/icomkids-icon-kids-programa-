@@ -9,6 +9,21 @@ import {assistantReadTool,assistantReadInput,readAssistantData,type AssistantRea
 import type {CashEntry} from '../lib/icom-bank/cash.ts';
 
 const offer='v=0\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\nm=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\n';
+test('Voice starts with sound enabled; silencing output preserves the microphone and closing still releases it',()=>{
+ const r=new VoiceResources();let stops=0;
+ const track={enabled:true,stop:()=>stops++};
+ r.attachStream({getTracks:()=>[track],getAudioTracks:()=>[track]} as unknown as MediaStream);
+ r.audio={muted:false,pause:()=>{},srcObject:{}} as unknown as HTMLAudioElement;
+ assert.equal(r.speakerMuted,false);assert.equal(r.audio.muted,false);
+ r.setSpeakerMuted(true);assert.equal(r.audio.muted,true);assert.equal(track.enabled,true);assert.equal(stops,0);
+ r.setSpeakerMuted(false);assert.equal(r.audio.muted,false);assert.equal(track.enabled,true);
+ r.close();assert.equal(stops,1);assert.equal(r.audio.srcObject,null);
+});
+test('Brazilian conversational guidance avoids echoing questions and preserves immediate verified data lookup',()=>{
+ const text=assistantInstructions('OWNER','dashboard');
+ assert.match(text,/português brasileiro/);assert.match(text,/entonação variada/);assert.match(text,/não repita nem reformule a pergunta/i);
+ assert.match(text,/Chame a ferramenta imediatamente/);assert.match(text,/não invente valores/);assert.match(text,/não use uma gíria em toda resposta/);
+});
 test('Project guide respects role permissions and does not offer administrator-only tasks to sellers',()=>{
  const seller=helpForRole('VENDEDOR');assert.deepEqual(seller.map(t=>t.section),['dashboard','clientes','contratos']);
  assert.ok(helpForRole('OWNER').some(t=>t.id==='retirada'));
