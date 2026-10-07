@@ -1,0 +1,56 @@
+import {createHash,timingSafeEqual} from 'node:crypto';
+import {phoneBR} from '../whatsapp.ts';
+import {adminInput} from './administrative.ts';
+import {brazilDay,currency} from './model.ts';
+import type {StockRow} from './stock.ts';
+
+export const botName='icom-bank-assistente';
+export type ExpenseDraft={intent:'DESPESA'|'OUTRO'|'MULTIPLAS';scope:'PESSOAL'|'LOJA';description:string;category:string;amount:string|null;amount_excerpt:string|null;paid:boolean|null;payment_method:'PIX'|'DINHEIRO'|'CARTAO'|'TRANSFERENCIA'|'OUTRO'|null;date:string|null;plate:string|null;confidence:'ALTA'|'BAIXA';question:string};
+export type BotMessage={provider_id:string;sender:string;type:'audio'|'text';text:string;sent_at:string};
+const object=(v:unknown):Record<string,unknown>=>v&&typeof v==='object'&&!Array.isArray(v)?v as Record<string,unknown>:{};
+export function secureEqual(a:unknown,b:string){if(typeof a!=='string'||!b)return false;return timingSafeEqual(createHash('sha256').update(a).digest(),createHash('sha256').update(b).digest());}
+export function messageFromWebhook(value:unknown,phone:string,now=Date.now()):BotMessage|null{
+ const root=object(value),m=object(root.message);
+ if(root.EventType!=='messages'||m.fromMe!==false||m.isGroup!==false||m.wasSentByApi===true||m.edited||m.reaction||m.vote)return null;
+ let owner:string,sender:string;try{owner=phoneBR(root.owner);sender=phoneBR(String(m.sender_pn||m.sender||'').split('@')[0]);}catch{return null;}
+ const chat=String(m.chatid||''),pn=/^\d+@s\.whatsapp\.net$/.test(chat)&&chat.split('@')[0]===sender;
+ const lid=/^\d+@lid$/.test(chat)&&m.sender_lid===chat&&/^\d+@s\.whatsapp\.net$/.test(String(m.sender_pn||''));
+ if(owner!==phone||!pn&&!lid)return null;
+ const id=m.messageid||m.id;if(typeof id!=='string'||! /^[A-Za-z0-9:_-]{1,180}$/.test(id))return null;
+ let ms=Number(m.messageTimestamp);if(ms<100000000000)ms*=1000;
+ if(!Number.isFinite(ms)||ms<now-600000||ms>now+60000)return null;
+ const type=String(m.messageType||'').toLowerCase(),content=object(m.content);
+ const audio=['audio','audiomessage','ptt','voice','voicemessage'].includes(type)||!!content.audioMessage;
+ const text=typeof m.text==='string'?m.text.trim():typeof m.content==='string'&&!audio?m.content.trim():'';
+ if(!audio&&!['conversation','extendedtextmessage','text'].includes(type)||!audio&&(!text||text.length>4000))return null;
+ return {provider_id:id,sender,type:audio?'audio':'text',text:audio?'':text,sent_at:new Date(ms).toISOString()};
+}
+export function expenseCents(value:unknown){if(typeof value!=='string'||!/^\d{1,7}(?:,\d{2})?$/.test(value))throw new Error('Informe um único valor em reais, por exemplo R$ 250,00.');const [reais,centavos='00']=value.split(',');const cents=Number(reais)*100+Number(centavos);if(!Number.isSafeInteger(cents)||cents<=0||cents>1000000000)throw new Error('Informe um valor positivo dentro do limite do sistema.');return cents;}
+export function expensePayload(d:ExpenseDraft,transcript:string,id:string,stocks:StockRow[],today=brazilDay()){
+ if(d.intent==='OUTRO')throw new Error('Envie uma despesa para lançar: o que foi pago, o valor e, se for da loja, diga isso no áudio.');
+ if(d.intent==='MULTIPLAS')throw new Error('Envie uma despesa por mensagem, com o valor de cada uma separado.');
+ if(d.intent!=='DESPESA')throw new Error('Envie uma despesa já paga para registrar.');
+ if(d.confidence!=='ALTA')throw new Error('Não entendi a despesa com segurança. Envie novamente o valor e a finalidade, por texto ou áudio.');
+ if(!d.amount||!d.amount_excerpt||!transcript.toLocaleLowerCase('pt-BR').includes(d.amount_excerpt.toLocaleLowerCase('pt-BR')))throw new Error('Qual foi o valor? Informe a despesa e o valor em reais.');
+ const amount_cents=expenseCents(d.amount);
+ const numeric=d.amount_excerpt.replace(/^R\$\s*/i,'').trim();
+ if(/^\d+(?:[.,]\d+)*$/.test(numeric)){const normalized=numeric.includes(',')?numeric.replaceAll('.',''):numeric.replace(/\.(?=\d{3}(?:\.|$))/g,'');if(expenseCents(normalized)!==amount_cents)throw new Error('O valor não ficou claro. Confirme o valor em reais.');}
+ if(d.payment_method!==null&&!['PIX','DINHEIRO','CARTAO','TRANSFERENCIA','OUTRO'].includes(d.payment_method))throw new Error('Informe como a despesa foi paga.');
+ if(d.paid!==true)throw new Error('A despesa já foi paga? Diga que já pagou e informe a despesa e o valor para registrar a saída.');
+ if(!['PESSOAL','LOJA'].includes(d.scope)||typeof d.description!=='string'||d.description.trim().length<2||d.description.length>160||typeof d.category!=='string'||d.category.length>80)throw new Error('Informe para que foi a despesa e se é pessoal ou da loja.');
+ const date=d.date||today;if(date>today)throw new Error('A data informada está no futuro. Informe quando a despesa foi paga.');
+ const plate=d.plate?.replace(/[^a-z0-9]/gi,'').toUpperCase()||'';
+ const details:Record<string,unknown>={notes:`Origem: WhatsApp ICOM Bank · mensagem ${id}`,payment_method:d.payment_method||'OUTRO'};
+ if(plate){
+  if(!/^[A-Z]{3}\d[A-Z0-9]\d{2}$/.test(plate))throw new Error('Confira a placa: use três letras e quatro caracteres, por exemplo ABC1D23.');
+  if(d.scope==='PESSOAL')details.notes+=` · veículo pessoal ${plate}`;
+  else {
+  const matches=stocks.filter(s=>s.active&&!['VENDIDO','PREVISTO'].includes(s.status)&&s.plate===plate);
+  if(matches.length!==1)throw new Error(`Não encontrei um único carro em estoque com a placa ${plate}. Confira a placa ou cadastre o carro antes de lançar o custo.`);
+  const car=matches[0];if(date<car.entry_date)throw new Error('A despesa é anterior à entrada do carro. Confira a data.');
+  Object.assign(details,{stock_id:car.id,plate,vehicle:car.vehicle.brand+' '+(car.vehicle.version||car.vehicle.model)});
+  }
+ }
+ return adminInput({id,kind:d.scope==='PESSOAL'?'PESSOAL':'CUSTO',scope:d.scope,description:d.description.trim(),category:d.category,entry_date:date,amount_cents,status:'REALIZADO',details,expected_updated_at:null});
+}
+export function expenseReply(p:ReturnType<typeof expensePayload>){return `✅ Lançado no ICOM Bank: ${currency(p.amount_cents!)} — ${p.description}.\nÁrea: ${p.scope==='PESSOAL'?'Despesas pessoais':'Despesas da loja'}${p.details.plate?' · veículo '+p.details.plate:''}.\nData: ${p.entry_date.split('-').reverse().join('/')} · ${p.details.payment_method}.\nO lançamento já aparece no Administrativo e na conferência do caixa. Código: ${p.id.slice(0,8)}.`;}

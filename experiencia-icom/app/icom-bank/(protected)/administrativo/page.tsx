@@ -6,5 +6,5 @@ import type {AdminEntry,AdminReference} from '@/lib/icom-bank/administrative';
 export default async function Page(){
   const {token}=await bankPage('administrativo');const year=Number(brazilDay().slice(0,4));
   const [entries,references,sellers]=await Promise.all([bankCashEntries(token),bankQuery<{content:AdminReference}[]>(token,'icom_bank_admin_references?id=eq.1&select=content'),bankAdminSellers(token)]);
-  return <BankAdministrative initial={entries as AdminEntry[]} reference={references[0]?.content||null} sellers={sellers} initialYear={year}/>;
+  return <><a className="bank-wa-entry" href="/experiencia-icom/icom-bank/administrativo/whatsapp"><strong>WhatsApp ICOM Bank</strong><span>Lance despesas pessoais, da loja e dos carros por áudio</span><b>Conectar e configurar ↗</b></a><BankAdministrative initial={entries as AdminEntry[]} reference={references[0]?.content||null} sellers={sellers} initialYear={year}/></>;
 }
