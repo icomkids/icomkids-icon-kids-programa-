@@ -1,12 +1,13 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
-import {Headphones,Mic,MicOff,PhoneOff,X,ChevronDown,Volume2} from 'lucide-react';
+import {Mic,MicOff,Square,Sparkles,X,ChevronDown,Volume2} from 'lucide-react';
 import {bankPath,type BankRole} from '@/lib/icom-bank/model';
 import type {HelpTopic} from '@/lib/icom-bank/assistant-guide';
 import {VoiceResources} from '@/lib/icom-bank/assistant-client';
 
 type Status='idle'|'connecting'|'listening'|'speaking'|'paused';
 type Setup={configured:boolean;topics:HelpTopic[]};
+function IntelligenceOrb(){return <span className="bank-ai-orb" aria-hidden="true"><span className="bank-ai-atmosphere"/><span className="bank-ai-current first"/><span className="bank-ai-current second"/><span className="bank-ai-current third"/><span className="bank-ai-glass"/></span>;}
 export default function BankVoiceAssistant({role}:{role:BankRole}){
  const [open,setOpen]=useState(false),[status,setStatus]=useState<Status>('idle'),[setup,setSetup]=useState<Setup|null>(null),[error,setError]=useState(''),[transcript,setTranscript]=useState(''),[message,setMessage]=useState(''),[left,setLeft]=useState(300);
  const resources=useRef<VoiceResources|null>(null),lease=useRef<string|null>(null),muted=useRef(false),button=useRef<HTMLButtonElement>(null),dialog=useRef<HTMLDialogElement>(null),audio=useRef<HTMLAudioElement>(null);
@@ -63,21 +64,22 @@ export default function BankVoiceAssistant({role}:{role:BankRole}){
  function pause(){const stream=resources.current?.stream;if(!stream)return;muted.current=!muted.current;stream.getAudioTracks().forEach(t=>{t.enabled=!muted.current;});setStatus(muted.current?'paused':'listening');setMessage(muted.current?'Microfone pausado.':'Pode continuar sua pergunta.');}
  const topicQuestions=setup?.topics.filter(t=>role==='OWNER'?['pagar','receber','caixa'].includes(t.id):['clientes','contratos','comprovantes','parcelas'].includes(t.id)).slice(0,3)||[];
  return <>
-  <button ref={button} className={'bank-voice-launch'+(busy?' is-active':'')} aria-label="Abrir Assistente ICOM por voz" aria-haspopup="dialog" aria-expanded={open} onClick={()=>{setOpen(true);dialog.current?.showModal();}}>
-   <span className="bank-voice-orb" aria-hidden="true"><Headphones size={19}/></span><span><strong>Assistente ICOM</strong><small>Ajuda por voz</small></span>
+  <span id="bank-ai-activation-hint" hidden>Inteligência artificial do sistema. O microfone permanece desligado até você iniciar uma conversa.</span>
+  <button ref={button} className={'bank-voice-launch'+(busy?' is-active':'')} aria-label="Abrir ICOM IA para conversar" aria-describedby="bank-ai-activation-hint" aria-haspopup="dialog" aria-expanded={open} onClick={()=>{setOpen(true);dialog.current?.showModal();}}>
+   <IntelligenceOrb/><span className="bank-ai-label"><strong>ICOM <b>IA</b></strong><small>{busy?'Conversa em andamento':'Toque para conversar'}</small></span>
   </button>
   <dialog ref={dialog} className="bank-voice-dialog" aria-labelledby="bank-voice-title" onCancel={e=>{e.preventDefault();close();}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
    <div className="bank-voice-panel">
-    <header><div><span className="bank-voice-eyebrow">SEU GUIA NO SISTEMA</span><h2 id="bank-voice-title">Assistente ICOM</h2></div><button aria-label="Fechar ajuda e desligar microfone" onClick={close}><X size={19}/></button></header>
+    <header><div><span className="bank-voice-eyebrow">INTELIGÊNCIA ARTIFICIAL DO SISTEMA</span><h2 id="bank-voice-title">ICOM IA</h2></div><button aria-label="Fechar ajuda e desligar microfone" onClick={close}><X size={19}/></button></header>
     <div className={'bank-voice-stage '+status}>
-     <div className="bank-voice-halo" aria-hidden="true"><div className="bank-voice-big-orb"><Headphones size={38}/><i/><i/><i/></div></div>
+     <div className="bank-voice-halo" aria-hidden="true"><IntelligenceOrb/></div>
      <strong>{status==='connecting'?'Conectando…':status==='paused'?'Microfone pausado':status==='speaking'?'Explicando para você':status==='listening'?'Estou ouvindo':setup&&!setup.configured?'Voz aguardando ativação':'Vamos resolver sua dúvida?'}</strong>
      <p>{message||'Pergunte como usar clientes, contratos e as demais telas disponíveis para você.'}</p>
     </div>
     {error&&<p className="bank-error" role="alert">{error}</p>}
     {setup&&!setup.configured&&<p className="bank-voice-activation">A conversa por voz precisa ser ativada pelo administrador. Enquanto isso, consulte as orientações rápidas abaixo.</p>}
     {!setup&&!error&&<p role="status">Carregando a ajuda…</p>}
-    {busy?<div className="bank-voice-controls"><button onClick={pause} disabled={status==='connecting'} aria-label={status==='paused'?'Retomar microfone':'Pausar microfone'}>{status==='paused'?<MicOff size={17}/>:<Mic size={17}/>} {status==='paused'?'Retomar':'Pausar'}</button><button className="bank-voice-end" onClick={()=>{stop();setMessage('Conversa encerrada. Microfone desligado.');}}><PhoneOff size={17}/> Encerrar</button><small>{Math.floor(left/60)}:{String(left%60).padStart(2,'0')}</small></div>:<button className="bank-voice-start" disabled={!setup?.configured} onClick={()=>void start()}><Mic size={18}/> Iniciar conversa</button>}
+    {busy?<div className="bank-voice-controls"><button onClick={pause} disabled={status==='connecting'} aria-label={status==='paused'?'Retomar microfone':'Pausar microfone'}>{status==='paused'?<MicOff size={17}/>:<Mic size={17}/>} {status==='paused'?'Retomar':'Pausar'}</button><button className="bank-voice-end" onClick={()=>{stop();setMessage('Conversa encerrada. Microfone desligado.');}}><Square size={15}/> Encerrar</button><small>{Math.floor(left/60)}:{String(left%60).padStart(2,'0')}</small></div>:<button className="bank-voice-start" disabled={!setup?.configured} onClick={()=>void start()}><Sparkles size={18}/> Conversar com a IA</button>}
     <audio ref={audio} autoPlay playsInline hidden/>
     {busy&&<button className="bank-voice-audio" onClick={()=>void audio.current?.play().then(()=>setError('')).catch(()=>setError('Não foi possível reproduzir o áudio. Confira o som do dispositivo.'))}><Volume2 size={15}/> Ouvir resposta</button>}
     <p className="bank-voice-privacy">Ao iniciar, seu áudio será enviado à OpenAI para responder. A voz é gerada por IA. O assistente orienta sobre o sistema e não executa operações. Ao fechar, o microfone é desligado.</p>
