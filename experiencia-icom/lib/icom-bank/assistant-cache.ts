@@ -1,7 +1,7 @@
 // Short private read cache. Authorization is checked before every lookup.
 export function createAssistantCache(ttl=10000,max=200){
  const entries=new Map<string,{until:number;value:Promise<unknown>}>();
- return {async read<T>(key:string,load:()=>Promise<T>,now=Date.now()):Promise<T>{
+ return {clear(){entries.clear();},async read<T>(key:string,load:()=>Promise<T>,now=Date.now()):Promise<T>{
   for(const [k,e] of entries)if(e.until<=now)entries.delete(k);
   const found=entries.get(key);if(found)return found.value as Promise<T>;
   const value=Promise.resolve().then(load);

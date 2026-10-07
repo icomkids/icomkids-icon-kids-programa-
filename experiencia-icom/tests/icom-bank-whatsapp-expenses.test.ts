@@ -52,7 +52,7 @@ test('No date in the message cannot inherit a hallucinated year, including the r
  assert.equal(payload({date_excerpt:'ontem'},'Paguei 250 ontem').entry_date,'2026-10-06');
  assert.equal(payload({date_excerpt:'7 de outubro',date:'2023-10-07'},'Paguei 250 em 7 de outubro').entry_date,today);
  for(const date of ['08/10/2026','30/02/2026','07/10/2105'])assert.throws(()=>payload({date_excerpt:date},'Paguei 250 em '+date));
- assert.throws(()=>payload({date_excerpt:'ontem'},'Paguei 250 hoje'));assert.throws(()=>payload({},'Paguei 250 ontem'));
+ assert.equal(payload({date_excerpt:'ontem'},'Paguei 250 hoje').entry_date,today);assert.equal(payload({},'Paguei 250 ontem').entry_date,'2026-10-06');
 });
 test('Named trips need literal personal attribution and remain independent of the expense category',()=>{
  const p=payload({category:'Restaurante',trip_name:'Disney 2026',trip_excerpt:'viagem Disney 2026'},'Paguei 250 no restaurante na viagem Disney 2026');

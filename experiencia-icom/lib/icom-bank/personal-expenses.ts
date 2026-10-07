@@ -1,3 +1,4 @@
+import {expenseContext,type ExpenseAudience,type ExpenseNature} from './expense-context.ts';
 import type {AdminEntry} from './administrative.ts';
 
 // Based on IBGE POF household spending groups, detailed for the owner's daily use.
@@ -16,9 +17,10 @@ export function personalCategory(category:string,description=''){
  return aliases.find(([r])=>r.test(expenseFold(category)))?.[1]||aliases.find(([r])=>r.test(expenseFold(description)))?.[1]||category.trim()||'Outras despesas pessoais';
 }
 export function tripName(raw:unknown){if(raw===null||raw===undefined||raw==='')return '';if(typeof raw!=='string'||raw.length>80||/[\u0000-\u001f]/.test(raw))throw new Error('Informe um nome de viagem com até 80 caracteres.');return raw.trim().replace(/\s+/g,' ');}
-export function personalSummary(entries:AdminEntry[],category='',trip='',from='2000-01-01',to='2100-12-31'){
- const rows=entries.filter(e=>e.active&&e.scope==='PESSOAL'&&e.status==='REALIZADO'&&e.entry_date>=from&&e.entry_date<=to&&(!category||expenseFold(personalCategory(e.category,e.description))===expenseFold(personalCategory(category)))&&(!trip||expenseFold(e.details.trip_name||'')===expenseFold(trip)));
+export function personalSummary(entries:AdminEntry[],category='',trip='',from='2000-01-01',to='2100-12-31',audience?:ExpenseAudience,nature?:ExpenseNature){
+ const context=(e:AdminEntry)=>({...expenseContext(e.description,personalCategory(e.category,e.description)),...Object.fromEntries(Object.entries(e.details).filter(([k,v])=>['expense_audience','expense_nature'].includes(k)&&v))});
+ const rows=entries.filter(e=>e.active&&e.scope==='PESSOAL'&&e.status==='REALIZADO'&&e.entry_date>=from&&e.entry_date<=to&&(!audience||context(e).expense_audience===audience)&&(!nature||context(e).expense_nature===nature)&&(!category||expenseFold(personalCategory(e.category,e.description))===expenseFold(personalCategory(category)))&&(!trip||expenseFold(e.details.trip_name||'')===expenseFold(trip)));
  const sum=(list:AdminEntry[])=>list.reduce((n,e)=>n+Number(e.amount_cents||0),0);
  const group=(name:(e:AdminEntry)=>string)=>{const map=new Map<string,{name:string;amount_cents:number;count:number}>();for(const e of rows){const label=name(e);if(!label)continue;const key=expenseFold(label),g=map.get(key)||{name:label,amount_cents:0,count:0};g.amount_cents+=Number(e.amount_cents||0);g.count++;map.set(key,g);}return [...map.values()].sort((a,b)=>b.amount_cents-a.amount_cents||a.name.localeCompare(b.name));};
- return {rows,amount_cents:sum(rows),count:rows.length,categories:group(e=>personalCategory(e.category,e.description)),trips:group(e=>e.details.trip_name||''),missing:rows.filter(e=>e.amount_cents===null).length};
+ return {rows,amount_cents:sum(rows),count:rows.length,categories:group(e=>personalCategory(e.category,e.description)),trips:group(e=>e.details.trip_name||''),audiences:group(e=>String(context(e).expense_audience)),natures:group(e=>String(context(e).expense_nature)),missing:rows.filter(e=>e.amount_cents===null).length};
 }

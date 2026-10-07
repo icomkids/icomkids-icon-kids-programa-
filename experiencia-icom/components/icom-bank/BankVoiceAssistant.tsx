@@ -1,7 +1,10 @@
 'use client';
+import {useRouter} from 'next/navigation';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {Mic,MicOff,Square,Sparkles,X,ChevronDown,Volume2,VolumeX} from 'lucide-react';
-import {bankPath,type BankRole} from '@/lib/icom-bank/model';
+import {audienceLabel,natureLabel} from '@/lib/icom-bank/expense-context';
+import type {AdminEntry} from '@/lib/icom-bank/administrative';
+import {bankPath,currency,type BankRole} from '@/lib/icom-bank/model';
 import type {HelpTopic} from '@/lib/icom-bank/assistant-guide';
 import {VoiceResources,answerVoiceTools,prepareVoiceTools,type VoiceToolCall} from '@/lib/icom-bank/assistant-client';
 
@@ -10,15 +13,18 @@ type Setup={configured:boolean;topics:HelpTopic[]};
 type QuickResult={ok?:boolean;error?:string;consultado_em?:string;dados?:{ativos?:number;registros?:{nome:string}[];saldo_livre?:{valor:string};saldo_registrado?:{valor:string}}};
 function IntelligenceOrb(){return <span className="bank-ai-orb" aria-hidden="true"><span className="bank-ai-atmosphere"/><span className="bank-ai-current first"/><span className="bank-ai-current second"/><span className="bank-ai-current third"/><span className="bank-ai-glass"/></span>;}
 export default function BankVoiceAssistant({role}:{role:BankRole}){
+ const router=useRouter();
  const [open,setOpen]=useState(false),[status,setStatus]=useState<Status>('idle'),[setup,setSetup]=useState<Setup|null>(null),[error,setError]=useState(''),[transcript,setTranscript]=useState(''),[message,setMessage]=useState(''),[left,setLeft]=useState(300);
  const resources=useRef<VoiceResources|null>(null),lease=useRef<string|null>(null),muted=useRef(false),button=useRef<HTMLButtonElement>(null),dialog=useRef<HTMLDialogElement>(null),audio=useRef<HTMLAudioElement>(null);
  const [quickLoading,setQuickLoading]=useState(false),[quickText,setQuickText]=useState(''),[quickElapsed,setQuickElapsed]=useState<number|null>(null);
  const quickAbort=useRef<AbortController|null>(null);
  const answerStarted=useRef<number|null>(null),[answerLatency,setAnswerLatency]=useState<number|null>(null),[readLatency,setReadLatency]=useState<number|null>(null),[responding,setResponding]=useState(false);
  const [soundMuted,setSoundMuted]=useState(false),[audioBlocked,setAudioBlocked]=useState(false);
+ const [pendingExpense,setPendingExpense]=useState<{payload:AdminEntry;confirmation:string}|null>(null),[savingExpense,setSavingExpense]=useState(false),[expenseNotice,setExpenseNotice]=useState('');
+ const pendingRef=useRef<typeof pendingExpense>(null),savingRef=useRef(false),preparingRef=useRef(false);
  const busy=status!=='idle';
  function releaseLease(id:string){void fetch(bankPath('/api/assistant')+'?id='+encodeURIComponent(id),{method:'DELETE',keepalive:true}).catch(()=>{});}
- function stop(){resources.current?.close();resources.current=null;if(lease.current){releaseLease(lease.current);lease.current=null;}muted.current=false;answerStarted.current=null;setResponding(false);setStatus('idle');}
+ function stop(){pendingRef.current=null;setPendingExpense(null);resources.current?.close();resources.current=null;if(lease.current){releaseLease(lease.current);lease.current=null;}muted.current=false;answerStarted.current=null;setResponding(false);setStatus('idle');}
  function close(){stop();quickAbort.current?.abort();setQuickLoading(false);setQuickText('');setQuickElapsed(null);setOpen(false);setSetup(null);setTranscript('');setMessage('');setError('');dialog.current?.close();button.current?.focus();}
  useEffect(()=>{const shutdown=()=>{resources.current?.close();resources.current=null;if(lease.current){releaseLease(lease.current);lease.current=null;}};const onPageHide=()=>{shutdown();muted.current=false;setStatus('idle');};window.addEventListener('pagehide',onPageHide);return()=>{window.removeEventListener('pagehide',onPageHide);shutdown();};},[]);
  useEffect(()=>{
@@ -72,10 +78,15 @@ export default function BankVoiceAssistant({role}:{role:BankRole}){
     if(event.type==='response.created'){setResponding(true);setTranscript('');}
     if(event.type==='response.done'&&event.response?.status!=='completed')setResponding(false);
     const readTool=async(name:string,args:unknown)=>{
+     if(name==='preparar_despesa_icom'&&(pendingRef.current||preparingRef.current))return {ok:false,error:'Há uma despesa em preparação ou aguardando confirmação no painel. Confirme ou cancele antes de preparar outra.'};
+     const writing=name==='preparar_despesa_icom';if(writing)preparingRef.current=true;
+     try{
      if(!lease.current||r.cancelled)throw new Error('Conversa encerrada.');
      const started=performance.now();
-     const response=await fetch(bankPath('/api/assistant/data'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:lease.current,name,arguments:args}),signal:AbortSignal.any([r.abort.signal,AbortSignal.timeout(7000)])});
-     const result=await response.json() as {ok?:boolean;error?:string};if(!r.cancelled)setReadLatency(Math.round(performance.now()-started));if(!response.ok)return {ok:false,error:result.error||'Consulta indisponível. Não invente valores.'};return result;
+     const response=await fetch(bankPath(name==='preparar_despesa_icom'?'/api/assistant/expense':'/api/assistant/data'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:lease.current,name,arguments:args}),signal:AbortSignal.any([r.abort.signal,AbortSignal.timeout(name==='preparar_despesa_icom'?45000:7000)])});
+     const result=await response.json() as {ok?:boolean;error?:string;pending?:{payload:AdminEntry;confirmation:string}};if(!r.cancelled&&name==='preparar_despesa_icom'&&result.pending){pendingRef.current=result.pending;setPendingExpense(result.pending);setExpenseNotice('');}
+     if(!r.cancelled)setReadLatency(Math.round(performance.now()-started));if(!response.ok)return {ok:false,error:result.error||'Solicitação indisponível. Não invente valores.'};return name==='preparar_despesa_icom'?{ok:result.ok,saved:false,payload:result.pending?.payload,message:'Despesa preparada, ainda não salva. Confira o resumo e toque em Confirmar lançamento no painel.'}:result;
+     }finally{if(writing)preparingRef.current=false;}
     };
     if(event.type==='response.output_item.done'&&event.item?.type==='function_call')prepareVoiceTools(r,[event.item],readTool);
     if(event.type==='response.done'&&event.response?.status==='completed'&&event.response.output?.some(i=>i.type==='function_call')){
@@ -101,6 +112,15 @@ export default function BankVoiceAssistant({role}:{role:BankRole}){
    r.timer=setInterval(()=>{const remaining=Math.max(0,Math.ceil((deadline-Date.now())/1000));setLeft(remaining);if(!remaining){stop();setMessage('Conversa encerrada após 5 minutos. Você pode iniciar outra.');}},1000);
   }catch(e){if(r.cancelled)return;stop();const name=e instanceof DOMException?e.name:'';setError(name==='NotAllowedError'?'Permita o microfone no navegador para conversar. Ele fica desligado ao encerrar.':name==='NotFoundError'?'Nenhum microfone foi encontrado neste dispositivo.':e instanceof Error?e.message:'Não foi possível iniciar a voz.');}
  }
+ async function confirmExpense(){
+  const pending=pendingRef.current,r=resources.current,id=lease.current;if(!pending||!r||!id||savingRef.current)return;
+  savingRef.current=true;setSavingExpense(true);setExpenseNotice('');
+  try{const response=await fetch(bankPath('/api/assistant/expense'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,confirmation:pending.confirmation}),signal:AbortSignal.timeout(15000)}),result=await response.json() as {saved?:boolean;error?:string;row?:AdminEntry};
+   if(!response.ok||!result.saved||!result.row)throw new Error(result.error||'Não foi possível confirmar. Confira o histórico antes de repetir.');
+   pendingRef.current=null;setPendingExpense(null);const message=`Lançado: ${currency(Number(result.row.amount_cents))} — ${result.row.description}.`;setExpenseNotice(message);window.dispatchEvent(new Event('icom-bank-ledger-changed'));router.refresh();
+   if(!r.cancelled&&r.channel?.readyState==='open'){r.channel.send(JSON.stringify({type:'conversation.item.create',item:{type:'message',role:'user',content:[{type:'input_text',text:'Resultado do servidor após minha confirmação no botão: '+JSON.stringify({saved:true,description:result.row.description,amount:currency(Number(result.row.amount_cents)),category:result.row.category})+'. Confirme brevemente o lançamento, sem criar outro.'}]}}));if(!responding)r.channel.send(JSON.stringify({type:'response.create'}));}
+  }catch(e){setExpenseNotice(e instanceof Error?e.message:'Confira o histórico antes de repetir.');}finally{savingRef.current=false;setSavingExpense(false);}
+ }
  function pause(){const stream=resources.current?.stream;if(!stream)return;muted.current=!muted.current;stream.getAudioTracks().forEach(t=>{t.enabled=!muted.current;});setStatus(muted.current?'paused':'listening');setMessage(muted.current?'Microfone pausado.':'Pode continuar sua pergunta.');}
  function toggleSound(){const next=audioBlocked?false:!soundMuted;setSoundMuted(next);resources.current?.setSpeakerMuted(next);if(audio.current)audio.current.muted=next;if(!next&&audio.current?.srcObject)void audio.current.play().then(()=>{setAudioBlocked(false);setError('');}).catch(()=>{setAudioBlocked(true);setError('Não foi possível reproduzir o áudio. Confira o som do dispositivo e toque em Ativar áudio.');});}
  const topicQuestions=setup?.topics.filter(t=>role==='OWNER'?['pagar','receber','caixa'].includes(t.id):['clientes','contratos','comprovantes','parcelas'].includes(t.id)).slice(0,3)||[];
@@ -117,6 +137,8 @@ export default function BankVoiceAssistant({role}:{role:BankRole}){
      <strong>{status==='connecting'?'Conectando…':status==='paused'?'Microfone pausado':status==='speaking'?'Explicando para você':status==='listening'?'Estou ouvindo':setup&&!setup.configured?'Voz aguardando ativação':'Vamos resolver sua dúvida?'}</strong>
      <p>{message||(role==='OWNER'?'Pergunte sobre lucro das vendas, despesas pessoais, investidores e os números do sistema.':'Pergunte sobre os dados e as telas disponíveis para o seu perfil.')}</p>
     </div>
+    {pendingExpense&&<section className="bank-panel" aria-label="Confirmar despesa por voz"><h3>Conferir lançamento</h3><p><strong>{currency(pendingExpense.payload.amount_cents||0)}</strong> · {pendingExpense.payload.description}</p><p>{pendingExpense.payload.scope==='PESSOAL'?'Pessoal':'Loja'} · {pendingExpense.payload.category} · {pendingExpense.payload.entry_date.split('-').reverse().join('/')}{pendingExpense.payload.details.plate?' · '+pendingExpense.payload.details.plate:''}</p>{pendingExpense.payload.scope==='PESSOAL'&&<p>{audienceLabel(pendingExpense.payload.details.expense_audience)} · {natureLabel(pendingExpense.payload.details.expense_nature)}{pendingExpense.payload.details.trip_name?' · '+pendingExpense.payload.details.trip_name:''}</p>}<small>Ainda não foi salvo. Confira antes de confirmar.</small><div className="bank-voice-controls"><button disabled={savingExpense} onClick={()=>void confirmExpense()}>{savingExpense?'Salvando…':'Confirmar lançamento'}</button><button disabled={savingExpense} onClick={()=>{pendingRef.current=null;setPendingExpense(null);setExpenseNotice('Despesa cancelada. Nada foi lançado.');}}>Cancelar</button></div></section>}
+    {expenseNotice&&<p role="status">{expenseNotice}</p>}
     {error&&<p className="bank-error" role="alert">{error}</p>}
     {setup&&!setup.configured&&<p className="bank-voice-activation">A conversa por voz precisa ser ativada pelo administrador. Enquanto isso, consulte as orientações rápidas abaixo.</p>}
     {!setup&&!error&&<p role="status">Carregando a ajuda…</p>}
@@ -124,7 +146,7 @@ export default function BankVoiceAssistant({role}:{role:BankRole}){
     <audio ref={audio} autoPlay playsInline muted={soundMuted} hidden/>
     {!busy&&role==='OWNER'&&setup?.configured&&<button className="bank-voice-audio" onClick={()=>void start(true)}><Volume2 size={15}/> Ouvir consultas com microfone pausado</button>}
     {busy&&<button className="bank-voice-audio" aria-pressed={soundMuted} onClick={toggleSound}>{soundMuted||audioBlocked?<VolumeX size={15}/>:<Volume2 size={15}/>} {soundMuted||audioBlocked?'Ativar áudio':'Silenciar áudio'}</button>}
-    <p className="bank-voice-privacy">Ao iniciar, seu áudio e os resultados das consultas autorizadas serão enviados à OpenAI para responder por voz. A IA consulta os dados permitidos para sua conta, sem alterar registros. Ao fechar, o microfone é desligado.</p>
+    <p className="bank-voice-privacy">Ao iniciar, seu áudio e os resultados das consultas autorizadas serão enviados à OpenAI para responder por voz. {role==='OWNER'?'A IA consulta seus dados e prepara despesas que só são salvas após sua confirmação no botão.':'A IA consulta os dados permitidos para sua conta, sem alterar registros.'} Ao fechar, o microfone é desligado.</p>
     {role==='OWNER'&&<section className="bank-voice-guide" aria-label="Consultas rápidas"><h3>Consultas rápidas</h3><p>{busy?'Toque para ouvir a resposta ou faça sua pergunta por voz.':'Pergunte por voz ou confira estes números sem ligar o microfone.'}</p><div className="bank-voice-controls">{(['investidores','vendedores','caixa'] as const).map(topic=><button key={topic} disabled={quickLoading||busy&&(status==='connecting'||responding)} onClick={()=>void quick(topic)}>{topic==='investidores'?'Investidores':topic==='vendedores'?'Vendedores':'Saldo do caixa'}</button>)}</div>{(quickLoading||quickText)&&<p role="status" data-query-ms={quickElapsed??undefined}>{quickLoading?'Consultando…':quickText}</p>}</section>}
     {transcript&&<div className="bank-voice-transcript" data-first-voice-ms={answerLatency??undefined} data-voice-query-ms={readLatency??undefined}><small>RESPOSTA DO ASSISTENTE</small><p>{transcript}</p></div>}
     {setup&&<section className="bank-voice-guide" aria-label="Orientações rápidas"><h3>Orientações rápidas</h3><p>Você também pode consultar estes passos sem ligar o microfone.</p>{topicQuestions.map(t=><details key={t.id}><summary>{t.question}<ChevronDown size={15}/></summary><p>{t.text}</p></details>)}<details><summary>Ver todos os tópicos <ChevronDown size={15}/></summary>{setup.topics.map(t=><details key={t.id}><summary>{t.title}</summary><p>{t.text}</p></details>)}</details></section>}

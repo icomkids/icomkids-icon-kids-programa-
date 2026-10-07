@@ -1,3 +1,4 @@
+import {expenseContext,audienceLabel,natureLabel,type ExpenseAudience,type ExpenseNature} from './expense-context.ts';
 import {expenseDate} from './expense-date.ts';
 import {personalCategories,personalCategory,tripName,expenseFold} from './personal-expenses.ts';
 import {createHash,timingSafeEqual} from 'node:crypto';
@@ -7,7 +8,7 @@ import {brazilDay,currency} from './model.ts';
 import type {StockRow} from './stock.ts';
 
 export const botName='icom-bank-assistente';
-export type ExpenseDraft={intent:'DESPESA'|'OUTRO'|'MULTIPLAS'|'CONSULTA';scope:'PESSOAL'|'LOJA';description:string;category:string;amount:string|null;amount_excerpt:string|null;paid:boolean|null;payment_method:'PIX'|'DINHEIRO'|'CARTAO'|'TRANSFERENCIA'|'OUTRO'|null;date:string|null;date_excerpt?:string|null;trip_name?:string|null;trip_excerpt?:string|null;query_period?:'total'|'mes_atual'|'mes_anterior';uses_previous?:boolean;plate:string|null;confidence:'ALTA'|'BAIXA';question:string};
+export type ExpenseDraft={intent:'DESPESA'|'OUTRO'|'MULTIPLAS'|'CONSULTA';query_audience?:ExpenseAudience|null;query_nature?:ExpenseNature|null;scope:'PESSOAL'|'LOJA';description:string;category:string;amount:string|null;amount_excerpt:string|null;paid:boolean|null;payment_method:'PIX'|'DINHEIRO'|'CARTAO'|'TRANSFERENCIA'|'OUTRO'|null;date:string|null;date_excerpt?:string|null;trip_name?:string|null;trip_excerpt?:string|null;query_period?:'total'|'mes_atual'|'mes_anterior';uses_previous?:boolean;plate:string|null;confidence:'ALTA'|'BAIXA';question:string};
 export type BotMessage={provider_id:string;sender:string;type:'audio'|'text';text:string;sent_at:string};
 const object=(v:unknown):Record<string,unknown>=>v&&typeof v==='object'&&!Array.isArray(v)?v as Record<string,unknown>:{};
 export function secureEqual(a:unknown,b:string){if(typeof a!=='string'||!b)return false;return timingSafeEqual(createHash('sha256').update(a).digest(),createHash('sha256').update(b).digest());}
@@ -55,6 +56,7 @@ export function expensePayload(d:ExpenseDraft,transcript:string,id:string,stocks
   }
  }
  const personal=personalCategory(d.category,d.description),category=d.scope==='PESSOAL'?(personalCategories.includes(personal as typeof personalCategories[number])?personal:'Outras despesas pessoais'):d.category;
+ if(d.scope==='PESSOAL')Object.assign(details,expenseContext(transcript,category));
  return adminInput({id,kind:d.scope==='PESSOAL'?'PESSOAL':'CUSTO',scope:d.scope,description:d.description.trim(),category,entry_date:date,amount_cents,status:'REALIZADO',details,expected_updated_at:null});
 }
-export function expenseReply(p:ReturnType<typeof expensePayload>){return `✅ Lançado no ICOM Bank: ${currency(p.amount_cents!)} — ${p.description}.\nÁrea: ${p.scope==='PESSOAL'?'Despesas pessoais':'Despesas da loja'}${p.details.plate?' · veículo '+p.details.plate:''}.\nCategoria: ${p.category}${p.details.trip_name?' · Viagem: '+p.details.trip_name:''}.\nData: ${p.entry_date.split('-').reverse().join('/')} · ${p.details.payment_method}.\nO lançamento já aparece no Administrativo e na conferência do caixa. Código: ${p.id.slice(0,8)}.`;}
+export function expenseReply(p:ReturnType<typeof expensePayload>){return `✅ Lançado no ICOM Bank: ${currency(p.amount_cents!)} — ${p.description}.\nÁrea: ${p.scope==='PESSOAL'?'Despesas pessoais':'Despesas da loja'}${p.details.plate?' · veículo '+p.details.plate:''}.\nCategoria: ${p.category}${p.details.trip_name?' · Viagem: '+p.details.trip_name:''}.${p.scope==='PESSOAL'?' · '+audienceLabel(p.details.expense_audience)+' · '+natureLabel(p.details.expense_nature):''}\nData: ${p.entry_date.split('-').reverse().join('/')} · ${p.details.payment_method}.\nO lançamento já aparece no Administrativo e na conferência do caixa. Código: ${p.id.slice(0,8)}.`;}

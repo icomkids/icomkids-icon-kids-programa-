@@ -1,3 +1,5 @@
+import {expenseStatusQuestion,audienceLabel,natureLabel} from './expense-context';
+import {sharedAssistantCache} from './assistant-cache';
 import {config,db} from '../server';
 import {sendText} from '../whatsapp';
 import {brazilDay} from './model';
@@ -36,6 +38,11 @@ export async function processExpenses(){
    if(m.type==='audio'&&!transcript){const audio=await downloadExpenseAudio(b,m.provider_id);transcript=await transcribeExpense(audio.bytes,audio.mime,key);}
    await patch(m,{transcript});
    const since=new Date(Date.parse(m.created_at)-900000).toISOString();
+   if(expenseStatusQuestion(transcript)){
+    const recent=await botDb<Inbox[]>('icom_bank_whatsapp_inbox?sender=eq.'+m.sender+'&owner_id=eq.'+m.owner_id+'&status=in.(LANCADO,ESCLARECER,ERRO,PROCESSANDO,FILA)&created_at=gt.'+encodeURIComponent(since)+'&created_at=lt.'+encodeURIComponent(m.created_at)+'&order=created_at.desc&limit=2');
+    const original=recent[0],message=original?.status==='LANCADO'?'Sim, a despesa anterior foi lançada.\n'+original.reply:original?'A despesa anterior ainda não foi lançada. Confira o motivo no histórico do painel. Esta pergunta não cria uma segunda despesa.':'Não localizei uma despesa recente desta conversa para confirmar. Confira o histórico no painel; esta pergunta não cria um lançamento.';
+    await patch(m,{status:'RESOLVIDO',reply:message});m.reply=message;await reply(b,m);continue;
+   }
    const [previous]=await botDb<Inbox[]>('icom_bank_whatsapp_inbox?sender=eq.'+m.sender+'&owner_id=eq.'+m.owner_id+'&status=eq.ESCLARECER&created_at=gt.'+encodeURIComponent(since)+'&created_at=lt.'+encodeURIComponent(m.created_at)+'&order=created_at.desc&limit=1');
    const today=brazilDay(new Date(m.created_at)),draft=await extractExpense(transcript,today,key,previous?.transcript||'');
    const source=draft.uses_previous&&previous?.transcript?previous.transcript+'\n'+transcript:transcript;
@@ -43,18 +50,18 @@ export async function processExpenses(){
     if(draft.scope!=='PESSOAL'||draft.confidence!=='ALTA')throw new Error('Pergunte uma despesa pessoal por categoria ou pelo nome da viagem.');
     const category=draft.category?personalCategory(draft.category):'',trip=tripName(draft.trip_name);
     if(trip&&(!draft.trip_excerpt||!expenseFold(transcript).includes(expenseFold(draft.trip_excerpt))||!expenseFold(draft.trip_excerpt).includes(expenseFold(trip))))throw new Error('Informe o nome da viagem que deseja consultar.');
-    const input=assistantReadInput({topic:'despesas_pessoais',period:draft.query_period||'total',...(category?{category}:{}),...(trip?{trip}:{})},'OWNER',today);
+    const input=assistantReadInput({topic:'despesas_pessoais',period:draft.query_period||'total',...(category?{category}:{}),...(trip?{trip}:{}),...(draft.query_audience?{audience:draft.query_audience}:{}),...(draft.query_nature?{nature:draft.query_nature}:{})},'OWNER',today);
     const entries:AdminEntry[]=[];
     for(let offset=0;;offset+=500){if(offset>=20000)throw new Error('Consulta muito extensa. Escolha um mês para consultar no painel.');const batch=await botDb<AdminEntry[]>('icom_bank_admin_entries?active=eq.true&scope=eq.PESSOAL&status=eq.REALIZADO&entry_date=gte.'+input.from+'&entry_date=lte.'+input.to+'&select=id,scope,status,active,amount_cents,category,description,entry_date,details&order=id.asc&limit=500&offset='+offset);entries.push(...batch);if(batch.length<500)break;}
-    const summary=personalSummary(entries,category,trip,input.from,input.to),period=input.period==='total'?'todo o histórico':`${input.from.split('-').reverse().join('/')} a ${input.to.split('-').reverse().join('/')}`;
-    const message=`Você gastou ${currency(summary.amount_cents)} em ${category||'despesas pessoais'}${trip?' na viagem '+trip:''}.\nPeríodo: ${period} · ${summary.count} pagamento(s).${summary.missing?' Total parcial: há registros sem valor.':''}\nSó entram pagamentos realizados e ativos. Nenhum lançamento foi criado por esta consulta.`;
+    const summary=personalSummary(entries,category,trip,input.from,input.to,input.audience,input.nature),period=input.period==='total'?'todo o histórico':`${input.from.split('-').reverse().join('/')} a ${input.to.split('-').reverse().join('/')}`;
+    const message=`Você gastou ${currency(summary.amount_cents)} em ${category||'despesas pessoais'}${trip?' na viagem '+trip:''}${input.audience?' · '+audienceLabel(input.audience):''}${input.nature?' · '+natureLabel(input.nature):''}.\nPeríodo: ${period} · ${summary.count} pagamento(s).${summary.missing?' Total parcial: há registros sem valor.':''}\nSó entram pagamentos realizados e ativos.${input.nature?' O total segue as classificações registradas ou as regras exibidas no painel; gastos sem classificação ficam separados.':''} Nenhum lançamento foi criado por esta consulta.`;
     await patch(m,{status:'RESOLVIDO',reply:message});m.reply=message;await reply(b,m);continue;
    }
    const stocks=draft.plate?await botDb<StockRow[]>('icom_bank_stock_vehicles?active=eq.true&plate=eq.'+encodeURIComponent(draft.plate.replace(/[^a-z0-9]/gi,'').toUpperCase())+'&select=id,plate,vehicle,entry_date,status,active&limit=2'):[];
    const p=expensePayload(draft,source,m.id,stocks,today),message=expenseReply(p);
    await patch(m,{reply:message});const {expected_updated_at:_,...payload}=p;void _;
    await botDb('rpc/icom_bank_whatsapp_commit',{p_id:m.id,p_claim:m.claim_id,p_payload:payload});
-   m.reply=message;await reply(b,m);
+   sharedAssistantCache().clear();m.reply=message;await reply(b,m);
   }catch(e){
    const msg=e instanceof Error?e.message:'Não consegui interpretar. Envie novamente a despesa e o valor.';
    // Never overwrite an atomic commit when only its HTTP acknowledgement or WhatsApp delivery failed.
