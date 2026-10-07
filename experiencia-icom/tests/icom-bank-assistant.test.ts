@@ -183,3 +183,7 @@ test('Voice lease and warm cache survive separate route module instances without
   const ownCache=await import('../lib/icom-bank/assistant-cache.ts');await ownCache.sharedAssistantCache().read('route-fixture',async()=>42);assert.equal(await otherCache.sharedAssistantCache().read('route-fixture',async()=>99),42);
  }finally{globalThis.fetch=originalFetch;if(key===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=key;}
 });
+
+test('Close microphone noise gating is stronger without extending answer latency',()=>{
+ const s=voiceSession('OWNER','administrativo');assert.equal(s.audio.input.noise_reduction.type,'near_field');assert.equal(s.audio.input.turn_detection.threshold,0.75);assert.equal(s.audio.input.turn_detection.interrupt_response,true);
+});

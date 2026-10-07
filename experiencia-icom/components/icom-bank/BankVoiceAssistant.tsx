@@ -54,7 +54,7 @@ export default function BankVoiceAssistant({role}:{role:BankRole}){
   try{
    // Unlock audio from the user gesture, before waiting on microphone/network.
    r.audio=audio.current;r.setSpeakerMuted(false);r.audio?.play().catch(()=>{});
-   const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});
+   const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:false},video:false});
    if(listenOnly){muted.current=true;stream.getAudioTracks().forEach(t=>{t.enabled=false;});}
    if(!r.attachStream(stream))return;
    const pc=new RTCPeerConnection();r.peer=pc;

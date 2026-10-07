@@ -15,7 +15,7 @@ export function voiceInput(body:unknown,role:BankRole){
 export function voiceSession(role:BankRole,section:unknown,model=voiceDefaultModel){return {
  type:'realtime',model,instructions:assistantInstructions(role,section),
  output_modalities:['audio'],max_output_tokens:400,tools:[assistantReadTool(role)],tool_choice:'auto',
- audio:{input:{noise_reduction:{type:'near_field'},turn_detection:{type:'server_vad',threshold:0.55,prefix_padding_ms:300,silence_duration_ms:450,create_response:true,interrupt_response:true}},output:{voice:'marin'}},
+ audio:{input:{noise_reduction:{type:'near_field'},turn_detection:{type:'server_vad',threshold:0.75,prefix_padding_ms:300,silence_duration_ms:450,create_response:true,interrupt_response:true}},output:{voice:'marin'}},
 };}
 export function callIdFromLocation(location:string|null){const match=location?.match(/(?:^|\/)realtime\/calls\/(rtc_[a-zA-Z0-9_-]+)$/);return match?.[1]||null;}
 export async function boundedVoiceBody(req:Request,maxBytes=65000){

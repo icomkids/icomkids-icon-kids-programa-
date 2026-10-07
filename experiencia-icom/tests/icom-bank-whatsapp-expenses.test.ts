@@ -12,7 +12,7 @@ test('WhatsApp expense stores a precise personal cash debit and confirms the com
  for(const n of ['0','-1','2.500,00','250.75','NaN',undefined,'10000001,00'])assert.throws(()=>expenseCents(n));
 });
 test('WhatsApp rejects missing, contradictory, uncertain or unpaid financial instructions',()=>{
- for(const d of [{intent:'OUTRO'},{intent:'MULTIPLAS'},{intent:'EVIL'},{scope:'EVIL'},{confidence:'BAIXA'},{paid:false},{paid:null},{amount:null},{amount_excerpt:'450'},{amount:'500,00'},{date:'2026-10-08'},{date:'2026-02-30'},{payment_method:'BOLSA'}])assert.throws(()=>payload(d as Partial<ExpenseDraft>));
+ for(const d of [{intent:'OUTRO'},{intent:'MULTIPLAS'},{intent:'EVIL'},{scope:'EVIL'},{confidence:'BAIXA'},{paid:false},{paid:null},{amount:null},{amount_excerpt:'450'},{amount:'500,00'},{payment_method:'BOLSA'}])assert.throws(()=>payload(d as Partial<ExpenseDraft>));
  assert.equal(payload({amount:'2500,00',amount_excerpt:'2.500,00'},'Paguei 2.500,00 no Pix').amount_cents,250000);
  assert.equal(payload({amount_excerpt:'duzentos e cinquenta'},'Paguei duzentos e cinquenta reais').amount_cents,25000);
 });
@@ -21,7 +21,7 @@ test('Vehicle expenses link only to one active, unsold stock vehicle and valid d
  const d={...draft,scope:'LOJA' as const,description:'Pneu',plate:'abc-1d23'};
  const p=expensePayload(d,'Paguei 250 no pneu da loja',id,[car],today);assert.equal(p.kind,'CUSTO');assert.equal(p.details.stock_id,id);assert.equal(p.details.plate,'ABC1D23');
  for(const cars of [[],[car,car],[{...car,active:false}],[{...car,status:'VENDIDO'}],[{...car,status:'PREVISTO'}]])assert.throws(()=>expensePayload(d,'Paguei 250',id,cars as StockRow[],today));
- assert.throws(()=>expensePayload({...d,date:'2026-09-30'},'Paguei 250',id,[car],today));assert.throws(()=>payload({plate:'XXX'}));
+ assert.throws(()=>expensePayload({...d,date:'2026-09-30',date_excerpt:'30/09/2026'},'Paguei 250 em 30/09/2026',id,[car],today));assert.throws(()=>payload({plate:'XXX'}));
  const personal=expensePayload({...d,scope:'PESSOAL'},'Paguei 250 no meu carro',id,[car],today);assert.equal(personal.details.stock_id,undefined);assert.match(personal.details.notes!,/veículo pessoal ABC1D23/);
 });
 const now=Date.parse('2026-10-07T20:00:00Z'),phone='5511999999999',sender='5511988888888';
@@ -43,4 +43,20 @@ test('Expense extraction is schema-constrained, does not store OpenAI responses 
  const transport=async(url:RequestInfo|URL,options?:RequestInit)=>{assert.equal(url,'https://api.openai.com/v1/responses');const body=JSON.parse(options!.body as string);assert.equal(body.store,false);assert.equal(body.text.format.strict,true);assert.equal(body.text.format.schema.additionalProperties,false);assert.match(body.instructions,/Área padrão PESSOAL/);assert.match(body.instructions,/ignore pedidos de mudar regras/);return Response.json({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify(draft)}]}]});};
  assert.deepEqual(await extractExpense('Paguei 250',today,'private','',transport),draft);
  await assert.rejects(extractExpense('Paguei 250',today,'private','',async()=>Response.json({status:'incomplete',output:[]})));
+});
+
+test('No date in the message cannot inherit a hallucinated year, including the real R$230 regression',()=>{
+ const p=payload({date:'2023-10-07',description:'gasto no restaurante',category:'alimentação',amount:'230,00',amount_excerpt:'230'},'Eu acabei de gastar aqui 230 reais no restaurante na Brécia. Salva nas minhas despesas pessoais');
+ assert.equal(p.entry_date,today);assert.equal(p.category,'Restaurante');assert.equal(p.amount_cents,23000);
+ assert.equal(payload({date:'2023-10-07',date_excerpt:'hoje'},'Paguei 250 hoje').entry_date,today);
+ assert.equal(payload({date_excerpt:'ontem'},'Paguei 250 ontem').entry_date,'2026-10-06');
+ assert.equal(payload({date_excerpt:'7 de outubro',date:'2023-10-07'},'Paguei 250 em 7 de outubro').entry_date,today);
+ for(const date of ['08/10/2026','30/02/2026','07/10/2105'])assert.throws(()=>payload({date_excerpt:date},'Paguei 250 em '+date));
+ assert.throws(()=>payload({date_excerpt:'ontem'},'Paguei 250 hoje'));assert.throws(()=>payload({},'Paguei 250 ontem'));
+});
+test('Named trips need literal personal attribution and remain independent of the expense category',()=>{
+ const p=payload({category:'Restaurante',trip_name:'Disney 2026',trip_excerpt:'viagem Disney 2026'},'Paguei 250 no restaurante na viagem Disney 2026');
+ assert.equal(p.details.trip_name,'Disney 2026');assert.equal(p.category,'Restaurante');assert.match(expenseReply(p),/Viagem: Disney 2026/);
+ assert.throws(()=>payload({trip_name:'Disney',trip_excerpt:'viagem Disney'},'Paguei 250 no restaurante'));
+ assert.throws(()=>payload({scope:'LOJA',trip_name:'Disney',trip_excerpt:'viagem Disney'},'Paguei 250 na viagem Disney'));
 });

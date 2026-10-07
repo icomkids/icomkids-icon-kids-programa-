@@ -5,6 +5,10 @@ import {botConfig,botCredentials,readBotConnection,type BotConfig} from './whats
 import {extractExpense,transcribeExpense} from './whatsapp-ai';
 import {expensePayload,expenseReply} from './whatsapp-expenses';
 import type {StockRow} from './stock';
+import type {AdminEntry} from './administrative';
+import {currency} from './model';
+import {assistantReadInput} from './assistant-data';
+import {personalCategory,personalSummary,tripName,expenseFold} from './personal-expenses';
 
 type Inbox={id:string;owner_id:string;provider_id:string;sender:string;type:'audio'|'text';text:string;transcript:string;claim_id:string;status:string;reply:string;created_at:string};
 export async function botDb<T>(path:string,body?:unknown):Promise<T>{const {url,key}=config();const r=await fetch(url+'/rest/v1/'+path,{method:body===undefined?'GET':'POST',headers:{apikey:key,Authorization:`Bearer ${key}`,'Content-Type':'application/json',Prefer:'return=representation'},...(body===undefined?{}:{body:JSON.stringify(body)}),cache:'no-store',signal:AbortSignal.timeout(12000)});if(!r.ok)throw new Error('Não foi possível concluir o lançamento. Confira o histórico no painel antes de reenviar.');const text=await r.text();return (text?JSON.parse(text):undefined) as T;}
@@ -22,7 +26,7 @@ export async function processExpenses(){
  const b=await botConfig();if(!b?.enabled||b.status!=='PRONTO')return;
  const [owner]=await botDb<{role:string;active:boolean}[]>('icom_bank_user_access?user_id=eq.'+b.owner_id+'&select=role,active');if(!owner?.active||owner.role!=='OWNER')return;
  if(!(await readBotConnection(b)).connected)return;
- const waiting=await botDb<Inbox[]>('icom_bank_whatsapp_inbox?reply_status=eq.NAO_ENVIADO&status=in.(LANCADO,ESCLARECER,ERRO)&reply=neq.&order=created_at&limit=3');
+ const waiting=await botDb<Inbox[]>('icom_bank_whatsapp_inbox?reply_status=eq.NAO_ENVIADO&status=in.(LANCADO,ESCLARECER,ERRO,RESOLVIDO)&reply=neq.&order=created_at&limit=3');
  for(const m of waiting)if(m.owner_id===b.owner_id&&b.allowed_phones.includes(m.sender))await reply(b,m);
  for(let n=0;n<3;n++){
   const m=await botDb<Inbox|null>('rpc/icom_bank_whatsapp_claim',{});if(!m)return;
@@ -33,9 +37,21 @@ export async function processExpenses(){
    await patch(m,{transcript});
    const since=new Date(Date.parse(m.created_at)-900000).toISOString();
    const [previous]=await botDb<Inbox[]>('icom_bank_whatsapp_inbox?sender=eq.'+m.sender+'&owner_id=eq.'+m.owner_id+'&status=eq.ESCLARECER&created_at=gt.'+encodeURIComponent(since)+'&created_at=lt.'+encodeURIComponent(m.created_at)+'&order=created_at.desc&limit=1');
-   const draft=await extractExpense(transcript,brazilDay(),key,previous?.transcript||'');
+   const today=brazilDay(new Date(m.created_at)),draft=await extractExpense(transcript,today,key,previous?.transcript||'');
+   const source=draft.uses_previous&&previous?.transcript?previous.transcript+'\n'+transcript:transcript;
+   if(draft.intent==='CONSULTA'){
+    if(draft.scope!=='PESSOAL'||draft.confidence!=='ALTA')throw new Error('Pergunte uma despesa pessoal por categoria ou pelo nome da viagem.');
+    const category=draft.category?personalCategory(draft.category):'',trip=tripName(draft.trip_name);
+    if(trip&&(!draft.trip_excerpt||!expenseFold(transcript).includes(expenseFold(draft.trip_excerpt))||!expenseFold(draft.trip_excerpt).includes(expenseFold(trip))))throw new Error('Informe o nome da viagem que deseja consultar.');
+    const input=assistantReadInput({topic:'despesas_pessoais',period:draft.query_period||'total',...(category?{category}:{}),...(trip?{trip}:{})},'OWNER',today);
+    const entries:AdminEntry[]=[];
+    for(let offset=0;;offset+=500){if(offset>=20000)throw new Error('Consulta muito extensa. Escolha um mês para consultar no painel.');const batch=await botDb<AdminEntry[]>('icom_bank_admin_entries?active=eq.true&scope=eq.PESSOAL&status=eq.REALIZADO&entry_date=gte.'+input.from+'&entry_date=lte.'+input.to+'&select=id,scope,status,active,amount_cents,category,description,entry_date,details&order=id.asc&limit=500&offset='+offset);entries.push(...batch);if(batch.length<500)break;}
+    const summary=personalSummary(entries,category,trip,input.from,input.to),period=input.period==='total'?'todo o histórico':`${input.from.split('-').reverse().join('/')} a ${input.to.split('-').reverse().join('/')}`;
+    const message=`Você gastou ${currency(summary.amount_cents)} em ${category||'despesas pessoais'}${trip?' na viagem '+trip:''}.\nPeríodo: ${period} · ${summary.count} pagamento(s).${summary.missing?' Total parcial: há registros sem valor.':''}\nSó entram pagamentos realizados e ativos. Nenhum lançamento foi criado por esta consulta.`;
+    await patch(m,{status:'RESOLVIDO',reply:message});m.reply=message;await reply(b,m);continue;
+   }
    const stocks=draft.plate?await botDb<StockRow[]>('icom_bank_stock_vehicles?active=eq.true&plate=eq.'+encodeURIComponent(draft.plate.replace(/[^a-z0-9]/gi,'').toUpperCase())+'&select=id,plate,vehicle,entry_date,status,active&limit=2'):[];
-   const p=expensePayload(draft,(previous?.transcript||'')+'\n'+transcript,m.id,stocks),message=expenseReply(p);
+   const p=expensePayload(draft,source,m.id,stocks,today),message=expenseReply(p);
    await patch(m,{reply:message});const {expected_updated_at:_,...payload}=p;void _;
    await botDb('rpc/icom_bank_whatsapp_commit',{p_id:m.id,p_claim:m.claim_id,p_payload:payload});
    m.reply=message;await reply(b,m);
