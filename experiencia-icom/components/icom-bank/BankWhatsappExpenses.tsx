@@ -15,8 +15,8 @@ export default function BankWhatsappExpenses(){
  async function action(kind:'save'|'connect'|'refresh'){
   setBusy(true);setError('');setNotice('');try{
    if(kind==='refresh'){const fresh=await load();setResult(fresh);setConnection(fresh.connection);return;}
-   const r=await fetch(bankPath('/api/whatsapp'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(kind==='save'?{action:'save',phone,allowed_phones:allowed.split(/[\n,;]/).map(n=>n.trim()).filter(Boolean),enabled,expected_updated_at:result?.settings?.updated_at}: {action:'connect'})}),d=await r.json() as {error?:string;connection?:Connection};if(!r.ok)throw new Error(d.error||'Não foi possível concluir.');
-   if(kind==='connect')setConnection(d.connection||null);else{const fresh=await load();setResult(fresh);setConnection(fresh.connection);setNotice('Números e preferência salvos. Conecte o WhatsApp pelo QR Code para começar.');}
+   const r=await fetch(bankPath('/api/whatsapp'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(kind==='save'?{action:'save',phone,allowed_phones:allowed.split(/[\n,;]/).map(n=>n.trim()).filter(Boolean),enabled,expected_updated_at:result?.settings?.updated_at}: {action:'connect'})}),d=await r.json() as {error?:string;connection?:Connection;settings?:Settings};if(!r.ok)throw new Error(d.error||'Não foi possível concluir.');
+   if(kind==='connect'){setConnection(d.connection||null);if(d.settings)setResult(previous=>previous?{...previous,settings:d.settings!}:previous);}else{const fresh=await load();setResult(fresh);setConnection(fresh.connection);setNotice('Números e preferência salvos. Conecte o WhatsApp pelo QR Code para começar.');}
   }catch(e){setError(e instanceof Error?e.message:'Não foi possível concluir.');}finally{setBusy(false);}
  }
  return <><div className="bank-heading"><div><p className="bank-eyebrow">ADMINISTRATIVO POR VOZ</p><h1>WhatsApp ICOM Bank</h1><p>Fale uma despesa. O sistema organiza e registra para você.</p></div><a href={bankPath('/administrativo')}>Voltar ao Administrativo</a></div>
