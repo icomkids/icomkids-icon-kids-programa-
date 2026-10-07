@@ -11,7 +11,7 @@ function failure(e:unknown){return bankError(e instanceof AssistantDataError||e 
 // Authenticated read-only preview also permits direct comparison with the panel.
 export async function GET(req:Request){try{
  const q=new URL(req.url).searchParams,raw:Record<string,unknown>={};
- for(const [name,value] of q){if(name==='limit')raw[name]=Number(value);else raw[name]=value;}
+ for(const [name,value] of q){if(name==='limit'||name==='offset')raw[name]=Number(value);else raw[name]=value;}
  const start=performance.now(),auth=await authorizeAssistant(req);
  return Response.json(await queryAssistant(auth,raw),{headers:{...headers,'Server-Timing':`query;dur=${Math.round(performance.now()-start)}`}});
 }catch(e){return failure(e);}}

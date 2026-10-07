@@ -1,5 +1,5 @@
 'use client';
-import {useState} from 'react';
+import {useEffect,useState} from 'react';
 import {bankPath,currency,type BankData} from '@/lib/icom-bank/model';
 import {stockCosts,stockLabels,type StockRow,type StockState} from '@/lib/icom-bank/stock';
 import {saleProfit,type AdminEntry,type AdminSeller} from '@/lib/icom-bank/administrative';
@@ -13,6 +13,7 @@ function StatusForm({row,onSaved}:{row:StockRow;onSaved:()=>void}){
 export default function BankStock({initial,initialEntries,sellers,data}:{initial:StockRow[];initialEntries:AdminEntry[];sellers:AdminSeller[];data:BankData}){
  const [stock,setStock]=useState(initial),[entries,setEntries]=useState(initialEntries),[tab,setTab]=useState<'stock'|'contracts'>('stock'),[filter,setFilter]=useState(''),[search,setSearch]=useState(''),[archived,setArchived]=useState(false),[form,setForm]=useState<{preset:AdminPreset;entry?:AdminEntry}|null>(null),[error,setError]=useState(''),[notice,setNotice]=useState('');
  async function refresh(){try{const r=await fetch(bankPath('/api/stock')),d=await r.json() as {stock:StockRow[];entries:AdminEntry[];error?:string};if(!r.ok)throw new Error(d.error||'Não foi possível atualizar.');setStock(d.stock);setEntries(d.entries);setError('');}catch(e){setError(e instanceof Error?e.message:'Não foi possível atualizar.');}}
+ useEffect(()=>{const c=new AbortController();const reload=()=>{void fetch(bankPath('/api/stock'),{cache:'no-store',signal:c.signal}).then(async r=>{const v=await r.json() as {stock:StockRow[];entries:AdminEntry[];error?:string};if(!r.ok)throw new Error(v.error||'Não foi possível atualizar.');return v;}).then(v=>{setStock(v.stock);setEntries(v.entries);}).catch(e=>{if(!c.signal.aborted)setError(e.message);});};window.addEventListener('icom-bank-ledger-changed',reload);return()=>{c.abort();window.removeEventListener('icom-bank-ledger-changed',reload);};},[]);
  const list=stock.filter(s=>s.active!==archived&&(!filter||s.status===filter)&&(!search||(s.plate+' '+s.vehicle.brand+' '+s.vehicle.model+' '+s.vehicle.version).toLocaleLowerCase('pt-BR').includes(search.toLocaleLowerCase('pt-BR'))));
  return <><div className="bank-heading"><div><p className="bank-eyebrow">DO RECEBIMENTO À PRÓXIMA VENDA</p><h1>Veículos</h1><p>Acompanhe os carros recebidos na troca, a preparação e o resultado da revenda.</p></div><button type="button" onClick={()=>void refresh()}>Atualizar</button></div>
  <div className="bank-admin-tabs"><button type="button" className={tab==='stock'?'active':''} onClick={()=>{setTab('stock');setForm(null);}}>Carros recebidos na troca</button><button type="button" className={tab==='contracts'?'active':''} onClick={()=>{setTab('contracts');setForm(null);}}>Veículos dos contratos</button></div>

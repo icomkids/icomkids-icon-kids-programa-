@@ -1,3 +1,4 @@
+import {refuseVoiceWithdrawal} from '@/lib/icom-bank/assistant-financial';
 import {randomUUID} from 'node:crypto';
 import {bankAuthorize,bankOrigin,bankQuery,bankError,BankError} from '@/lib/icom-bank/server';
 import {claimVoiceRead} from '@/lib/icom-bank/assistant-server';
@@ -30,7 +31,7 @@ export async function POST(req:Request){try{
   sharedAssistantCache().clear();return Response.json({ok:true,saved:true,row},{headers});
  }
  if(raw.name!=='preparar_despesa_icom')throw new BankError('Pedido inválido.',400);
- const transcript=expenseVoiceText(raw.arguments),today=brazilDay(),draft=await extractExpense(transcript,today,key);
+ const transcript=expenseVoiceText(raw.arguments),today=brazilDay();refuseVoiceWithdrawal(transcript);const draft=await extractExpense(transcript,today,key);
  const {expected_updated_at:_,...payload}=expensePayload(draft,transcript,randomUUID(),[],today,'VOICE');void _;
  return Response.json({ok:true,saved:false,pending:{payload,confirmation:signVoiceExpense(payload,profile.user_id,key)},message:'Confira o resumo e toque em Confirmar lançamento. Ainda não foi salva.'},{headers});
 }catch(e){return bankError(e instanceof VoiceError?new BankError(e.message,e.status):e instanceof BankError?e:new BankError(e instanceof Error?e.message:'Não foi possível lançar. Confira o histórico antes de repetir.',400));}}

@@ -22,6 +22,11 @@
 .bank-voice-launch.is-active .bank-ai-current,.bank-voice-stage.speaking .bank-ai-current,.bank-voice-stage.listening .bank-ai-current{animation-duration:3s}
 .bank-voice-dialog{margin:0;position:fixed;inset:88px 24px auto auto;padding:0;width:min(420px,calc(100vw - 32px));max-height:calc(100dvh - 108px);border:1px solid #d9e4ee;border-radius:22px;background:#fff;color:#203349;box-shadow:0 22px 90px #101d3338;font-family:Arial,sans-serif;overflow:auto;overscroll-behavior:contain}
 .bank-voice-dialog::backdrop{background:#142d4633;backdrop-filter:blur(2px)}
+.bank-app .bank-ai-report-open{position:fixed;z-index:35;top:240px;right:27px;width:175px;padding:5px 7px;border:0;background:transparent;color:#42647c;font-size:11px;text-decoration:underline;cursor:pointer}
+.bank-voice-guide label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:600}
+.bank-voice-guide input,.bank-voice-guide select{box-sizing:border-box;width:100%;padding:9px;border:1px solid #d9e4ee;border-radius:9px;background:white;color:#203349}
+.bank-voice-guide th,.bank-voice-guide td{padding:8px;text-align:left;border-bottom:1px solid #e8eef4;font-size:12px;white-space:nowrap}
+@media(max-width:800px){.bank-app .bank-ai-report-open{top:179px;right:12px;width:144px}}
 .bank-voice-panel{padding:22px}
 .bank-voice-panel>header{display:flex;align-items:center;justify-content:space-between;gap:16px}
 .bank-voice-panel>header h2{font-size:20px;letter-spacing:-.5px;margin:6px 0 0;color:#203349}

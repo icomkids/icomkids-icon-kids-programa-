@@ -70,7 +70,7 @@ test('Broker sends server-selected configuration and never returns the API key; 
  try{
   assert.equal(voiceConfigured(),true);const voice=await startVoice('fixture-owner','OWNER',{sdp:offer,section:'administrativo'},new AbortController().signal);
   assert.doesNotMatch(JSON.stringify(voice),/test-server-secret/);assert.ok(voice.expiresAt>Date.now());
-  const form=requests[0].init?.body as FormData;const configuration=JSON.parse(String(form.get('session')));assert.match(configuration.instructions,/Conferência diária/);assert.equal(configuration.tools.length,2);assert.equal(configuration.tools[0].name,'consultar_dados_icom');assert.equal(configuration.tools[1].name,'preparar_despesa_icom');assert.equal(form.get('sdp'),offer);
+  const form=requests[0].init?.body as FormData;const configuration=JSON.parse(String(form.get('session')));assert.match(configuration.instructions,/Conferência diária/);assert.equal(configuration.tools.length,3);assert.equal(configuration.tools[0].name,'consultar_dados_icom');assert.equal(configuration.tools[1].name,'preparar_despesa_icom');assert.equal(form.get('sdp'),offer);
   assert.throws(()=>claimVoiceRead('someone-else',voice.id),/nova conversa/);
   for(let i=0;i<40;i++)claimVoiceRead('fixture-owner',voice.id);assert.throws(()=>claimVoiceRead('fixture-owner',voice.id),/Limite/);
   const headers=requests[0].init?.headers as Record<string,string>;assert.equal(headers.Authorization,'Bearer test-server-secret');assert.match(headers['OpenAI-Safety-Identifier'],/^[a-f0-9]{64}$/);

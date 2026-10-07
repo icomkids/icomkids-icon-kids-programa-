@@ -1,5 +1,5 @@
 'use client';
-import {useState,useRef,type FormEvent} from 'react';
+import {useEffect,useState,useRef,type FormEvent} from 'react';
 import {bankPath,brazilDay,currency} from '@/lib/icom-bank/model';
 import {adminMoneyInput,adminMoneyText} from '@/lib/icom-bank/administrative';
 import {dailyCash,withdrawalInput,type DailyCashData,type CashCheck} from '@/lib/icom-bank/daily-cash';
@@ -14,6 +14,7 @@ const signedText=(c:number)=>(c<0?'-':'')+adminMoneyText(Math.abs(c));
 export default function BankDailyCash({initial}:{initial:DailyCashData}){
  const [data,setData]=useState(initial),[date,setDate]=useState(initial.date),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[observed,setObserved]=useState(''),[notes,setNotes]=useState(''),[confirmed,setConfirmed]=useState(false),[withdrawal,setWithdrawal]=useState(false);
  const checkId=useRef(''),withdrawalId=useRef('');
+ useEffect(()=>{const c=new AbortController();const reload=()=>{void fetch(bankPath('/api/daily-cash?date='+encodeURIComponent(data.date)),{cache:'no-store',signal:c.signal}).then(async r=>{const v=await r.json() as DailyCashData&{error?:string};if(!r.ok)throw new Error(v.error||'Não foi possível atualizar o caixa.');return v;}).then(v=>{setData(v);setConfirmed(false);checkId.current='';}).catch(e=>{if(!c.signal.aborted)setError(e.message);});};window.addEventListener('icom-bank-ledger-changed',reload);return()=>{c.abort();window.removeEventListener('icom-bank-ledger-changed',reload);};},[data.date]);
  const metrics=dailyCash(data.context.entries,data.date),latest=data.history.find(h=>h.check_date===data.date);
  let observedCents:number|null=null;try{if(observed.trim())observedCents=signedMoney(observed);}catch{/* Show validation on save. */}
  const diff=observedCents===null?null:observedCents-metrics.gross;
