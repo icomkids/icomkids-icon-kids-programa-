@@ -3,7 +3,7 @@ import {useEffect,useRef,useState} from 'react';
 import {Mic,MicOff,Square,Sparkles,X,ChevronDown,Volume2} from 'lucide-react';
 import {bankPath,type BankRole} from '@/lib/icom-bank/model';
 import type {HelpTopic} from '@/lib/icom-bank/assistant-guide';
-import {VoiceResources} from '@/lib/icom-bank/assistant-client';
+import {VoiceResources,answerVoiceTools,type VoiceToolCall} from '@/lib/icom-bank/assistant-client';
 
 type Status='idle'|'connecting'|'listening'|'speaking'|'paused';
 type Setup={configured:boolean;topics:HelpTopic[]};
@@ -36,13 +36,22 @@ export default function BankVoiceAssistant({role}:{role:BankRole}){
    const dc=pc.createDataChannel('oai-events');r.channel=dc;
    dc.onmessage=e=>{
     if(r.cancelled)return;
-    let event:{type:string;transcript?:string;delta?:string;response?:{status:string}};
+    let event:{type:string;transcript?:string;delta?:string;response?:{status:string;output?:VoiceToolCall[]}};
     try{event=JSON.parse(e.data);}catch{return;}
     if(event.type==='input_audio_buffer.speech_started'){setStatus(muted.current?'paused':'listening');setMessage('Ouvindo sua pergunta…');}
     if(event.type==='input_audio_buffer.speech_stopped'){setMessage('Preparando a orientação…');}
     if(event.type==='response.output_audio_transcript.delta'){setStatus(muted.current?'paused':'speaking');setTranscript(t=>(t+(event.delta||'')).slice(-6000));}
     if(event.type==='response.output_audio_transcript.done')setTranscript((event.transcript||'').slice(0,6000));
     if(event.type==='response.created')setTranscript('');
+    if(event.type==='response.done'&&event.response?.status==='completed'&&event.response.output?.some(i=>i.type==='function_call')){
+     setMessage('Consultando os dados do sistema…');
+     const items=event.response.output;
+     r.toolQueue=r.toolQueue.then(()=>answerVoiceTools(r,items,async(name,args)=>{
+      if(!lease.current||r.cancelled)throw new Error('Conversa encerrada.');
+      const response=await fetch(bankPath('/api/assistant/data'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:lease.current,name,arguments:args}),signal:r.abort.signal});
+      const result=await response.json() as {ok?:boolean;error?:string};if(!response.ok)return {ok:false,error:result.error||'Consulta indisponível. Não invente valores.'};return result;
+     })).catch(()=>{if(!r.cancelled)setError('Não foi possível concluir a consulta. Tente novamente.');});
+    }
     if(event.type==='output_audio_buffer.stopped'){setStatus(muted.current?'paused':'listening');setMessage('Pode fazer outra pergunta.');}
     if(event.type==='error'||event.type==='response.done'&&event.response?.status==='failed'){stop();setError('A conversa foi interrompida. Confira a conexão e tente novamente.');}
    };
@@ -74,7 +83,7 @@ export default function BankVoiceAssistant({role}:{role:BankRole}){
     <div className={'bank-voice-stage '+status}>
      <div className="bank-voice-halo" aria-hidden="true"><IntelligenceOrb/></div>
      <strong>{status==='connecting'?'Conectando…':status==='paused'?'Microfone pausado':status==='speaking'?'Explicando para você':status==='listening'?'Estou ouvindo':setup&&!setup.configured?'Voz aguardando ativação':'Vamos resolver sua dúvida?'}</strong>
-     <p>{message||'Pergunte como usar clientes, contratos e as demais telas disponíveis para você.'}</p>
+     <p>{message||(role==='OWNER'?'Pergunte sobre lucro das vendas, despesas pessoais, investidores e os números do sistema.':'Pergunte sobre os dados e as telas disponíveis para o seu perfil.')}</p>
     </div>
     {error&&<p className="bank-error" role="alert">{error}</p>}
     {setup&&!setup.configured&&<p className="bank-voice-activation">A conversa por voz precisa ser ativada pelo administrador. Enquanto isso, consulte as orientações rápidas abaixo.</p>}
@@ -82,7 +91,7 @@ export default function BankVoiceAssistant({role}:{role:BankRole}){
     {busy?<div className="bank-voice-controls"><button onClick={pause} disabled={status==='connecting'} aria-label={status==='paused'?'Retomar microfone':'Pausar microfone'}>{status==='paused'?<MicOff size={17}/>:<Mic size={17}/>} {status==='paused'?'Retomar':'Pausar'}</button><button className="bank-voice-end" onClick={()=>{stop();setMessage('Conversa encerrada. Microfone desligado.');}}><Square size={15}/> Encerrar</button><small>{Math.floor(left/60)}:{String(left%60).padStart(2,'0')}</small></div>:<button className="bank-voice-start" disabled={!setup?.configured} onClick={()=>void start()}><Sparkles size={18}/> Conversar com a IA</button>}
     <audio ref={audio} autoPlay playsInline hidden/>
     {busy&&<button className="bank-voice-audio" onClick={()=>void audio.current?.play().then(()=>setError('')).catch(()=>setError('Não foi possível reproduzir o áudio. Confira o som do dispositivo.'))}><Volume2 size={15}/> Ouvir resposta</button>}
-    <p className="bank-voice-privacy">Ao iniciar, seu áudio será enviado à OpenAI para responder. A voz é gerada por IA. O assistente orienta sobre o sistema e não executa operações. Ao fechar, o microfone é desligado.</p>
+    <p className="bank-voice-privacy">Ao iniciar, seu áudio e os resultados das consultas autorizadas serão enviados à OpenAI para responder por voz. A IA consulta os dados permitidos para sua conta, sem alterar registros. Ao fechar, o microfone é desligado.</p>
     {transcript&&<div className="bank-voice-transcript"><small>ORIENTAÇÃO DO ASSISTENTE</small><p>{transcript}</p></div>}
     {setup&&<section className="bank-voice-guide" aria-label="Orientações rápidas"><h3>Orientações rápidas</h3><p>Você também pode consultar estes passos sem ligar o microfone.</p>{topicQuestions.map(t=><details key={t.id}><summary>{t.question}<ChevronDown size={15}/></summary><p>{t.text}</p></details>)}<details><summary>Ver todos os tópicos <ChevronDown size={15}/></summary>{setup.topics.map(t=><details key={t.id}><summary>{t.title}</summary><p>{t.text}</p></details>)}</details></section>}
    </div>

@@ -3,7 +3,13 @@ import {callIdFromLocation,createVoiceLimiter,VoiceError,voiceDurationMs,voiceSe
 import type {BankRole} from './model.ts';
 
 const limiter=createVoiceLimiter();
-const calls=new Map<string,{user:string;callId:string;timer:ReturnType<typeof setTimeout>}>();
+const calls=new Map<string,{user:string;callId:string;expiresAt:number;reads:number;timer:ReturnType<typeof setTimeout>}>();
+export function claimVoiceRead(user:string,id:string){
+ const call=calls.get(id);
+ if(!call||call.user!==user||call.expiresAt<=Date.now())throw new VoiceError('Inicie uma nova conversa para consultar os dados.',403);
+ if(call.reads>=40)throw new VoiceError('Limite de consultas desta conversa atingido. Inicie outra conversa.',429);
+ call.reads++;
+}
 export function voiceConfigured(){return !!process.env.OPENAI_API_KEY?.trim()&&process.env.ICOM_ASSISTANT_ENABLED!=='false';}
 async function hangup(callId:string){
  try{await fetch(`https://api.openai.com/v1/realtime/calls/${encodeURIComponent(callId)}/hangup`,{method:'POST',headers:{Authorization:`Bearer ${process.env.OPENAI_API_KEY}`},signal:AbortSignal.timeout(10000)});}catch{/* Browser also closes the peer connection. Never log upstream errors or audio. */}
@@ -25,6 +31,6 @@ export async function startVoice(user:string,role:BankRole,input:{sdp:string;sec
   if(signal.aborted)throw new VoiceError('A conversa foi cancelada.');
   const id=randomUUID(),expiresAt=Date.now()+voiceDurationMs;
   const timer=setTimeout(()=>void closeVoice(user,id),voiceDurationMs);timer.unref();
-  calls.set(id,{user,callId,timer});return {id,sdp,expiresAt};
+  calls.set(id,{user,callId,expiresAt,reads:0,timer});return {id,sdp,expiresAt};
  }catch(error){limiter.end(user);if(callId)await hangup(callId);if(error instanceof VoiceError)throw error;throw new VoiceError('Não foi possível conectar a voz. Tente novamente em alguns instantes.',502);}
 }
