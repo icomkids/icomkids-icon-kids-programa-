@@ -28,3 +28,20 @@
 
 .bank-app .ia-overview:before{inset-inline:0}
 @media(max-width:800px){.bank-app .bank-header .bank-ai-report-open{top:124px;right:170px;width:calc(100vw - 190px);max-width:190px;padding:6px 8px}}
+
+/* Keep voice guidance readable within the IA Bank dark theme. */
+.bank-app .bank-voice-dialog{background:#10253b;color:#dceafc;border-color:#45627f;box-shadow:0 24px 70px #0008,inset 0 1px 0 #ffffff15}
+.bank-app .bank-voice-panel>header{background:#10253b}
+.bank-app .bank-voice-panel>header h2,.bank-app .bank-voice-stage>strong,.bank-app .bank-voice-guide h3{color:#edf5ff}
+.bank-app .bank-voice-panel>header button{background:#233d58;color:#edf5ff}
+.bank-app .bank-voice-panel p,.bank-app .bank-voice-panel small,.bank-app .bank-voice-guide>p,.bank-app .bank-voice-guide details p,.bank-app .bank-voice-privacy{color:#bdcee3}
+.bank-app .bank-voice-eyebrow{color:#d6b87b}
+.bank-app .bank-voice-guide{border-color:#38516c}
+.bank-app .bank-voice-guide details{border-color:#38516c}
+.bank-app .bank-voice-guide summary,.bank-app .bank-voice-guide details[open]>summary{color:#d9e8ff}
+.bank-app .bank-voice-activation,.bank-app .bank-voice-working-hint{background:#203c57;color:#d5e6ff}
+.bank-app .bank-voice-transcript{background:#173d3d}
+.bank-app .bank-voice-transcript p,.bank-app .bank-voice-transcript small{color:#c5eee4}
+.bank-app .bank-voice-controls .bank-voice-end{background:#4c2834;color:#ffd6dc;border-color:#77444f}
+.bank-app .bank-voice-start:disabled{background:#294059;color:#b0bfd1}
+.bank-app .bank-voice-audio{color:#bfd9fa}
