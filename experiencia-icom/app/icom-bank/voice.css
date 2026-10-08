@@ -20,8 +20,10 @@
 .bank-ai-glass{position:absolute;inset:0;border-radius:inherit;box-shadow:inset -12px -14px 23px #07102b90,inset 4px 4px 18px #f5ffff30;background:radial-gradient(circle at 24% 16%,#ffffff35,transparent 36%);border:0;pointer-events:none}
 .bank-voice-launch.is-active .bank-ai-orb{box-shadow:inset -14px -16px 25px #030615b8,inset 9px 6px 23px #acdbff45,0 24px 31px -11px #18203c6b,0 0 42px #51bdca60}
 .bank-voice-launch.is-active .bank-ai-current,.bank-voice-stage.speaking .bank-ai-current,.bank-voice-stage.listening .bank-ai-current{animation-duration:3s}
-.bank-voice-dialog{margin:0;position:fixed;inset:88px 24px auto auto;padding:0;width:min(420px,calc(100vw - 32px));max-height:calc(100dvh - 108px);border:1px solid #d9e4ee;border-radius:22px;background:#fff;color:#203349;box-shadow:0 22px 90px #101d3338;font-family:Arial,sans-serif;overflow:auto;overscroll-behavior:contain}
-.bank-voice-dialog::backdrop{background:#142d4633;backdrop-filter:blur(2px)}
+.bank-voice-dialog{margin:0;position:fixed;z-index:45;inset:16px 16px auto auto;padding:0;box-sizing:border-box;width:min(400px,calc(100vw - 32px));max-height:calc(100dvh - 32px);border:1px solid #d9e4ee;border-radius:22px;background:#fff;color:#203349;box-shadow:0 12px 45px #101d3326;font-family:Arial,sans-serif;overflow:auto;overscroll-behavior:contain}
+.bank-voice-window-controls{display:flex;gap:6px;flex:none}
+.bank-voice-working-hint{font-size:11px;line-height:1.6;padding:10px 12px;background:#edf7f6;border-radius:10px;color:#355b58}
+@media(min-width:1200px){.bank-app.has-assistant .bank-main{padding-right:428px}.bank-app.has-assistant .bank-header{padding-right:28px}.bank-app.has-assistant .bank-content>.bank-heading{padding-right:0}}
 .bank-app .bank-ai-report-open{position:fixed;z-index:35;top:240px;right:27px;width:175px;padding:5px 7px;border:0;background:transparent;color:#42647c;font-size:11px;text-decoration:underline;cursor:pointer}
 .bank-voice-guide label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:600}
 .bank-voice-guide input,.bank-voice-guide select{box-sizing:border-box;width:100%;padding:9px;border:1px solid #d9e4ee;border-radius:9px;background:white;color:#203349}
@@ -70,3 +72,4 @@
 @keyframes bank-ai-flow-three{0%,100%{transform:translate3d(-6%,8%,0) rotate(-25deg) scale(.95)}50%{transform:translate3d(8%,-16%,0) rotate(7deg) scale(1.1)}}
 @media(max-width:800px){.bank-app .bank-header{height:236px;padding:0 18px 16px;align-items:flex-end}.bank-app .bank-voice-launch{top:10px;right:12px;width:144px;gap:5px}.bank-voice-launch .bank-ai-orb{width:112px;height:112px}.bank-voice-launch strong{font-size:11px}.bank-voice-launch small{font-size:9px}.bank-ai-label{padding:4px 10px 6px}.bank-content>.bank-heading{padding-right:0}.bank-voice-dialog{inset:20px 12px auto auto;max-height:calc(100dvh - 40px);width:calc(100vw - 24px)}.bank-voice-panel{padding:20px}.bank-voice-stage{padding-top:14px}.bank-voice-halo{height:170px}}
 @media(prefers-reduced-motion:reduce){.bank-voice-dialog *,.bank-voice-launch,.bank-voice-launch *,.bank-ai-orb::before{animation:none!important;transition:none!important}}
+@media(max-width:800px){.bank-voice-dialog{inset:auto 12px 16px auto;max-height:65dvh}.bank-voice-panel>header{position:sticky;top:-20px;z-index:2;padding:10px 0;background:#fff}.bank-voice-stage .bank-ai-orb{width:96px;height:96px}.bank-voice-halo{height:118px}}

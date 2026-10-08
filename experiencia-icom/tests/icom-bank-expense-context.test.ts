@@ -8,11 +8,43 @@ import {assistantExpenseTool,expenseVoiceText,signVoiceExpense,readVoiceExpense,
 import {assistantReadInput,readAssistantData} from '../lib/icom-bank/assistant-data.ts';
 import {adminInput,type AdminEntry} from '../lib/icom-bank/administrative.ts';
 import {voiceSession} from '../lib/icom-bank/assistant-session.ts';
+import {normalizeSpokenPlate,spokenPlateCandidates,expensePlate,attachExpenseVehicle} from '../lib/icom-bank/spoken-plate.ts';
+import {prepareFinancial} from '../lib/icom-bank/assistant-financial.ts';
+import {stockCosts,type StockRow} from '../lib/icom-bank/stock.ts';
 
 const today='2026-10-07',id='0261ab47-da5a-4ea8-8462-7b6bc26354d3';
 const actual='Faz um favor pra mim, eu acabei de gastar 230 reais num parque de diversão aqui com a minha família. Lança pra mim, por favor.';
 const draft:ExpenseDraft={intent:'DESPESA',scope:'PESSOAL',description:'Parque de diversão com a família',category:'Lazer',amount:'230,00',amount_excerpt:'230',paid:true,payment_method:null,date:'2023-10-07',date_excerpt:'acabei de gastar',plate:null,confidence:'ALTA',question:''};
 const payload=expensePayload(draft,actual,id,[],today);
+
+test('Mercosul speech preserves phonetic letters and grouped digits without repairing missing characters',()=>{
+ for(const text of ['TTQ9F92','T T Q 9 F 9 2','t de tatu, t de dado, q de quica, nove, efe, noventa e dois','tê tê quê nove efe nove dois'])assert.equal(normalizeSpokenPlate(text),'TTQ9F92');
+ assert.equal(normalizeSpokenPlate('a de amor b de bola c de casa 1 2 3 4'),'ABC1234');
+ const text='Lança 500 reais no pneu da placa T de tatu T de tatu Q de queijo nove F noventa e dois hoje';
+ assert.deepEqual(spokenPlateCandidates(text),['TTQ9F92']);assert.equal(expensePlate(null,text),'TTQ9F92');
+ assert.equal(expensePlate('T de tatu T de tatu Q de queijo nove F noventa e dois',text),'TTQ9F92');
+ assert.throws(()=>expensePlate('TDQ9F92',text),/diferente/);
+ assert.throws(()=>expensePlate('TTQ9F92','Paguei 500 na luz'),/Diga a placa/);
+ assert.throws(()=>expensePlate(null,'Paguei 500 nos carros placa TTQ9F92 e placa ABC1D23'),/mais de uma/);
+ for(const text of ['TTQ9F9','TTQ9F922','TTQOF92','placa XXX','t de tatu q de queijo nove f nove dois'])assert.throws(()=>normalizeSpokenPlate(text));
+});
+
+test('A spoken vehicle cost binds once to the exact available car and never manufactures stock',async()=>{
+ const row={id:'0f901114-2065-4e08-828a-1e35ba7f1215',plate:'TTQ9F92',status:'DISPONIVEL',entry_date:'2026-10-01',active:true} as StockRow;
+ const text='Paguei 500 reais no pneu da loja, placa T de tatu T de tatu Q de queijo nove F noventa e dois hoje';
+ const tyre=expensePayload({...draft,scope:'LOJA',description:'Pneu',category:'Manutenção de veículo',amount:'500,00',amount_excerpt:'500',plate:'T de tatu T de tatu Q de queijo nove F noventa e dois'},text,id,[row],today,'VOICE');
+ assert.equal(tyre.details.plate,'TTQ9F92');assert.equal(tyre.details.stock_id,row.id);
+ assert.equal(stockCosts(row,[{...tyre,active:true,created_at:'2026-10-07T12:00:00Z',updated_at:'2026-10-07T12:00:00Z'}]),50000);
+ const {expected_updated_at:_,...p}=tyre;void _;assert.equal(readVoiceExpense(signVoiceExpense(p,'owner','secret',1000),'owner','secret',2000).details.stock_id,row.id);
+ const unknown=expensePayload({...draft,scope:'LOJA',description:'Pneu',category:'Manutenção',amount:'500,00',amount_excerpt:'500',plate:null},text,id,[],today,'VOICE');assert.equal(unknown.details.plate,row.plate);assert.equal(unknown.details.stock_id,undefined);
+ assert.throws(()=>attachExpenseVehicle({plate:row.plate},[row,{...row,id:'other'}],today),/mais de um/);
+ assert.throws(()=>attachExpenseVehicle({plate:row.plate},[{...row,status:'PREVISTO'}],today),/ainda não entrou/);
+ assert.throws(()=>attachExpenseVehicle({plate:row.plate},[row],'2026-09-01'),/data/);
+ const sold={plate:row.plate};attachExpenseVehicle(sold,[{...row,status:'VENDIDO'}],today);assert.equal('stock_id' in sold,false);
+ const personal=expensePayload({...draft,description:'Pneu pessoal',amount:'500,00',amount_excerpt:'500',plate:row.plate},text,id,[row],today,'VOICE');assert.equal(personal.details.stock_id,undefined);assert.equal(personal.details.plate,undefined);
+ const prepared=await prepareFinancial({operation:'LANCAMENTO',confidence:'ALTA',question:'',form:JSON.stringify({kind:'CUSTO',scope:'LOJA',description:'Pneu',category:'Manutenção',status:'REALIZADO',amount_cents:'500,00',details:{plate:'TTQ9F92'}}),evidence:JSON.stringify({amount_cents:'500'})},text,today,async path=>{assert.match(path,/plate=eq.TTQ9F92/);return [row] as unknown as Record<string,unknown>[];},id);
+ assert.equal((prepared.args.p_payload as AdminEntry).details.stock_id,row.id);assert.match(JSON.stringify(prepared.summary),/vinculado/);
+});
 
 test('Voice records store light bills, personal care and unknown plates in separate scopes',()=>{
  const light=expensePayload({...draft,scope:'LOJA',description:'Conta de luz da loja',category:'Energia elétrica',amount:'500,00',amount_excerpt:'500'},'Lança 500 da conta de luz da loja',id,[],today,'VOICE');

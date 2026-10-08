@@ -1,7 +1,7 @@
 'use client';
 import {useRouter} from 'next/navigation';
 import {useCallback,useEffect,useRef,useState} from 'react';
-import {Mic,MicOff,Square,Sparkles,X,ChevronDown,Volume2,VolumeX} from 'lucide-react';
+import {Mic,MicOff,Square,Sparkles,X,ChevronDown,Volume2,VolumeX,Minus} from 'lucide-react';
 import {audienceLabel,natureLabel} from '@/lib/icom-bank/expense-context';
 import type {AdminEntry} from '@/lib/icom-bank/administrative';
 import {bankPath,currency,type BankRole} from '@/lib/icom-bank/model';
@@ -16,7 +16,7 @@ type Status='idle'|'connecting'|'listening'|'speaking'|'paused';
 type Setup={configured:boolean;topics:HelpTopic[]};
 type QuickResult={ok?:boolean;error?:string;consultado_em?:string;dados?:{ativos?:number;registros?:{nome:string}[];saldo_livre?:{valor:string};saldo_registrado?:{valor:string}}};
 function IntelligenceOrb(){return <span className="bank-ai-orb" aria-hidden="true"><span className="bank-ai-atmosphere"/><span className="bank-ai-current first"/><span className="bank-ai-current second"/><span className="bank-ai-current third"/><span className="bank-ai-glass"/></span>;}
-export default function BankVoiceAssistant({role}:{role:BankRole}){
+export default function BankVoiceAssistant({role,onPanelChange}:{role:BankRole;onPanelChange?:(expanded:boolean)=>void}){
  const router=useRouter();
  const [open,setOpen]=useState(false),[status,setStatus]=useState<Status>('idle'),[setup,setSetup]=useState<Setup|null>(null),[error,setError]=useState(''),[transcript,setTranscript]=useState(''),[message,setMessage]=useState(''),[left,setLeft]=useState(300);
  const resources=useRef<VoiceResources|null>(null),lease=useRef<string|null>(null),muted=useRef(false),button=useRef<HTMLButtonElement>(null),dialog=useRef<HTMLDialogElement>(null),audio=useRef<HTMLAudioElement>(null);
@@ -27,6 +27,8 @@ export default function BankVoiceAssistant({role}:{role:BankRole}){
  const [pendingExpense,setPendingExpense]=useState<Pending|null>(null),[savingExpense,setSavingExpense]=useState(false),[expenseNotice,setExpenseNotice]=useState('');
  const pendingRef=useRef<typeof pendingExpense>(null),savingRef=useRef(false),preparingRef=useRef(false);
  const [report,setReport]=useState<AssistantReport|null>(null);
+ const [minimized,setMinimized]=useState(false);
+ useEffect(()=>{onPanelChange?.(open&&!minimized);},[open,minimized,onPanelChange]);
  const busy=status!=='idle';
  function releaseLease(id:string){void fetch(bankPath('/api/assistant')+'?id='+encodeURIComponent(id),{method:'DELETE',keepalive:true}).catch(()=>{});}
  function stop(){pendingRef.current=null;setPendingExpense(null);resources.current?.close();resources.current=null;if(lease.current){releaseLease(lease.current);lease.current=null;}muted.current=false;answerStarted.current=null;setResponding(false);setStatus('idle');}
@@ -131,13 +133,14 @@ export default function BankVoiceAssistant({role}:{role:BankRole}){
  const topicQuestions=setup?.topics.filter(t=>role==='OWNER'?['pagar','receber','caixa'].includes(t.id):['clientes','contratos','comprovantes','parcelas'].includes(t.id)).slice(0,3)||[];
  return <>
   <span id="bank-ai-activation-hint" hidden>Ao clicar, a conversa por voz começa com o áudio ligado e solicita acesso ao microfone. Você pode silenciar o áudio, pausar o microfone ou encerrar.</span>
-  <button ref={button} className={'bank-voice-launch'+(busy?' is-active':'')} aria-label="Conversar com a ICOM IA por áudio" aria-describedby="bank-ai-activation-hint" aria-haspopup="dialog" aria-expanded={open} onClick={()=>{setOpen(true);dialog.current?.showModal();void start();}}>
+  <button ref={button} className={'bank-voice-launch'+(busy?' is-active':'')} aria-label="Conversar com a ICOM IA por áudio" aria-describedby="bank-ai-activation-hint" aria-haspopup="dialog" aria-expanded={open&&!minimized} onClick={()=>{setOpen(true);setMinimized(false);if(!dialog.current?.open)dialog.current?.show();void start();}}>
    <IntelligenceOrb/><span className="bank-ai-label"><strong>ICOM <b>IA</b></strong><small>{busy?'Conversa em andamento':'Toque para conversar'}</small></span>
   </button>
-  <button className="bank-ai-report-open" aria-haspopup="dialog" onClick={()=>{setOpen(true);dialog.current?.showModal();}}>Consultar sem microfone</button>
-  <dialog ref={dialog} className="bank-voice-dialog" aria-labelledby="bank-voice-title" onCancel={e=>{e.preventDefault();close();}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
+  <button className="bank-ai-report-open" aria-haspopup="dialog" onClick={()=>{setOpen(true);setMinimized(false);if(!dialog.current?.open)dialog.current?.show();}}>Consultar sem microfone</button>
+  <dialog ref={dialog} className="bank-voice-dialog" aria-modal="false" aria-labelledby="bank-voice-title" onCancel={e=>{e.preventDefault();close();}}>
    <div className="bank-voice-panel">
-    <header><div><span className="bank-voice-eyebrow">INTELIGÊNCIA ARTIFICIAL DO SISTEMA</span><h2 id="bank-voice-title">ICOM IA</h2></div><button aria-label="Fechar ajuda e desligar microfone" onClick={close}><X size={19}/></button></header>
+    <header><div><span className="bank-voice-eyebrow">INTELIGÊNCIA ARTIFICIAL DO SISTEMA</span><h2 id="bank-voice-title">ICOM IA</h2></div><div className="bank-voice-window-controls"><button aria-label="Minimizar IA e continuar conversa" onClick={()=>{setMinimized(true);dialog.current?.close();button.current?.focus();}}><Minus size={19}/></button><button aria-label="Fechar ajuda e desligar microfone" onClick={close}><X size={19}/></button></div></header>
+    <p className="bank-voice-working-hint">Pode continuar usando o sistema enquanto conversamos. Minimizar mantém a conversa; fechar desliga o microfone.</p>
     <div className={'bank-voice-stage '+status}>
      <div className="bank-voice-halo" aria-hidden="true"><IntelligenceOrb/></div>
      <strong>{status==='connecting'?'Conectando…':status==='paused'?'Microfone pausado':status==='speaking'?'Explicando para você':status==='listening'?'Estou ouvindo':setup&&!setup.configured?'Voz aguardando ativação':'Vamos resolver sua dúvida?'}</strong>
@@ -145,6 +148,7 @@ export default function BankVoiceAssistant({role}:{role:BankRole}){
     </div>
     {pendingExpense?.payload&&<section className="bank-panel" aria-label="Confirmar despesa por voz"><h3>Conferir lançamento</h3><p><strong>{currency(pendingExpense.payload.amount_cents||0)}</strong> · {pendingExpense.payload.description}</p><p>{pendingExpense.payload.scope==='PESSOAL'?'Pessoal':'Loja'} · {pendingExpense.payload.category} · {pendingExpense.payload.entry_date.split('-').reverse().join('/')}{pendingExpense.payload.details.plate?' · '+pendingExpense.payload.details.plate:''}</p>{pendingExpense.payload.scope==='PESSOAL'&&<p>{audienceLabel(pendingExpense.payload.details.expense_audience)} · {natureLabel(pendingExpense.payload.details.expense_nature)}{pendingExpense.payload.details.trip_name?' · '+pendingExpense.payload.details.trip_name:''}</p>}<small>Ainda não foi salvo. Confira antes de confirmar.</small><div className="bank-voice-controls"><button disabled={savingExpense} onClick={()=>void confirmExpense()}>{savingExpense?'Salvando…':'Confirmar lançamento'}</button><button disabled={savingExpense} onClick={()=>{pendingRef.current=null;setPendingExpense(null);setExpenseNotice('Despesa cancelada. Nada foi lançado.');}}>Cancelar</button></div></section>}
     {pendingExpense?.financial&&<section className="bank-panel" aria-label="Confirmar registro financeiro por voz"><h3>Conferir lançamento · {pendingExpense.destination}</h3><dl>{pendingExpense.summary?.map((item,index)=><div key={index} style={{padding:'6px 0'}}><dt style={{fontWeight:600}}>{item.label}</dt><dd style={{margin:0}}>{item.label==='Comprovante'&&/^[a-f0-9-]{36}$/i.test(item.value)?<a href={bankPath('/comprovantes/'+item.value)} target="_blank" rel="noopener noreferrer">Conferir comprovante e dados da parcela ↗</a>:item.value}</dd></div>)}</dl><p>Ainda não foi salvo. Confira todos os dados antes de confirmar.</p><div className="bank-voice-controls"><button disabled={savingExpense} onClick={()=>void confirmExpense()}>{savingExpense?'Salvando…':'Confirmar lançamento'}</button><button disabled={savingExpense} onClick={()=>{pendingRef.current=null;setPendingExpense(null);setExpenseNotice('Cancelado. Nada foi lançado.');}}>Cancelar</button></div></section>}
+    {pendingExpense?.payload?.details.plate&&<p className="bank-voice-working-hint">{pendingExpense.payload.details.stock_id?'Este custo será somado aos custos do veículo cadastrado.':'O custo ficará na loja, identificado pela placa. Não há veículo disponível no estoque para vincular.'} Confira a placa antes de confirmar.</p>}
     {expenseNotice&&<p role="status">{expenseNotice}</p>}
     {error&&<p className="bank-error" role="alert">{error}</p>}
     {setup&&!setup.configured&&<p className="bank-voice-activation">A conversa por voz precisa ser ativada pelo administrador. Enquanto isso, consulte as orientações rápidas abaixo.</p>}

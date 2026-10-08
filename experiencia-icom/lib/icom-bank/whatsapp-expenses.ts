@@ -6,6 +6,7 @@ import {phoneBR} from '../whatsapp.ts';
 import {adminInput} from './administrative.ts';
 import {brazilDay,currency} from './model.ts';
 import type {StockRow} from './stock.ts';
+import {expensePlate,attachExpenseVehicle} from './spoken-plate.ts';
 
 export const botName='icom-bank-assistente';
 export type ExpenseDraft={intent:'DESPESA'|'OUTRO'|'MULTIPLAS'|'CONSULTA';query_audience?:ExpenseAudience|null;query_nature?:ExpenseNature|null;scope:'PESSOAL'|'LOJA';description:string;category:string;amount:string|null;amount_excerpt:string|null;paid:boolean|null;payment_method:'PIX'|'DINHEIRO'|'CARTAO'|'TRANSFERENCIA'|'OUTRO'|null;date:string|null;date_excerpt?:string|null;trip_name?:string|null;trip_excerpt?:string|null;query_period?:'total'|'mes_atual'|'mes_anterior';uses_previous?:boolean;plate:string|null;confidence:'ALTA'|'BAIXA';question:string};
@@ -29,7 +30,7 @@ export function messageFromWebhook(value:unknown,phone:string,now=Date.now()):Bo
  return {provider_id:id,sender,type:audio?'audio':'text',text:audio?'':text,sent_at:new Date(ms).toISOString()};
 }
 export function expenseCents(value:unknown){if(typeof value!=='string'||!/^\d{1,7}(?:,\d{2})?$/.test(value))throw new Error('Informe um único valor em reais, por exemplo R$ 250,00.');const [reais,centavos='00']=value.split(',');const cents=Number(reais)*100+Number(centavos);if(!Number.isSafeInteger(cents)||cents<=0||cents>1000000000)throw new Error('Informe um valor positivo dentro do limite do sistema.');return cents;}
-export function expensePayload(d:ExpenseDraft,transcript:string,id:string,_stocks:StockRow[],today=brazilDay(),origin:'WHATSAPP'|'VOICE'='WHATSAPP'){
+export function expensePayload(d:ExpenseDraft,transcript:string,id:string,stocks:StockRow[],today=brazilDay(),origin:'WHATSAPP'|'VOICE'='WHATSAPP'){
  if(d.intent==='OUTRO')throw new Error('Envie uma despesa para lançar: o que foi pago, o valor e, se for da loja, diga isso no áudio.');
  if(d.intent==='MULTIPLAS')throw new Error('Envie uma despesa por mensagem, com o valor de cada uma separado.');
  if(d.intent!=='DESPESA')throw new Error('Envie uma despesa já paga para registrar.');
@@ -42,15 +43,16 @@ export function expensePayload(d:ExpenseDraft,transcript:string,id:string,_stock
  if(d.paid!==true)throw new Error('A despesa já foi paga? Diga que já pagou e informe a despesa e o valor para registrar a saída.');
  if(!['PESSOAL','LOJA'].includes(d.scope)||typeof d.description!=='string'||d.description.trim().length<2||d.description.length>160||typeof d.category!=='string'||d.category.length>80)throw new Error('Informe para que foi a despesa e se é pessoal ou da loja.');
  const date=expenseDate(transcript,d.date_excerpt,today);
- const plate=d.plate?.replace(/[^a-z0-9]/gi,'').toUpperCase()||'';
+ const plate=expensePlate(d.plate,transcript);
  const details:Record<string,unknown>={notes:origin==='VOICE'?'Origem: ICOM IA por voz · confirmação no painel':`Origem: WhatsApp ICOM Bank · mensagem ${id}`,payment_method:d.payment_method||'OUTRO'};
  if(d.trip_name){const name=tripName(d.trip_name);if(d.scope!=='PESSOAL'||!d.trip_excerpt||!/(?:viagem|ferias)/.test(expenseFold(d.trip_excerpt))||!expenseFold(transcript).includes(expenseFold(d.trip_excerpt))||!expenseFold(d.trip_excerpt).includes(expenseFold(name)))throw new Error('Confirme o nome da viagem e diga que é uma despesa pessoal.');details.trip_name=name;}
  if(plate){
-  if(!/^[A-Z]{3}\d[A-Z0-9]\d{2}$/.test(plate))throw new Error('Confira a placa: use três letras e quatro caracteres, por exemplo ABC1D23.');
   if(d.scope==='PESSOAL')details.notes+=` · veículo pessoal ${plate}`;
   else {
   details.plate=plate;
-  details.notes+=` · Gasto administrativo do veículo de placa ${plate} em ${date.split('-').reverse().join('/')}; sem vínculo com estoque.`;
+  details.notes+=` · Gasto administrativo do veículo de placa ${plate} em ${date.split('-').reverse().join('/')}`;
+  if(origin==='VOICE')attachExpenseVehicle(details,stocks,date);
+  if(!details.stock_id)details.notes+='; sem vínculo com estoque.';
   }
  }
  const personal=personalCategory(d.category,d.description),category=d.scope==='PESSOAL'?(personalCategories.includes(personal as typeof personalCategories[number])?personal:'Outras despesas pessoais'):d.category;

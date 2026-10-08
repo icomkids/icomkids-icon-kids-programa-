@@ -9,6 +9,8 @@ import {expensePayload} from '@/lib/icom-bank/whatsapp-expenses';
 import {sharedAssistantCache} from '@/lib/icom-bank/assistant-cache';
 import {brazilDay} from '@/lib/icom-bank/model';
 import type {AdminEntry} from '@/lib/icom-bank/administrative';
+import {expensePlate} from '@/lib/icom-bank/spoken-plate';
+import type {StockRow} from '@/lib/icom-bank/stock';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -32,6 +34,8 @@ export async function POST(req:Request){try{
  }
  if(raw.name!=='preparar_despesa_icom')throw new BankError('Pedido inválido.',400);
  const transcript=expenseVoiceText(raw.arguments),today=brazilDay();refuseVoiceWithdrawal(transcript);const draft=await extractExpense(transcript,today,key);
- const {expected_updated_at:_,...payload}=expensePayload(draft,transcript,randomUUID(),[],today,'VOICE');void _;
+ const plate=expensePlate(draft.plate,transcript);
+ const stocks=draft.scope==='LOJA'&&plate?await bankQuery<StockRow[]>(token,'icom_bank_stock_vehicles?select=id,plate,active,status,entry_date&active=eq.true&plate=eq.'+plate+'&status=neq.VENDIDO&limit=2'):[];
+ const {expected_updated_at:_,...payload}=expensePayload(draft,transcript,randomUUID(),stocks,today,'VOICE');void _;
  return Response.json({ok:true,saved:false,pending:{payload,confirmation:signVoiceExpense(payload,profile.user_id,key)},message:'Confira o resumo e toque em Confirmar lançamento. Ainda não foi salva.'},{headers});
 }catch(e){return bankError(e instanceof VoiceError?new BankError(e.message,e.status):e instanceof BankError?e:new BankError(e instanceof Error?e.message:'Não foi possível lançar. Confira o histórico antes de repetir.',400));}}

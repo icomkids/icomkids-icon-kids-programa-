@@ -20,10 +20,10 @@ test('Vehicle expenses record an administrative plate without requiring or modif
  const car={id,plate:'ABC1D23',active:true,status:'DISPONIVEL',entry_date:'2026-10-01',vehicle:{brand:'GM - Chevrolet',model:'ONIX',version:'ONIX LT'}} as StockRow;
  const d={...draft,scope:'LOJA' as const,description:'Pneu',plate:'abc-1d23'};
  for(const cars of [[],[car],[car,car],[{...car,active:false}],[{...car,status:'VENDIDO'}],[{...car,status:'PREVISTO'}]]){
- const p=expensePayload(d,'Paguei 250 no pneu da loja',id,cars as StockRow[],today);assert.equal(p.kind,'CUSTO');assert.equal(p.scope,'LOJA');assert.equal(p.details.stock_id,undefined);assert.equal(p.details.plate,'ABC1D23');assert.match(p.details.notes!,/sem vínculo com estoque/);assert.match(p.details.notes!,/07\/10\/2026/);
+ const p=expensePayload(d,'Paguei 250 no pneu da loja placa ABC1D23',id,cars as StockRow[],today);assert.equal(p.kind,'CUSTO');assert.equal(p.scope,'LOJA');assert.equal(p.details.stock_id,undefined);assert.equal(p.details.plate,'ABC1D23');assert.match(p.details.notes!,/sem vínculo com estoque/);assert.match(p.details.notes!,/07\/10\/2026/);
  }
- assert.equal(expensePayload({...d,date:'2026-09-30',date_excerpt:'30/09/2026'},'Paguei 250 em 30/09/2026',id,[car],today).entry_date,'2026-09-30');assert.throws(()=>payload({plate:'XXX'}));
- const personal=expensePayload({...d,scope:'PESSOAL'},'Paguei 250 no meu carro',id,[car],today);assert.equal(personal.details.stock_id,undefined);assert.match(personal.details.notes!,/veículo pessoal ABC1D23/);
+ assert.equal(expensePayload({...d,date:'2026-09-30',date_excerpt:'30/09/2026'},'Paguei 250 em 30/09/2026 placa ABC1D23',id,[car],today).entry_date,'2026-09-30');assert.throws(()=>payload({plate:'XXX'}));
+ const personal=expensePayload({...d,scope:'PESSOAL'},'Paguei 250 no meu carro placa ABC1D23',id,[car],today);assert.equal(personal.details.stock_id,undefined);assert.match(personal.details.notes!,/veículo pessoal ABC1D23/);
 });
 const now=Date.parse('2026-10-07T20:00:00Z'),phone='5511999999999',sender='5511988888888';
 const event={EventType:'messages',owner:phone,token:'do-not-store',message:{messageid:'TEST:abc',fromMe:false,isGroup:false,wasSentByApi:false,sender_pn:sender+'@s.whatsapp.net',chatid:sender+'@s.whatsapp.net',messageTimestamp:now,messageType:'Conversation',text:'Paguei 250'}};
