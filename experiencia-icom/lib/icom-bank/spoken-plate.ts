@@ -6,7 +6,7 @@ const digits:Record<string,string>={zero:'0',um:'1',uma:'1',dois:'2',duas:'2',tr
 const letters:Record<string,string>={a:'a',be:'b',ce:'c',de:'d',e:'e',efe:'f',ge:'g',aga:'h',i:'i',jota:'j',ca:'k',ele:'l',eme:'m',ene:'n',o:'o',pe:'p',que:'q',erre:'r',esse:'s',te:'t',u:'u',ve:'v',dabliu:'w',xis:'x',ipsilon:'y',ze:'z'};
 const valid=(s:string)=>/^[A-Z]{3}\d[A-Z0-9]\d{2}$/.test(s);
 function characters(raw:string){
- let text=fold(raw).trim().replace(/^placa\s*[:=]?\s*/,'');
+ let text=fold(raw.trim().replace(/^placa\s*(?:(?:é|eh)\s+|[:=]\s*)?/iu,''));
  // A phonetic example explains the explicitly spoken letter; it never replaces it.
  text=text.replace(/\b([a-z]|be|ce|de|efe|ge|aga|jota|ca|ele|eme|ene|pe|que|erre|esse|te|ve|dabliu|xis|ipsilon|ze)\s+(?:de|como em)\s+[a-z]+\b/g,(_,letter:string)=>letters[letter]||letter);
  text=text.replace(/\b(vinte|trinta|quarenta|cinquenta|sessenta|setenta|oitenta|noventa)\s+e\s+(um|dois|tres|quatro|cinco|seis|sete|oito|nove)\b/g,(_,t:string,u:string)=>String(({vinte:20,trinta:30,quarenta:40,cinquenta:50,sessenta:60,setenta:70,oitenta:80,noventa:90} as Record<string,number>)[t]+Number(digits[u])));
@@ -20,7 +20,7 @@ export function normalizeSpokenPlate(raw:string){
 export function spokenPlateCandidates(transcript:string){
  const found=new Set<string>();
  for(const m of transcript.matchAll(/\b[A-Za-z]{3}[\s-]?\d[A-Za-z0-9]\d{2}\b/g))found.add(normalizeSpokenPlate(m[0]));
- for(const m of fold(transcript).matchAll(/\bplaca\s*[:=]?\s*/g)){
+ for(const m of transcript.matchAll(/\bplaca(?:\s+do\s+(?:carro|ve[ií]culo))?\s*(?:(?:é|eh|igual a)\s+|[:=]\s*)?/giu)){
   let value='';
   for(const token of characters(transcript.slice((m.index||0)+m[0].length,(m.index||0)+m[0].length+160))){
    if(!/^[a-z0-9]+$/.test(token)||token.length>7)break;

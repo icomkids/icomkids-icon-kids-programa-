@@ -22,6 +22,8 @@ test('Mercosul speech preserves phonetic letters and grouped digits without repa
  assert.equal(normalizeSpokenPlate('a de amor b de bola c de casa 1 2 3 4'),'ABC1234');
  const text='Lança 500 reais no pneu da placa T de tatu T de tatu Q de queijo nove F noventa e dois hoje';
  assert.deepEqual(spokenPlateCandidates(text),['TTQ9F92']);assert.equal(expensePlate(null,text),'TTQ9F92');
+ assert.deepEqual(spokenPlateCandidates('Lança 500 no pneu. A placa do carro é T de tatu T de tatu Q de queijo nove F noventa e dois.'),['TTQ9F92']);
+ assert.deepEqual(spokenPlateCandidates('Placa E de escola F de faca G de gato um H de hotel dois três'),['EFG1H23']);
  assert.equal(expensePlate('T de tatu T de tatu Q de queijo nove F noventa e dois',text),'TTQ9F92');
  assert.throws(()=>expensePlate('TDQ9F92',text),/diferente/);
  assert.throws(()=>expensePlate('TTQ9F92','Paguei 500 na luz'),/Diga a placa/);
