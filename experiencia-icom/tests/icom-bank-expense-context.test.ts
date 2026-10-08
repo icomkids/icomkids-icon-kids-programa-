@@ -17,6 +17,22 @@ const actual='Faz um favor pra mim, eu acabei de gastar 230 reais num parque de 
 const draft:ExpenseDraft={intent:'DESPESA',scope:'PESSOAL',description:'Parque de diversão com a família',category:'Lazer',amount:'230,00',amount_excerpt:'230',paid:true,payment_method:null,date:'2023-10-07',date_excerpt:'acabei de gastar',plate:null,confidence:'ALTA',question:''};
 const payload=expensePayload(draft,actual,id,[],today);
 
+test('Both plate formats survive extraction, expense validation and signed review without converting the fifth character',()=>{
+ for(const fifth of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'){
+  const plate='ABC1'+fifth+'23';
+  const speech='Paguei 30 reais no pneu da loja, placa '+plate.split('').join(' ');
+  assert.equal(normalizeSpokenPlate(plate),plate);
+  assert.deepEqual(spokenPlateCandidates(speech),[plate]);
+  const result=expensePayload({...draft,scope:'LOJA',description:'Pneu',category:'Manutenção',amount:'30,00',amount_excerpt:'30',plate:null},speech,id,[],today,'VOICE');
+  assert.equal(result.details.plate,plate);
+  const {expected_updated_at:_,...review}=result;void _;
+  assert.equal(readVoiceExpense(signVoiceExpense(review,'owner','secret',1000),'owner','secret',2000).details.plate,plate);
+ }
+ const plate='TTQ9F92',speech='Paguei 30 reais no pneu da placa T de tatu T de tatu Q de queijo nove F de faca nove dois';
+ assert.equal(expensePlate(null,speech),plate);
+ for(const plate of ['ABCD123','ABC12D3','ABC1D2E','ABC123','ABC1D234'])assert.throws(()=>normalizeSpokenPlate(plate),/Mercosul/);
+});
+
 test('Mercosul speech preserves phonetic letters and grouped digits without repairing missing characters',()=>{
  for(const text of ['TTQ9F92','T T Q 9 F 9 2','t de tatu, t de dado, q de quica, nove, efe, noventa e dois','tê tê quê nove efe nove dois'])assert.equal(normalizeSpokenPlate(text),'TTQ9F92');
  assert.equal(normalizeSpokenPlate('a de amor b de bola c de casa 1 2 3 4'),'ABC1234');

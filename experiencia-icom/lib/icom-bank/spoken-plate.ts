@@ -1,6 +1,8 @@
 import type {AdminDetails} from './administrative.ts';
 import type {StockRow} from './stock.ts';
 
+export const plateVoiceInstructions='PLACAS: aceite os DOIS padrões brasileiros com sete caracteres. Mercosul tem TRÊS LETRAS, UM NÚMERO, OUTRA LETRA e DOIS NÚMEROS (LLLNLNN, ABC1D23); são quatro letras e três números. A placa antiga tem três letras e quatro números (LLLNNNN, ABC1234). A letra do quinto caractere da Mercosul é válida: nunca exija quatro números, não a converta em número nem tente converter a placa para o padrão antigo. Preserve exatamente os caracteres ditados, sem completar ausências ou trocar letras. Não recuse uma placa Mercosul só pelo formato e não exija consulta externa ou cadastro para preparar o custo. Encaminhe o pedido literal à ferramenta de preparação; ela normaliza e mostra a placa no resumo para conferência. Se faltar ou ficar ambíguo um caractere, peça esclarecer somente esse caractere.';
+
 const fold=(text:string)=>text.normalize('NFD').replace(/\p{M}/gu,'').toLowerCase();
 const digits:Record<string,string>={zero:'0',um:'1',uma:'1',dois:'2',duas:'2',tres:'3',quatro:'4',cinco:'5',seis:'6',sete:'7',oito:'8',nove:'9'};
 const letters:Record<string,string>={a:'a',be:'b',ce:'c',de:'d',e:'e',efe:'f',ge:'g',aga:'h',i:'i',jota:'j',ca:'k',ele:'l',eme:'m',ene:'n',o:'o',pe:'p',que:'q',erre:'r',esse:'s',te:'t',u:'u',ve:'v',dabliu:'w',xis:'x',ipsilon:'y',ze:'z'};
@@ -14,7 +16,7 @@ function characters(raw:string){
 }
 export function normalizeSpokenPlate(raw:string){
  const plate=characters(raw).join('').toUpperCase();
- if(!valid(plate))throw new Error('Não entendi os sete caracteres da placa. Diga as três letras e os quatro caracteres seguintes, ou repita letra por letra.');
+ if(!valid(plate))throw new Error('Não entendi os sete caracteres da placa. Aceito Mercosul (ABC1D23: três letras, número, letra e dois números) e antiga (ABC1234). Repita os caracteres que faltaram, sem mudar a placa.');
  return plate;
 }
 export function spokenPlateCandidates(transcript:string){
