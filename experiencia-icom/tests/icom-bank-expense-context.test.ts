@@ -103,7 +103,7 @@ test('Context preserves independent category, family, trip and adjustable option
  assert.throws(()=>assistantReadInput({topic:'caixa',nature:'OPCIONAL'},'OWNER',today));assert.throws(()=>adminInput({...payload,details:{expense_nature:'EVIL'}}));
 });
 test('Only owner can prepare a voice expense, whose confirmation is signed, bounded and bound to that owner',()=>{
- assert.ok(assistantExpenseTool('OWNER'));for(const role of ['VENDEDOR','GERENTE','FINANCEIRO','ADMIN'] as const){assert.equal(assistantExpenseTool(role),null);assert.equal(voiceSession(role,'dashboard').tools.length,1);}
+ assert.ok(assistantExpenseTool('OWNER'));for(const role of ['VENDEDOR','GERENTE','FINANCEIRO','ADMIN'] as const){assert.equal(assistantExpenseTool(role),null);assert.equal(voiceSession(role,'dashboard').tools.length,2);assert.deepEqual(voiceSession(role,'dashboard').tools.map(t=>t.name),['consultar_dados_icom','consultar_manual_icom']);}
  assert.match(voiceSession('OWNER','dashboard').instructions,/Nunca diga lançado\/salvo antes/);
  assert.equal(expenseVoiceText({transcript:actual}),actual);assert.throws(()=>expenseVoiceText({transcript:actual,role:'OWNER'}));
  const {expected_updated_at:_,...p}=payload;void _;const token=signVoiceExpense(p,'owner','secret',1000);

@@ -1,5 +1,7 @@
 'use client';
-import {useRouter} from 'next/navigation';
+import {useRouter,usePathname} from 'next/navigation';
+import {manualView,manualViewFromPath,manualViews,manualTopics,type ManualResult,type ManualTopic,type ManualView} from '@/lib/icom-bank/assistant-manual';
+import {syncManualView} from '@/lib/icom-bank/assistant-navigation';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {Mic,MicOff,Square,Sparkles,X,ChevronDown,Volume2,VolumeX,Minus} from 'lucide-react';
 import {audienceLabel,natureLabel} from '@/lib/icom-bank/expense-context';
@@ -17,7 +19,10 @@ type Setup={configured:boolean;topics:HelpTopic[]};
 type QuickResult={ok?:boolean;error?:string;consultado_em?:string;dados?:{ativos?:number;registros?:{nome:string}[];saldo_livre?:{valor:string};saldo_registrado?:{valor:string}}};
 function IntelligenceOrb(){return <span className="bank-ai-orb" aria-hidden="true"><span className="bank-ai-atmosphere"/><span className="bank-ai-current first"/><span className="bank-ai-current second"/><span className="bank-ai-current third"/><span className="bank-ai-glass"/></span>;}
 export default function BankVoiceAssistant({role,onPanelChange}:{role:BankRole;onPanelChange?:(expanded:boolean)=>void}){
- const router=useRouter();
+ const router=useRouter(),pathname=usePathname();
+ const viewRef=useRef<ManualView>('nao_identificada'),[currentView,setCurrentView]=useState<ManualView>('nao_identificada');
+ const [manual,setManual]=useState<ManualResult|null>(null),[manualTopic,setManualTopic]=useState<ManualTopic>('menu'),[manualBusy,setManualBusy]=useState(false);
+
  const [open,setOpen]=useState(false),[status,setStatus]=useState<Status>('idle'),[setup,setSetup]=useState<Setup|null>(null),[error,setError]=useState(''),[transcript,setTranscript]=useState(''),[message,setMessage]=useState(''),[left,setLeft]=useState(300);
  const resources=useRef<VoiceResources|null>(null),lease=useRef<string|null>(null),muted=useRef(false),button=useRef<HTMLButtonElement>(null),dialog=useRef<HTMLDialogElement>(null),audio=useRef<HTMLAudioElement>(null);
  const [quickLoading,setQuickLoading]=useState(false),[quickText,setQuickText]=useState(''),[quickElapsed,setQuickElapsed]=useState<number|null>(null);
@@ -30,9 +35,26 @@ export default function BankVoiceAssistant({role,onPanelChange}:{role:BankRole;o
  const [minimized,setMinimized]=useState(false);
  useEffect(()=>{onPanelChange?.(open&&!minimized);},[open,minimized,onPanelChange]);
  const busy=status!=='idle';
+ useEffect(()=>{
+  const main=document.querySelector('main');
+  const update=()=>{
+   const markers=main?.querySelectorAll('[data-bank-manual-view]'),last=markers?.[markers.length-1];
+   const value=last?manualView(last.getAttribute('data-bank-manual-view'),role):manualViewFromPath(pathname||'',role);
+   viewRef.current=value;setCurrentView(value);if(resources.current)syncManualView(resources.current,value,role);
+  };
+  update();const observer=new MutationObserver(update);
+  if(main)observer.observe(main,{childList:true,subtree:true,attributes:true,attributeFilter:['data-bank-manual-view']});
+  return()=>observer.disconnect();
+ },[pathname,role]);
+ async function showManual(){
+  setManualBusy(true);setError('');
+  try{const response=await fetch(bankPath('/api/assistant/manual')+'?topic='+manualTopic+'&view='+viewRef.current,{cache:'no-store',signal:AbortSignal.timeout(10000)}),data=await response.json() as ManualResult&{error?:string};if(!response.ok||!data.ok)throw new Error(data.error||'Manual indisponível.');setManual(data);}
+  catch(e){setError(e instanceof Error?e.message:'Manual indisponível.');}finally{setManualBusy(false);}
+ }
+
  function releaseLease(id:string){void fetch(bankPath('/api/assistant')+'?id='+encodeURIComponent(id),{method:'DELETE',keepalive:true}).catch(()=>{});}
  function stop(){pendingRef.current=null;setPendingExpense(null);resources.current?.close();resources.current=null;if(lease.current){releaseLease(lease.current);lease.current=null;}muted.current=false;answerStarted.current=null;setResponding(false);setStatus('idle');}
- function close(){stop();quickAbort.current?.abort();setQuickLoading(false);setQuickText('');setQuickElapsed(null);setOpen(false);setReport(null);setSetup(null);setTranscript('');setMessage('');setError('');dialog.current?.close();button.current?.focus();}
+ function close(){stop();quickAbort.current?.abort();setQuickLoading(false);setQuickText('');setQuickElapsed(null);setOpen(false);setReport(null);setManual(null);setSetup(null);setTranscript('');setMessage('');setError('');dialog.current?.close();button.current?.focus();}
  useEffect(()=>{const shutdown=()=>{resources.current?.close();resources.current=null;if(lease.current){releaseLease(lease.current);lease.current=null;}};const onPageHide=()=>{shutdown();muted.current=false;setStatus('idle');};window.addEventListener('pagehide',onPageHide);return()=>{window.removeEventListener('pagehide',onPageHide);shutdown();};},[]);
  useEffect(()=>{
   if(!open)return;const controller=new AbortController();
@@ -85,13 +107,13 @@ export default function BankVoiceAssistant({role,onPanelChange}:{role:BankRole;o
     if(event.type==='response.created'){setResponding(true);setTranscript('');}
     if(event.type==='response.done'&&event.response?.status!=='completed')setResponding(false);
     const readTool=async(name:string,args:unknown)=>{
-     if(name!=='consultar_dados_icom'&&(pendingRef.current||preparingRef.current))return {ok:false,error:'Há um lançamento em preparação ou aguardando confirmação no painel. Confirme ou cancele antes de preparar outra.'};
-     const writing=name!=='consultar_dados_icom';if(writing)preparingRef.current=true;
+     if(!['consultar_dados_icom','consultar_manual_icom'].includes(name)&&(pendingRef.current||preparingRef.current))return {ok:false,error:'Há um lançamento em preparação ou aguardando confirmação no painel. Confirme ou cancele antes de preparar outra.'};
+     const isManual=name==='consultar_manual_icom',writing=!['consultar_dados_icom','consultar_manual_icom'].includes(name);if(writing)preparingRef.current=true;
      try{
      if(!lease.current||r.cancelled)throw new Error('Conversa encerrada.');
      const started=performance.now();
-     const response=await fetch(bankPath(name==='preparar_lancamento_icom'?'/api/assistant/financial':name==='preparar_despesa_icom'?'/api/assistant/expense':'/api/assistant/data'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:lease.current,name,arguments:args}),signal:AbortSignal.any([r.abort.signal,AbortSignal.timeout(writing?45000:10000)])});
-     const result=await response.json() as AssistantReportResult&{pending?:Pending};if(!r.cancelled&&writing&&result.pending){const pending={...result.pending,financial:name==='preparar_lancamento_icom'};pendingRef.current=pending;setPendingExpense(pending);setExpenseNotice('');}if(!r.cancelled&&!writing&&result.ok)setReport({input:args as Record<string,unknown>,result});
+     const response=await fetch(bankPath(isManual?'/api/assistant/manual':name==='preparar_lancamento_icom'?'/api/assistant/financial':name==='preparar_despesa_icom'?'/api/assistant/expense':'/api/assistant/data'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:lease.current,name,arguments:args,...(isManual?{view:viewRef.current}:{})}),signal:AbortSignal.any([r.abort.signal,AbortSignal.timeout(writing?45000:10000)])});
+     const result=await response.json() as AssistantReportResult&{pending?:Pending}&Partial<ManualResult>;if(!r.cancelled&&writing&&result.pending){const pending={...result.pending,financial:name==='preparar_lancamento_icom'};pendingRef.current=pending;setPendingExpense(pending);setExpenseNotice('');}if(!r.cancelled&&isManual&&result.ok&&result.mode==='MANUAL'){setManual(result as ManualResult);setManualTopic((result as ManualResult).topic);}if(!r.cancelled&&!writing&&!isManual&&result.ok)setReport({input:args as Record<string,unknown>,result});
      if(!r.cancelled)setReadLatency(Math.round(performance.now()-started));if(!response.ok)return {ok:false,error:result.error||'Solicitação indisponível. Não invente valores.'};return writing?{ok:result.ok,saved:false,payload:result.pending?.payload,summary:result.pending?.summary,destination:result.pending?.destination,message:'Ainda não salvo. Diga apenas: Confira o resumo e confirme no botão, por favor. Não repita o pedido nem leia todos os campos.'}:result;
      }finally{if(writing)preparingRef.current=false;}
     };
@@ -104,7 +126,7 @@ export default function BankVoiceAssistant({role,onPanelChange}:{role:BankRole;o
     if(event.type==='output_audio_buffer.stopped'){setResponding(false);setStatus(muted.current?'paused':'listening');setMessage('Pode fazer outra pergunta.');}
     if(event.type==='error'||event.type==='response.done'&&event.response?.status==='failed'){stop();setError('A conversa foi interrompida. Confira a conexão e tente novamente.');}
    };
-   dc.onopen=()=>{if(r.cancelled)return;setStatus(muted.current?'paused':'listening');setMessage(muted.current?'Microfone pausado. Toque em uma consulta para ouvir a resposta.':'Pode falar. Qual é sua dúvida sobre o ICOM Bank?');};
+   dc.onopen=()=>{if(r.cancelled)return;syncManualView(r,viewRef.current,role);setStatus(muted.current?'paused':'listening');setMessage(muted.current?'Microfone pausado. Toque em uma consulta para ouvir a resposta.':'Pode falar. Qual é sua dúvida sobre o ICOM Bank?');};
    dc.onclose=()=>{if(!r.cancelled){stop();setMessage('Conversa encerrada. Você pode iniciar outra.');}};
    pc.onconnectionstatechange=()=>{if(!r.cancelled&&['failed','disconnected','closed'].includes(pc.connectionState)){stop();setError('A conexão de voz foi encerrada. Você pode tentar novamente.');}};
    const offer=await pc.createOffer();if(r.cancelled)return;await pc.setLocalDescription(offer);
@@ -159,6 +181,7 @@ export default function BankVoiceAssistant({role,onPanelChange}:{role:BankRole;o
     {busy&&<button className="bank-voice-audio" aria-pressed={soundMuted} onClick={toggleSound}>{soundMuted||audioBlocked?<VolumeX size={15}/>:<Volume2 size={15}/>} {soundMuted||audioBlocked?'Ativar áudio':'Silenciar áudio'}</button>}
     <p className="bank-voice-privacy">Ao iniciar, seu áudio e os resultados das consultas autorizadas serão enviados à OpenAI para responder por voz. {role==='OWNER'?'A IA consulta todas as áreas permitidas e prepara registros financeiros, salvos somente após sua confirmação no botão. Retiradas e transferências continuam manuais.':'A IA consulta os dados permitidos para sua conta, sem alterar registros.'} Ao fechar, o microfone é desligado.</p>
     {role==='OWNER'&&<section className="bank-voice-guide" aria-label="Consultas rápidas"><h3>Consultas rápidas</h3><p>{busy?'Toque para ouvir a resposta ou faça sua pergunta por voz.':'Pergunte por voz ou confira estes números sem ligar o microfone.'}</p><div className="bank-voice-controls">{(['investidores','vendedores','caixa'] as const).map(topic=><button key={topic} disabled={quickLoading||busy&&(status==='connecting'||responding)} onClick={()=>void quick(topic)}>{topic==='investidores'?'Investidores':topic==='vendedores'?'Vendedores':'Saldo do caixa'}</button>)}</div>{(quickLoading||quickText)&&<p role="status" data-query-ms={quickElapsed??undefined}>{quickLoading?'Consultando…':quickText}</p>}</section>}
+    <section className="bank-voice-guide" aria-label="Manual passo a passo"><h3>Como fazer no sistema</h3><p>Tela aberta: <strong>{manualViews[currentView][1]}</strong>. Você pode clicar enquanto ouve.</p><label>Escolher orientação<select aria-label="Escolher orientação" value={manualTopic} onChange={e=>setManualTopic(e.target.value as ManualTopic)}>{manualTopics.map(t=><option value={t} key={t}>{({menu:'Conhecer os menus',cliente:'Cadastrar cliente',contrato:'Criar contrato',investidor:'Cadastrar investidor',fornecedor:'Fornecedores',conta_pagar:'Cadastrar conta a pagar',pagar_conta:'Pagar conta',conta_receber:'Cadastrar conta a receber',receber_conta:'Receber conta',despesa_loja:'Despesa da loja',despesa_pessoal:'Despesa pessoal',venda:'Registrar venda',parcela:'Enviar comprovante de parcela',comprovante:'Analisar comprovante',veiculo:'Veículos e custos',relatorio:'Relatórios',funcionario:'Funcionários',configuracoes:'Dados de recebimento',conferencia:'Conferir caixa',retirada:'Retirada / Pix manual',whatsapp:'Configurar WhatsApp'})[t]}</option>)}</select></label><button disabled={manualBusy} onClick={()=>void showManual()}>{manualBusy?'Carregando…':'Ver passo a passo'}</button>{manual&&<div aria-live="polite"><h4>{manual.title}</h4><ol>{manual.steps.map((s,i)=><li key={i} style={{marginBottom:10}}>{s.text}</li>)}</ol>{manual.notes.map((n,i)=><p key={i}>{n}</p>)}</div>}</section>
     <BankAssistantReport key={JSON.stringify(report?.input||{})+'-'+(report?.result.consultado_em||'')} role={role} report={report} onReport={setReport}/>
     {transcript&&<div className="bank-voice-transcript" data-first-voice-ms={answerLatency??undefined} data-voice-query-ms={readLatency??undefined}><small>RESPOSTA DO ASSISTENTE</small><p>{transcript}</p></div>}
     {setup&&<section className="bank-voice-guide" aria-label="Orientações rápidas"><h3>Orientações rápidas</h3><p>Você também pode consultar estes passos sem ligar o microfone.</p>{topicQuestions.map(t=><details key={t.id}><summary>{t.question}<ChevronDown size={15}/></summary><p>{t.text}</p></details>)}<details><summary>Ver todos os tópicos <ChevronDown size={15}/></summary>{setup.topics.map(t=><details key={t.id}><summary>{t.title}</summary><p>{t.text}</p></details>)}</details></section>}

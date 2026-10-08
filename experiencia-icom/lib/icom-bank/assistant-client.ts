@@ -1,6 +1,8 @@
+import type {ManualView} from './assistant-manual.ts';
 // Browser-only resource owner, kept separate to test cancellation without a microphone.
 export class VoiceResources {
  cancelled=false;
+ manualView:ManualView|null=null;
  stream:MediaStream|null=null;
  peer:RTCPeerConnection|null=null;
  channel:RTCDataChannel|null=null;
@@ -29,7 +31,7 @@ export function prepareVoiceTools(r:VoiceResources,items:VoiceToolCall[],request
  for(const call of items){
   if(r.cancelled||call.type!=='function_call'||!call.call_id||!/^[a-zA-Z0-9_-]{1,120}$/.test(call.call_id)||r.preparedTools.has(call.call_id)||r.handledTools.has(call.call_id))continue;
   const value=Promise.resolve().then(()=>{
-   if(!['consultar_dados_icom','preparar_despesa_icom','preparar_lancamento_icom'].includes(call.name||'')||typeof call.arguments!=='string'||call.arguments.length>4000)throw new Error('Consulta não disponível.');
+   if(!['consultar_dados_icom','consultar_manual_icom','preparar_despesa_icom','preparar_lancamento_icom'].includes(call.name||'')||typeof call.arguments!=='string'||call.arguments.length>4000)throw new Error('Consulta não disponível.');
    if(r.cancelled)throw new Error('Conversa encerrada.');
    return request(call.name!,JSON.parse(call.arguments));
   }).catch(()=>({ok:false,error:'Não foi possível concluir esta solicitação. Não afirme que salvou; confira o histórico no painel antes de repetir um lançamento. Não invente valores.'}));
