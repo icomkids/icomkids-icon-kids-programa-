@@ -19,7 +19,7 @@ test('Navigation sends only static view enums; record IDs and query values are d
  assert.equal(manualViewFromPath('/icom-bank/clientes/novo','OWNER'),'cliente_novo');
  assert.equal(manualViewFromPath('/icom-bank/administrativo/investidores','VENDEDOR'),'nao_identificada');
  assert.equal(manualViewFromPath('/not-bank/clientes','OWNER'),'nao_identificada');
- const events:unknown[]=[];const r=new VoiceResources();r.channel={readyState:'open',send:(s:string)=>events.push(JSON.parse(s))} as RTCDataChannel;
+ const events:unknown[]=[];const r=new VoiceResources();r.channel={readyState:'open',send:(s:string)=>events.push(JSON.parse(s))} as unknown as RTCDataChannel;
  assert.equal(syncManualView(r,'cliente_ficha','OWNER'),true);assert.equal(syncManualView(r,'cliente_ficha','OWNER'),false);
  assert.equal(syncManualView(r,'contrato_condicoes','OWNER'),true);
  assert.doesNotMatch(JSON.stringify(events),/response.create|private|6a7f41a3/);
@@ -43,7 +43,7 @@ test('Manual follows form stages, uses real labels, and does not invent supplier
 });
 test('Every role receives a read-only help tool, and HOW instructions take priority over preparation',async()=>{
  for(const role of ['OWNER','ADMIN','GERENTE','VENDEDOR','FINANCEIRO'] as const){const session=voiceSession(role,'dashboard');assert.ok(session.tools.some(t=>t.name==='consultar_manual_icom'));assert.match(session.instructions,/NUNCA use preparar_despesa_icom/);assert.match(session.instructions,/Não responda|não fale nem interrompa/);assert.doesNotMatch(session.instructions,/\$\{plateVoiceInstructions\}/);}
- const r=new VoiceResources(),events:{type:string;item?:{output:string}}[]=[];r.channel={readyState:'open',send:(s:string)=>events.push(JSON.parse(s))} as RTCDataChannel;
+ const r=new VoiceResources(),events:{type:string;item?:{output:string}}[]=[];r.channel={readyState:'open',send:(s:string)=>events.push(JSON.parse(s))} as unknown as RTCDataChannel;
  let reads=0;await answerVoiceTools(r,[{type:'function_call',name:'consultar_manual_icom',call_id:'help_1',arguments:'{"topic":"cliente"}'}],async(name,args)=>{assert.equal(name,'consultar_manual_icom');reads++;return readManual(args,'clientes','VENDEDOR');});
  assert.equal(reads,1);assert.equal(JSON.parse(events[0].item!.output).mode,'MANUAL');assert.equal(events[1].type,'response.create');
 });
