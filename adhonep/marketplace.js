@@ -30,8 +30,9 @@ function render() {
     const cardCover = card.querySelector('.market-cover');
     cardCover.loading = 'lazy';
     cardCover.alt = `Apresentação da ${item.name}`;
-    cardCover.src = item.cover_url || item.logo_url || 'assets/capitulo-taubate-oficial.png';
-    cardCover.classList.toggle('logo-as-cover', !item.cover_url && Boolean(item.logo_url));
+    const showLogo = Boolean(item.logo_url) && (item.slug === 'polar-ar-condicionado' || !item.cover_url);
+    cardCover.src = (showLogo ? item.logo_url : item.cover_url) || item.logo_url || 'assets/capitulo-taubate-oficial.png';
+    cardCover.classList.toggle('logo-as-cover', showLogo);
     card.querySelector('.market-logo').src = item.logo_url || 'assets/logo-adhonep-expansao.png';
     card.querySelector('.market-logo').alt = `Logo da ${item.name}`;
     card.querySelector('.market-logo').loading = 'lazy';
@@ -79,6 +80,23 @@ function openDetail(x) {
   if (!x.cover_url && x.logo_url) {
     detail.querySelector('.profile-visual')?.classList.add('logo-hero');
     detail.querySelector('.detail-cover')?.classList.add('logo-as-cover');
+  }
+  // Polar's approved advertisement belongs inside its profile, not on the directory card.
+  if (x.slug === 'polar-ar-condicionado' && x.cover_url) {
+    const artwork = detail.querySelector('.detail-cover');
+    Object.assign(artwork.style, { height: 'auto', maxHeight: 'none', objectFit: 'contain', background: '#fff' });
+    const fullImage = document.createElement('a');
+    fullImage.href = cover;
+    fullImage.target = '_blank';
+    fullImage.rel = 'noopener noreferrer';
+    fullImage.setAttribute('aria-label', 'Ampliar arte completa da Polar Ar Condicionado');
+    artwork.before(fullImage);
+    fullImage.append(artwork);
+    // Leave the artwork unobstructed: the separate logo sits below it.
+    Object.assign(detail.querySelector('.detail-logo').style, {
+      position: 'relative', left: '0', bottom: 'auto', display: 'block', margin: '16px 24px'
+    });
+    detail.querySelector('.profile-visual').style.background = '#fff';
   }
   dialog.showModal();
 }
