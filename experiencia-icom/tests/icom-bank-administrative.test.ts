@@ -1,3 +1,4 @@
+import {isWhatsAppEntry} from '../lib/icom-bank/entry-origin.ts';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {adminInput,adminArchiveInput,adminYear,adminStats,saleCost,saleProfit,returnNet,returnStore,adminMoneyInput,adminMoneyText,adminSaleCalculation,adminSaleSettlement,adminSaleReceived,defaultSaleCommission,type AdminEntry} from '../lib/icom-bank/administrative.ts';
@@ -45,4 +46,11 @@ test('Inactive trade and financing branches are removed, other banks and legacy 
  const clear=adminInput({...base,details:{...d,trade_has_debts:false,payment_method:'CARTAO'}}).details;assert.equal(clear.trade_payoff_bank,undefined);assert.equal(clear.trade_ipva_cents,undefined);
  const other=adminInput({...base,details:{...d,payment_bank:'OUTRO',payment_bank_other:'Banco de montadora',trade_payoff_bank:'OUTRO',trade_payoff_bank_other:'Banco anterior'}}).details;assert.equal(other.payment_bank_other,'Banco de montadora');
  assert.equal(adminInput({...base,details:{...base.details,trade_vehicle:'Registro antigo',payment_method:'Transferência'}}).details.trade_vehicle,'Registro antigo');
+});
+
+test('WhatsApp provenance is detected from channel metadata, never from expense descriptions',()=>{
+ assert.equal(isWhatsAppEntry({details:{notes:'Origem: WhatsApp ICOM Bank · mensagem 123'}}),true);
+ assert.equal(isWhatsAppEntry({details:{notes:'Origem: ICOM IA por voz · confirmação no painel'}}),false);
+ assert.equal(isWhatsAppEntry({details:{notes:'Pagamento de plano WhatsApp'}}),false);
+ assert.equal(isWhatsAppEntry({details:{}}),false);
 });

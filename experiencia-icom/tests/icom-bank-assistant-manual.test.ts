@@ -7,7 +7,7 @@ import {VoiceResources,answerVoiceTools} from '../lib/icom-bank/assistant-client
 import {voiceSession} from '../lib/icom-bank/assistant-session.ts';
 const source=(n:string)=>readFileSync(new URL('../'+n,import.meta.url),'utf8');
 test('Manual numbering matches the filtered sidebar and restricts owner guides',()=>{
- assert.deepEqual(manualMenu('OWNER').slice(0,4).map(m=>m.number+' '+m.label),['01 Visão Geral','02 Clientes','03 Contratos','04 Administrativo']);
+ assert.deepEqual(manualMenu('OWNER').slice(0,4).map(m=>m.number+' '+m.label),['01 Visão Geral','02 Nova venda','03 Contratos','04 Administrativo']);
  assert.deepEqual(manualMenu('FINANCEIRO').map(m=>m.number+' '+m.label),['01 Visão Geral','02 Parcelas','03 Pagamentos','04 Comprovantes','05 Inadimplência']);
  for(const role of ['VENDEDOR','GERENTE','ADMIN','FINANCEIRO'] as const){const restricted=readManual({topic:'investidor'},'investidores',role);assert.equal(restricted.available,false);assert.equal(restricted.steps.length,0);assert.equal(restricted.current_view.id,'nao_identificada');}
  assert.equal(readManual({topic:'cliente'},'clientes','VENDEDOR').available,true);
