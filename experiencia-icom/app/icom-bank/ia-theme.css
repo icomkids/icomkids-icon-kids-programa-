@@ -53,3 +53,8 @@
 
 /* Account registration stays alongside the unsaved financial form. */
 .bank-account-select{display:grid;align-content:start;gap:.6rem;min-width:0}.bank-account-select>small{line-height:1.5}.bank-account-select .bank-account-add{justify-self:start;color:#edcf93;border-color:rgba(210,179,112,.55)}.bank-account-create{padding:1rem;border:1px solid rgba(210,179,112,.4);border-radius:14px;background:rgba(23,48,75,.8);min-width:0}.bank-account-create .bank-form-grid{grid-template-columns:1fr}.bank-account-create .bank-actions{flex-wrap:wrap}.bank-account-create h3{margin-top:0;color:#edcf93}
+
+/* Plain personal money controls, preserving the navy and gold identity. */
+.bank-personal-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem;margin:1.4rem 0}.bank-personal-actions>button{display:flex;align-items:center;gap:.9rem;text-align:left;padding:1.15rem;background:linear-gradient(145deg,#234665,#15344f);border:1px solid rgba(210,179,112,.4);border-radius:16px;box-shadow:0 8px 22px #08152255,inset 0 1px 0 #ffffff12;color:#efdaae}.bank-personal-actions strong,.bank-personal-actions small{display:block}.bank-personal-actions small{margin-top:.35rem;color:#c6d6e7;font-size:.82rem;line-height:1.4}.bank-personal-explanation{margin:1rem 0;color:#bacde2}.bank-simple-withdrawal details{margin:1rem 0}.bank-simple-withdrawal summary,.bank-personal-explanation summary{cursor:pointer;color:#edcf93}.bank-simple-withdrawal details .bank-form-grid{margin-top:1rem}@media(max-width:850px){.bank-personal-actions{grid-template-columns:1fr}}
+
+.bank-personal-extra{grid-column:1/-1}.bank-personal-extra summary{cursor:pointer;color:#edcf93}.bank-personal-extra>.bank-form-grid{margin-top:1rem}
