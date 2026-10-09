@@ -129,23 +129,12 @@
     </section>
 
     <section class="chapter-directory" id="capitulos"><div><span class="eyebrow">ENCONTRE UM CAPÍTULO</span><h2>Uma comunidade em cada cidade.</h2><p>Escolha a cidade para consultar sua liderança, empresas e próximos encontros.</p></div><select id="public-chapter-filter" aria-label="Escolha um capítulo"><option value="">Todos os capítulos</option></select></section>
-    <section class="event-feature chapter-taubate-feature" id="eventos" data-dynamic-event>
+    <section class="event-feature chapter-taubate-feature" data-dynamic-event>
       <div class="chapter-showcase chapter-showcase-approved" aria-labelledby="chapter-taubate-title">
         <h2 id="chapter-taubate-title" class="visually-hidden">Taubaté, nossa casa. Conexões que deixam legado.</h2>
         <img src="assets/capitulo-taubate-arte-aprovada.png" alt="Arte oficial do Capítulo ADHONEP Taubaté: Taubaté, nossa casa. Conexões que deixam legado." />
       </div>
-      <div class="event-copy">
-        <div class="event-overview">
-          <span class="eyebrow" id="next-event-chapter">AGENDA OFICIAL • ADHONEP TAUBATÉ</span>
-          <p class="date"><strong id="next-event-day">—</strong><span id="next-event-month">PRÓXIMO<br /><b>EVENTO</b></span></p>
-          <h2 id="next-event-title">Carregando a próxima agenda...</h2>
-          <p id="next-event-description">A programação é atualizada automaticamente pelo capítulo.</p>
-          <dl><div><dt>HORÁRIO</dt><dd id="next-event-time">A confirmar</dd></div><div><dt>LOCAL</dt><dd id="next-event-location">A confirmar</dd></div></dl>
-          <p class="event-address" id="next-event-address"></p>
-          <button class="primary navy" data-open="event">Reservar meu lugar <b>→</b></button>
-        </div>
-        <div class="speaker-line speaker-feature" id="next-event-speaker-card"><img class="speaker-photo" id="next-event-image" src="assets/evento-encontro.png" alt="Arte do próximo evento" /><div class="speaker-details"><small>PALESTRANTE EM DESTAQUE</small><b id="next-event-speaker">Agenda em atualização</b><strong id="next-event-speaker-title"></strong><span>Arte oficial cadastrada pelo administrador do capítulo.</span></div></div>
-      </div>
+      <div class="event-copy" id="eventos" aria-live="polite"><p>Carregando a próxima agenda...</p></div>
     </section>
 
     <section class="agenda-list" aria-labelledby="calendar-title">
@@ -188,6 +177,6 @@
 
   <dialog id="form-dialog"><button class="close" aria-label="Fechar">×</button><span class="eyebrow">VAMOS CONVERSAR</span><h2 id="dialog-title">Quero conhecer a ADHONEP</h2><p>Esta é uma demonstração do formulário. Nenhum dado será enviado.</p><form method="dialog"><label>Nome<input placeholder="Seu nome completo" /></label><label>Empresa<input placeholder="Nome da sua empresa" /></label><div class="two"><label>WhatsApp<input placeholder="(12) 99999-9999" /></label><label>Cidade<input placeholder="Taubaté" /></label></div><label>Principal interesse<select><option>Networking</option><option>Novos negócios</option><option>Eventos</option><option>Divulgar minha empresa</option></select></label><label class="check"><input type="checkbox" /> Autorizo o contato sobre eventos e atividades da ADHONEP.</label><button class="primary navy" value="cancel">Enviar interesse <b>→</b></button></form></dialog>
   <dialog id="video-dialog" class="video-dialog" hidden><button class="close" aria-label="Fechar">×</button><div class="video-placeholder"><span>▶</span><b>O vídeo de apresentação será exibido aqui</b><small>Preparado para YouTube, Vimeo ou arquivo próprio.</small></div></dialog>
-  <script src="script.js"></script><script src="home-navigation.js?v=1" defer></script><script type="module" src="public-live.js?v=20"></script>
+  <script src="script.js"></script><script src="home-navigation.js?v=1" defer></script><script type="module" src="public-live.js?v=21"></script>
 </body>
 </html>
