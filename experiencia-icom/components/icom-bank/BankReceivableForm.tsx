@@ -1,4 +1,5 @@
 'use client';
+import {bankSafeFetch} from '@/lib/icom-bank/deletion-client';
 import BankAccountSelect from './BankAccountSelect';
 import {useState} from 'react';
 import {bankPath,brazilDay,currency} from '@/lib/icom-bank/model';
@@ -14,7 +15,7 @@ export default function BankReceivableForm({bill,source,data,action,receipt,onCa
   const cents=action==='reverse'?0:action==='save'&&lockedAmount?Number(bill!.amount_cents):adminMoneyInput(String(values.get('amount')||amount));
   if(action==='receive'&&cents>receivableRemaining(bill!))throw new Error('O valor recebido não pode superar o saldo desta conta.');
   const body=action==='save'?{action,id,expected_updated_at:bill?.updated_at||null,title,payer,kind,bank,notes,amount_cents:cents,due_date:String(values.get('due_date')||'')||null}:action==='receive'?{action,account_id:account||null,id,expected_updated_at:bill!.updated_at,request_id:requestId,amount_cents:cents,received_at:mode==='existing'?date:String(values.get('received_at')||date),method,confirmed,existing_id:mode==='existing'?existing:null}:{action,id,expected_updated_at:bill!.updated_at,receipt_id:receipt!.id,reason};
-  const r=await fetch(bankPath('/api/receivables'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}),result=await r.json() as {error?:string};if(!r.ok)throw new Error(result.error||'Não foi possível salvar.');
+  const r=await bankSafeFetch(bankPath('/api/receivables'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}),result=await r.json() as {error?:string};if(!r.ok)throw new Error(result.error||'Não foi possível salvar.');
   onSaved(action==='save'?'Conta salva. Nenhuma entrada foi registrada no caixa.':action==='reverse'?'Recebimento desfeito. A entrada foi arquivada e o saldo da conta foi reaberto.':mode==='existing'?'Recebimento vinculado à entrada existente, sem duplicar o caixa.':'Recebimento confirmado. A entrada foi registrada uma única vez no caixa.');
  }catch(e){setError(e instanceof Error?e.message:'Não foi possível salvar.');}finally{setBusy(false);}}
  return <form data-bank-manual-view={action==='receive'?'receber_conta_form':'conta_receber_form'} className="bank-panel bank-receivable-form" onSubmit={e=>{e.preventDefault();void submit(new FormData(e.currentTarget));}}><div className="bank-panel-title"><div><p className="bank-eyebrow">{bill?bill.title:'ORGANIZAR RECEBIMENTOS DA LOJA'}</p><h2>{action==='save'?bill?'Editar conta a receber':'Cadastrar conta a receber':action==='receive'?'Confirmar recebimento':'Desfazer recebimento'}</h2></div>{action==='receive'&&bill&&<strong>Falta receber: {currency(receivableRemaining(bill))}</strong>}</div><fieldset disabled={busy}><div className="bank-form-grid">

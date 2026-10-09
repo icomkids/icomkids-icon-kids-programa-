@@ -3,7 +3,7 @@ import {brazilDay} from './model.ts';
 import {vehicleSpec,type VehicleSpec} from './vehicle-catalog.ts';
 export type VehicleInput={catalog?:VehicleSpec;brand:string;model:string;plate:string;version:string;manufacture_year:number|null;model_year:number|null;color:string;chassis:string;renavam:string;mileage:number|null;fuel:string;store:string;notes:string};
 export type FinanceInput={vehicle_cents:number;down_payment_cents:number;count:number;installment_cents:number;first_due:string;sale_date:string;period:'MENSAL'|'QUINZENAL'|'SEMANAL';interest_bps:number;fine_bps:number;late_interest_bps:number;notes:string;risk_profile?:RiskProfile|null};
-export type ContractRow={id:string;customer_id:string;vehicle_id:string;number:string;status:string;principal_cents:number;down_payment_cents:number;total_cents:number;sale_date:string;terms:FinanceInput;created_at:string};
+export type ContractRow={id:string;customer_id:string;vehicle_id:string;number:string;status:string;principal_cents:number;down_payment_cents:number;total_cents:number;sale_date:string;terms:FinanceInput;created_at:string;updated_at:string};
 export type VehicleRow=VehicleInput&{id:string;customer_id:string;details:VehicleInput;created_at:string};
 export const validId=(value:string)=>/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 export function moneyInput(value:string){const clean=value.trim();if(!/^\d{1,9}(,\d{1,2})?$/.test(clean))throw new Error('Informe valores em reais, sem ponto de milhar. Exemplo: 1250,50.');const [whole,fraction='']=clean.split(',');return Number(whole)*100+Number(fraction.padEnd(2,'0'));}

@@ -1,3 +1,4 @@
+import {deletionQuery} from '@/lib/icom-bank/deletion-server';
 import {accountPost,bankAccountLinks} from '@/lib/icom-bank/accounts-server';
 import {bankAuthorize,bankOrigin,bankQuery,bankCashEntries,bankError,BankError,bankAdminSellers} from '@/lib/icom-bank/server';
 import {adminInput,adminArchiveInput,adminYear,adminSaleSettlement,saleCost,saleProfit,returnNet,returnStore,type AdminEntry,type AdminReference} from '@/lib/icom-bank/administrative';
@@ -35,7 +36,7 @@ export async function POST(req:Request){try{
 
 export async function PATCH(req:Request){try{
  bankOrigin(req);const {token}=await bankAuthorize('administrativo');const raw=await req.text();if(raw.length>500)throw new BankError('Solicitação acima do limite.',400);
- let input;try{input=adminArchiveInput(JSON.parse(raw));}catch(e){throw new BankError(e instanceof Error?e.message:'Confira o lançamento.',400);}
- const row=await bankQuery<AdminEntry>(token,'rpc/icom_bank_archive_admin_entry','POST',{p_id:input.id,p_active:input.active,p_expected:input.expected_updated_at});
+ const body=JSON.parse(raw);let input;try{input=adminArchiveInput(body);}catch(e){throw new BankError(e instanceof Error?e.message:'Confira o lançamento.',400);}
+ const row=input.active?await bankQuery<AdminEntry>(token,'rpc/icom_bank_archive_admin_entry','POST',{p_id:input.id,p_active:input.active,p_expected:input.expected_updated_at}):await deletionQuery<AdminEntry>(token,'archive_admin',input.id,'rpc/icom_bank_archive_admin_entry',{p_id:input.id,p_active:input.active,p_expected:input.expected_updated_at},body.deletion_password);
  return Response.json({row},{headers:{'Cache-Control':'no-store'}});
 }catch(e){return bankError(e);}}
