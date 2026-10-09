@@ -1,3 +1,5 @@
+import {resolveAccount,type BankAccount} from './accounts';
+import {extractFinancial,prepareFinancial,refuseVoiceWithdrawal} from './assistant-financial';
 import {expenseStatusQuestion,audienceLabel,natureLabel} from './expense-context';
 import {sharedAssistantCache} from './assistant-cache';
 import {config,db} from '../server';
@@ -43,7 +45,13 @@ export async function processExpenses(){
     await patch(m,{status:'RESOLVIDO',reply:message});m.reply=message;await reply(b,m);continue;
    }
    const [previous]=await botDb<Inbox[]>('icom_bank_whatsapp_inbox?sender=eq.'+m.sender+'&owner_id=eq.'+m.owner_id+'&status=eq.ESCLARECER&created_at=gt.'+encodeURIComponent(since)+'&created_at=lt.'+encodeURIComponent(m.created_at)+'&order=created_at.desc&limit=1');
-   const today=brazilDay(new Date(m.created_at)),draft=await extractExpense(transcript,today,key,previous?.transcript||'');
+   const today=brazilDay(new Date(m.created_at));
+   const financialSource=previous?.transcript?previous.transcript+'\n'+transcript:transcript;
+   if(/\b(?:paguei|pagamos|pago|baixar|baixa)\b/i.test(financialSource)&&/\b(?:conta|parcela|vencimento|im[oó]vel|aluguel)\b/i.test(financialSource)){
+    refuseVoiceWithdrawal(financialSource);const extracted=await extractFinancial(financialSource,today,key);
+    if(extracted.operation==='PAGAR_CONTA'){const prepared=await prepareFinancial(extracted,financialSource,today,async path=>{if(!/^(icom_bank_accounts|icom_bank_payables|icom_bank_receipts|icom_bank_admin_entries)\?/.test(path))throw new Error('Operação indisponível no WhatsApp.');const own=path.startsWith('icom_bank_accounts?')?'&owner_id=eq.'+m.owner_id:'';const all:Record<string,unknown>[]=[];for(let offset=0;offset<20000;offset+=500){const rows=await botDb<Record<string,unknown>[]>(path+own+'&order=id.asc&limit=500&offset='+offset);all.push(...rows);if(rows.length<500)return all;}throw new Error('Use o painel para esta consulta.');},m.id);const message='Pagamento registrado. '+prepared.summary.map(x=>x.label+': '+x.value).join(' · ');await patch(m,{reply:message});await botDb('rpc/icom_bank_whatsapp_account_commit',{p_id:m.id,p_claim:m.claim_id,p_operation:'PAGAR_CONTA',p_args:prepared.args,p_account:prepared.account_id||null});sharedAssistantCache().clear();m.reply=message;await reply(b,m);continue;}
+   }
+   const draft=await extractExpense(transcript,today,key,previous?.transcript||'');
    const source=draft.uses_previous&&previous?.transcript?previous.transcript+'\n'+transcript:transcript;
    if(draft.intent==='CONSULTA'){
     if(draft.scope!=='PESSOAL'||draft.confidence!=='ALTA')throw new Error('Pergunte uma despesa pessoal por categoria ou pelo nome da viagem.');
@@ -56,9 +64,10 @@ export async function processExpenses(){
     const message=`Você gastou ${currency(summary.amount_cents)} em ${category||'despesas pessoais'}${trip?' na viagem '+trip:''}${input.audience?' · '+audienceLabel(input.audience):''}${input.nature?' · '+natureLabel(input.nature):''}.\nPeríodo: ${period} · ${summary.count} pagamento(s).${summary.missing?' Total parcial: há registros sem valor.':''}\nSó entram pagamentos realizados e ativos.${input.nature?' O total segue as classificações registradas ou as regras exibidas no painel; gastos sem classificação ficam separados.':''} Nenhum lançamento foi criado por esta consulta.`;
     await patch(m,{status:'RESOLVIDO',reply:message});m.reply=message;await reply(b,m);continue;
    }
-   const p=expensePayload(draft,source,m.id,[],today),message=expenseReply(p);
+   const account=resolveAccount(await botDb<BankAccount[]>('icom_bank_accounts?select=*&owner_id=eq.'+m.owner_id),draft.account_name,source);
+   const p=expensePayload(draft,source,m.id,[],today),message=expenseReply(p)+(account?'\nConta: '+account.name:'');
    await patch(m,{reply:message});const {expected_updated_at:_,...payload}=p;void _;
-   await botDb('rpc/icom_bank_whatsapp_commit',{p_id:m.id,p_claim:m.claim_id,p_payload:payload});
+   await botDb('rpc/icom_bank_whatsapp_account_commit',{p_id:m.id,p_claim:m.claim_id,p_operation:'LANCAMENTO',p_args:{p_payload:payload,p_expected:null},p_account:account?.id||null});
    sharedAssistantCache().clear();m.reply=message;await reply(b,m);
   }catch(e){
    const msg=e instanceof Error?e.message:'Não consegui interpretar. Envie novamente a despesa e o valor.';

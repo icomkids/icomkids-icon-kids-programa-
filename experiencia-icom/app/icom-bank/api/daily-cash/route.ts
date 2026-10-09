@@ -1,3 +1,4 @@
+import {accountPost} from '@/lib/icom-bank/accounts-server';
 import {bankAuthorize,bankOrigin,bankError,bankQuery,BankError} from '@/lib/icom-bank/server';
 import {cashDay,checkInput,dailyCash,withdrawalInput,type DailyContext,type CashCheck} from '@/lib/icom-bank/daily-cash';
 import {dailyCashData} from '@/lib/icom-bank/daily-cash-server';
@@ -8,7 +9,7 @@ export async function POST(req:Request){try{
  bankOrigin(req);const {token}=await bankAuthorize('administrativo');const raw=await req.text();if(raw.length>6000)throw new BankError('Registro muito extenso.',400);const body=JSON.parse(raw) as Record<string,unknown>;
  if(body.action==='withdrawal'){
   const payload=withdrawalInput(body);
-  const row=await bankQuery<AdminEntry>(token,'rpc/icom_bank_record_withdrawal','POST',{p_payload:payload});
+  const row=await accountPost(token,'RETIRADA',{p_payload:payload},body.account_id);
   return Response.json({row},{headers:{'Cache-Control':'no-store'}});
  }
  if(body.action!=='check')throw new BankError('Selecione uma operação válida.',400);

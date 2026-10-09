@@ -9,7 +9,7 @@ import type {StockRow} from './stock.ts';
 import {expensePlate,attachExpenseVehicle} from './spoken-plate.ts';
 
 export const botName='icom-bank-assistente';
-export type ExpenseDraft={intent:'DESPESA'|'OUTRO'|'MULTIPLAS'|'CONSULTA';query_audience?:ExpenseAudience|null;query_nature?:ExpenseNature|null;scope:'PESSOAL'|'LOJA';description:string;category:string;amount:string|null;amount_excerpt:string|null;paid:boolean|null;payment_method:'PIX'|'DINHEIRO'|'CARTAO'|'TRANSFERENCIA'|'OUTRO'|null;date:string|null;date_excerpt?:string|null;trip_name?:string|null;trip_excerpt?:string|null;query_period?:'total'|'mes_atual'|'mes_anterior';uses_previous?:boolean;plate:string|null;confidence:'ALTA'|'BAIXA';question:string};
+export type ExpenseDraft={account_name?:string|null;intent:'DESPESA'|'OUTRO'|'MULTIPLAS'|'CONSULTA';query_audience?:ExpenseAudience|null;query_nature?:ExpenseNature|null;scope:'PESSOAL'|'LOJA';description:string;category:string;amount:string|null;amount_excerpt:string|null;paid:boolean|null;payment_method:'PIX'|'DINHEIRO'|'CARTAO'|'TRANSFERENCIA'|'OUTRO'|null;date:string|null;date_excerpt?:string|null;trip_name?:string|null;trip_excerpt?:string|null;query_period?:'total'|'mes_atual'|'mes_anterior';uses_previous?:boolean;plate:string|null;confidence:'ALTA'|'BAIXA';question:string};
 export type BotMessage={provider_id:string;sender:string;type:'audio'|'text';text:string;sent_at:string};
 const object=(v:unknown):Record<string,unknown>=>v&&typeof v==='object'&&!Array.isArray(v)?v as Record<string,unknown>:{};
 export function secureEqual(a:unknown,b:string){if(typeof a!=='string'||!b)return false;return timingSafeEqual(createHash('sha256').update(a).digest(),createHash('sha256').update(b).digest());}

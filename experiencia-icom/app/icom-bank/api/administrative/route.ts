@@ -1,3 +1,4 @@
+import {accountPost,bankAccountLinks} from '@/lib/icom-bank/accounts-server';
 import {bankAuthorize,bankOrigin,bankQuery,bankCashEntries,bankError,BankError,bankAdminSellers} from '@/lib/icom-bank/server';
 import {adminInput,adminArchiveInput,adminYear,adminSaleSettlement,saleCost,saleProfit,returnNet,returnStore,type AdminEntry,type AdminReference} from '@/lib/icom-bank/administrative';
 import {resolveVehicleSpec} from '@/lib/icom-bank/fipe-server';
@@ -21,13 +22,14 @@ export async function GET(req:Request){try{
 
 export async function POST(req:Request){try{
  bankOrigin(req);const {token}=await bankAuthorize('administrativo');const raw=await req.text();if(raw.length>8000)throw new BankError('Lançamento acima do tamanho permitido.',400);
- let input;try{input=adminInput(JSON.parse(raw));}catch(e){throw new BankError(e instanceof Error?e.message:'Confira o lançamento.',400);}
+ const body=JSON.parse(raw);let input;try{input=adminInput(body);}catch(e){throw new BankError(e instanceof Error?e.message:'Confira o lançamento.',400);}
  const [previous]=await bankQuery<AdminEntry[]>(token,'icom_bank_admin_entries?id=eq.'+input.id+'&select=*');
  for(const key of ['vehicle_spec','trade_spec'] as const){const spec=input.details[key];if(spec)input.details[key]=await resolveVehicleSpec(spec,previous?.details[key]);}
  if(input.details.vehicle_spec)input.details.vehicle=(input.details.vehicle_spec.brand+' '+(input.details.vehicle_spec.version||input.details.vehicle_spec.model)).slice(0,160);
  if(input.details.trade_spec){input.details.trade_vehicle=(input.details.trade_spec.brand+' '+(input.details.trade_spec.version||input.details.trade_spec.model)).slice(0,160);if(input.details.trade_spec.year!==null)input.details.trade_year=input.details.trade_spec.year;}
  const {expected_updated_at,...payload}=input;
- const row=await bankQuery<AdminEntry>(token,'rpc/icom_bank_save_admin_entry','POST',{p_payload:payload,p_expected:expected_updated_at});
+ const account=body.account_id||(previous?(await bankAccountLinks(token)).find(l=>l.ledger_entry_id===previous.id)?.account_id:null);
+ const row=payload.status==='REALIZADO'&&payload.kind!=='TROCA'?await accountPost(token,'LANCAMENTO',{p_payload:payload,p_expected:expected_updated_at},account):await bankQuery<AdminEntry>(token,'rpc/icom_bank_save_admin_entry','POST',{p_payload:payload,p_expected:expected_updated_at});
  return Response.json({row},{headers:{'Cache-Control':'no-store'}});
 }catch(e){return bankError(e);}}
 

@@ -1,4 +1,5 @@
 'use client';
+import type {CashEntry} from '@/lib/icom-bank/cash';
 import {expenseContext,expenseAudiences,expenseNatures,audienceLabel,natureLabel,type ExpenseAudience,type ExpenseNature} from '@/lib/icom-bank/expense-context';
 import {personalCategories,personalCategory,personalSummary,expenseFold} from '@/lib/icom-bank/personal-expenses';
 import BankCashPosition from './BankCashPosition';
@@ -22,7 +23,7 @@ export default function BankAdministrative({initial,reference,initialYear,seller
  const [rows,setRows]=useState(initial),[year,setYear]=useState(initialYear),[yearInput,setYearInput]=useState(String(initialYear)),[month,setMonth]=useState(brazilDay().slice(5,7)),[selected,setSelected]=useState<Section>('resumo'),[search,setSearch]=useState(''),[archived,setArchived]=useState(false),[costGroup,setCostGroup]=useState(''),[scopeFilter,setScopeFilter]=useState(''),[form,setForm]=useState<{entry?:AdminEntry;preset:AdminPreset}|null>(null),[notice,setNotice]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[archiveReview,setArchiveReview]=useState<AdminEntry|null>(null);
  useEffect(()=>{if(location.hash==='#pessoais')setSelected('pessoais');},[]);
  useEffect(()=>{const controller=new AbortController();const refresh=()=>{void fetch(bankPath('/api/administrative?year='+year),{signal:controller.signal,cache:'no-store'}).then(async response=>{const data=await response.json() as {rows?:AdminEntry[]};if(response.ok&&Array.isArray(data.rows))setRows(data.rows);}).catch(()=>{});};window.addEventListener('icom-bank-ledger-changed',refresh);return()=>{controller.abort();window.removeEventListener('icom-bank-ledger-changed',refresh);};},[year]);
- const period=month==='all'?String(year):`${year}-${month}`,stats=adminStats(rows,period),section=sections.find(s=>s.id===selected)!;
+ const period=month==='all'?String(year):`${year}-${month}`,stats=adminStats(rows.filter(r=>!['SALDO_INICIAL','RENDA_PESSOAL'].includes((r as CashEntry).cash_account_purpose||'')),period),section=sections.find(s=>s.id===selected)!;
  const changeSection=(next:Section)=>{setSelected(next);setPersonalFilter('');setTripFilter('');setAudienceFilter('');setNatureFilter('');setForm(null);setArchiveReview(null);setSearch('');setCostGroup('');setScopeFilter('');setError('');};
  const context=(e:AdminEntry)=>({...expenseContext(e.description,personalCategory(e.category,e.description)),...(e.details.expense_audience?{expense_audience:e.details.expense_audience}:{}),...(e.details.expense_nature?{expense_nature:e.details.expense_nature}:{})});
  const matches=(e:AdminEntry)=>e.active!==archived&&e.entry_date.startsWith(period)&&(!search||`${e.description} ${e.category} ${e.details.vehicle||''} ${e.details.plate||''} ${e.details.seller||''} ${e.details.trip_name||''}`.toLocaleLowerCase('pt-BR').includes(search.toLocaleLowerCase('pt-BR')));

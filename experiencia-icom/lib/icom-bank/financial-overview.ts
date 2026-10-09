@@ -10,8 +10,8 @@ export function financialOverview(rows:CashEntry[],wealth:WealthRecord[],period:
  const amount=(r:CashEntry)=>Number(r.amount_cents||0);
  // Reuse the established sale profit. Purchase, vehicle costs and commission
  // are already deducted there; related cash settlements are not another expense.
- const expenses=selected.filter(r=>r.scope==='LOJA'&&['CUSTO','MENSAL'].includes(r.kind)&&!r.details.sale_cost_id&&!r.cash_cost_source_id&&!(r.details.stock_id&&soldStock.has(r.details.stock_id)));
- const other=selected.filter(r=>r.scope==='LOJA'&&r.kind==='ENTRADA'&&!r.cash_source_id);
+ const expenses=selected.filter(r=>r.cash_account_purpose!=='SALDO_INICIAL'&&r.scope==='LOJA'&&['CUSTO','MENSAL'].includes(r.kind)&&!r.details.sale_cost_id&&!r.cash_cost_source_id&&!(r.details.stock_id&&soldStock.has(r.details.stock_id)));
+ const other=selected.filter(r=>!['SALDO_INICIAL','RENDA_PESSOAL'].includes(r.cash_account_purpose||'')&&r.scope==='LOJA'&&r.kind==='ENTRADA'&&!r.cash_source_id);
  const earnings=sales.reduce((n,r)=>n+saleProfit(r),0)+selected.filter(r=>r.kind==='RETORNO').reduce((n,r)=>n+returnStore(r),0)+other.reduce((n,r)=>n+amount(r),0);
  const costs=expenses.reduce((n,r)=>n+amount(r),0),personal=adminStats(selected,period).personal,p=wealthSummary(wealth,period,today);
  const unlinked=selected.filter(r=>r.cash_source_id&&!saleIds.has(r.cash_source_id)).length;

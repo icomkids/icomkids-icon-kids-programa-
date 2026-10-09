@@ -1,3 +1,4 @@
+import {accountPost} from '@/lib/icom-bank/accounts-server';
 import {bankAuthorize,bankOrigin,bankQuery,bankAll,bankError,BankError} from '@/lib/icom-bank/server';
 import {claimVoiceRead} from '@/lib/icom-bank/assistant-server';
 import {boundedVoiceBody,VoiceError} from '@/lib/icom-bank/assistant-session';
@@ -22,7 +23,7 @@ export async function POST(req:Request){try{
   if(raw.name!==undefined||raw.arguments!==undefined)throw new BankError('Confirmação inválida.',400);
   const pending=readFinancial(raw.confirmation,profile.user_id,key);
   let row:unknown;
-  if(pending.operation==='LANCAMENTO'){
+  if(pending.account_id!==undefined){row=await accountPost(token,pending.operation,pending.args,pending.account_id);}else if(pending.operation==='LANCAMENTO'){
    const payload=pending.args.p_payload as Record<string,unknown>;
    const find=async()=>{const [r]=await bankQuery<AdminEntry[]>(token,'icom_bank_admin_entries?id=eq.'+payload.id+'&select=*');return r;};
    row=await find();if(row&&(!(row as AdminEntry).active||!sameFinancialEntry(row as AdminEntry,payload)))throw new BankError('O registro foi alterado. Confira a tela.',409);

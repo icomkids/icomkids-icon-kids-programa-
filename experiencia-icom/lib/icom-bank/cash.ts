@@ -1,7 +1,7 @@
 import {adminSaleSettlement,adminStats,saleProfit,type AdminEntry} from './administrative.ts';
 
 export const tradeDestinations={REPASSE:'Repasse',LOJA:'Loja · ICOM Motors',INVESTIDOR:'Investidor'} as const;
-export type CashEntry=AdminEntry&{cash_source_id?:string|null;cash_cost_source_id?:string|null;cash_cost_part?:'CUSTOS'|'DEBITOS'|null;cash_stock_origin_id?:string|null};
+export type CashEntry=AdminEntry&{cash_account_id?:string;cash_account_purpose?:'MOVIMENTO'|'SALDO_INICIAL'|'RENDA_PESSOAL';cash_source_id?:string|null;cash_cost_source_id?:string|null;cash_cost_part?:'CUSTOS'|'DEBITOS'|null;cash_stock_origin_id?:string|null};
 export type SaleCash={id:string;received:number;investor:number;capital:number;costs:number;review:number;reviewNeeded:boolean;available:number;loss:number;lossAdjustment:number;profit:number;returned:number;costPaid:number};
 const amount=(e:AdminEntry)=>Number(e.amount_cents||0);
 export function sameTradeInvestor(d:AdminEntry['details']):boolean{

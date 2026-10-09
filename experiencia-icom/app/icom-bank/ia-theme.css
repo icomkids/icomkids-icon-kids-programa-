@@ -45,3 +45,8 @@
 .bank-app .bank-voice-controls .bank-voice-end{background:#4c2834;color:#ffd6dc;border-color:#77444f}
 .bank-app .bank-voice-start:disabled{background:#294059;color:#b0bfd1}
 .bank-app .bank-voice-audio{color:#bfd9fa}
+
+/* Slightly lighter workspace; the sidebar keeps its established navy. */
+.bank-app{background:radial-gradient(ellipse at 70% 0,rgba(72,116,165,.16),transparent 60%),#11283f;}
+.bank-app .bank-content{background:transparent;}
+.bank-property-questions{padding:1.4rem 0;border-top:1px solid rgba(210,179,112,.2);}.bank-property-questions h3{color:#edcf93;}

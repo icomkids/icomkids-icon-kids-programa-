@@ -60,7 +60,7 @@ test('A spoken vehicle cost binds once to the exact available car and never manu
  assert.throws(()=>attachExpenseVehicle({plate:row.plate},[row],'2026-09-01'),/data/);
  const sold={plate:row.plate};attachExpenseVehicle(sold,[{...row,status:'VENDIDO'}],today);assert.equal('stock_id' in sold,false);
  const personal=expensePayload({...draft,description:'Pneu pessoal',amount:'500,00',amount_excerpt:'500',plate:row.plate},text,id,[row],today,'VOICE');assert.equal(personal.details.stock_id,undefined);assert.equal(personal.details.plate,undefined);
- const prepared=await prepareFinancial({operation:'LANCAMENTO',confidence:'ALTA',question:'',form:JSON.stringify({kind:'CUSTO',scope:'LOJA',description:'Pneu',category:'Manutenção',status:'REALIZADO',amount_cents:'500,00',details:{plate:'TTQ9F92'}}),evidence:JSON.stringify({amount_cents:'500'})},text,today,async path=>{assert.match(path,/plate=eq.TTQ9F92/);return [row] as unknown as Record<string,unknown>[];},id);
+ const prepared=await prepareFinancial({operation:'LANCAMENTO',confidence:'ALTA',question:'',form:JSON.stringify({kind:'CUSTO',scope:'LOJA',description:'Pneu',category:'Manutenção',status:'REALIZADO',amount_cents:'500,00',details:{plate:'TTQ9F92'}}),evidence:JSON.stringify({amount_cents:'500'})},text,today,async path=>{if(path.startsWith('icom_bank_accounts?'))return [];assert.match(path,/plate=eq.TTQ9F92/);return [row] as unknown as Record<string,unknown>[];},id);
  assert.equal((prepared.args.p_payload as AdminEntry).details.stock_id,row.id);assert.match(JSON.stringify(prepared.summary),/vinculado/);
 });
 
