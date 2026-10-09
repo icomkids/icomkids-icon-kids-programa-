@@ -50,3 +50,6 @@
 .bank-app{background:radial-gradient(ellipse at 70% 0,rgba(72,116,165,.16),transparent 60%),#11283f;}
 .bank-app .bank-content{background:transparent;}
 .bank-property-questions{padding:1.4rem 0;border-top:1px solid rgba(210,179,112,.2);}.bank-property-questions h3{color:#edcf93;}
+
+/* Account registration stays alongside the unsaved financial form. */
+.bank-account-select{display:grid;align-content:start;gap:.6rem;min-width:0}.bank-account-select>small{line-height:1.5}.bank-account-select .bank-account-add{justify-self:start;color:#edcf93;border-color:rgba(210,179,112,.55)}.bank-account-create{padding:1rem;border:1px solid rgba(210,179,112,.4);border-radius:14px;background:rgba(23,48,75,.8);min-width:0}.bank-account-create .bank-form-grid{grid-template-columns:1fr}.bank-account-create .bank-actions{flex-wrap:wrap}.bank-account-create h3{margin-top:0;color:#edcf93}
