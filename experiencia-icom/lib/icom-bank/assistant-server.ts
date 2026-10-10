@@ -20,12 +20,12 @@ export async function closeVoice(user:string,id:string){
  const call=calls.get(id);if(!call||call.user!==user)return;
  calls.delete(id);clearTimeout(call.timer);limiter.end(user);await hangup(call.callId);
 }
-export async function startVoice(user:string,role:BankRole,input:{sdp:string;section:string},signal:AbortSignal){
+export async function startVoice(user:string,role:BankRole,input:{sdp:string;section:string},signal:AbortSignal,name='IA Bank'){
  if(!voiceConfigured())throw new VoiceError('A voz ainda aguarda ativação pelo administrador. As orientações rápidas estão disponíveis abaixo.',503);
  limiter.begin(user);
  let callId:string|null=null;
  try{
-  const form=new FormData();form.set('sdp',input.sdp);form.set('session',JSON.stringify(voiceSession(role,input.section,process.env.OPENAI_REALTIME_MODEL?.trim()||undefined)));
+  const form=new FormData();form.set('sdp',input.sdp);form.set('session',JSON.stringify(voiceSession(role,input.section,process.env.OPENAI_REALTIME_MODEL?.trim()||undefined,name)));
   const response=await fetch('https://api.openai.com/v1/realtime/calls',{method:'POST',body:form,headers:{Authorization:`Bearer ${process.env.OPENAI_API_KEY!.trim()}`,'OpenAI-Safety-Identifier':createHash('sha256').update(`icom-bank:${user}`).digest('hex')},signal:AbortSignal.any([signal,AbortSignal.timeout(30000)]),cache:'no-store'});
   if(!response.ok){await response.body?.cancel();throw new VoiceError(response.status===429?'O serviço de voz está ocupado ou sem cota. Peça ao administrador para conferir a API.':'Não foi possível conectar a voz. Peça ao administrador para conferir a configuração da API.',502);}
   callId=callIdFromLocation(response.headers.get('Location'));const sdp=await response.text();

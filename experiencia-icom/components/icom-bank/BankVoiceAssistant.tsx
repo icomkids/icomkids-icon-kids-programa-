@@ -10,6 +10,8 @@ import {bankPath,currency,type BankRole} from '@/lib/icom-bank/model';
 import type {HelpTopic} from '@/lib/icom-bank/assistant-guide';
 import {VoiceResources,answerVoiceTools,prepareVoiceTools,type VoiceToolCall} from '@/lib/icom-bank/assistant-client';
 
+import {useBankPreferences} from './BankPreferences';
+import BankAssistantPersonalization from './BankAssistantPersonalization';
 import BankAssistantReport,{type AssistantReport,type AssistantReportResult} from './BankAssistantReport';
 
 type FinancialPreview={summary:{label:string;value:string}[];destination:string;confirmation:string};
@@ -20,6 +22,7 @@ type QuickResult={ok?:boolean;error?:string;consultado_em?:string;dados?:{ativos
 function IntelligenceOrb(){return <span className="bank-ai-orb" aria-hidden="true"><span className="bank-ai-atmosphere"/><span className="bank-ai-current first"/><span className="bank-ai-current second"/><span className="bank-ai-current third"/><span className="bank-ai-glass"/></span>;}
 export default function BankVoiceAssistant({role,onPanelChange}:{role:BankRole;onPanelChange?:(expanded:boolean)=>void}){
  const router=useRouter(),pathname=usePathname();
+ const {preferences}=useBankPreferences(),assistant=preferences.assistant_name;
  const viewRef=useRef<ManualView>('nao_identificada'),[currentView,setCurrentView]=useState<ManualView>('nao_identificada');
  const [manual,setManual]=useState<ManualResult|null>(null),[manualTopic,setManualTopic]=useState<ManualTopic>('menu'),[manualBusy,setManualBusy]=useState(false);
 
@@ -155,13 +158,14 @@ export default function BankVoiceAssistant({role,onPanelChange}:{role:BankRole;o
  const topicQuestions=setup?.topics.filter(t=>role==='OWNER'?['pagar','receber','caixa'].includes(t.id):['clientes','contratos','comprovantes','parcelas'].includes(t.id)).slice(0,3)||[];
  return <>
   <span id="bank-ai-activation-hint" hidden>Ao clicar, a conversa por voz começa com o áudio ligado e solicita acesso ao microfone. Você pode silenciar o áudio, pausar o microfone ou encerrar.</span>
-  <button ref={button} className={'bank-voice-launch'+(busy?' is-active':'')} aria-label="Conversar com a ICOM IA por áudio" aria-describedby="bank-ai-activation-hint" aria-haspopup="dialog" aria-expanded={open&&!minimized} onClick={()=>{setOpen(true);setMinimized(false);if(!dialog.current?.open)dialog.current?.show();void start();}}>
-   <IntelligenceOrb/><span className="bank-ai-label"><strong>ICOM <b>IA</b></strong><small>{busy?'Conversa em andamento':'Toque para conversar'}</small></span>
+  <button ref={button} className={'bank-voice-launch'+(busy?' is-active':'')} aria-label={'Conversar com '+assistant+' por áudio'} aria-describedby="bank-ai-activation-hint" aria-haspopup="dialog" aria-expanded={open&&!minimized} onClick={()=>{setOpen(true);setMinimized(false);if(!dialog.current?.open)dialog.current?.show();void start();}}>
+   <IntelligenceOrb/><span className="bank-ai-label"><strong>{assistant}</strong><small>{busy?'Conversa em andamento':'Toque para conversar'}</small></span>
   </button>
   <button className="bank-ai-report-open" aria-haspopup="dialog" onClick={()=>{setOpen(true);setMinimized(false);if(!dialog.current?.open)dialog.current?.show();}}>Consultar sem microfone</button>
   <dialog ref={dialog} className="bank-voice-dialog" aria-modal="false" aria-labelledby="bank-voice-title" onCancel={e=>{e.preventDefault();close();}}>
    <div className="bank-voice-panel">
-    <header><div><span className="bank-voice-eyebrow">INTELIGÊNCIA ARTIFICIAL DO SISTEMA</span><h2 id="bank-voice-title">ICOM IA</h2></div><div className="bank-voice-window-controls"><button aria-label="Minimizar IA e continuar conversa" onClick={()=>{setMinimized(true);dialog.current?.close();button.current?.focus();}}><Minus size={19}/></button><button aria-label="Fechar ajuda e desligar microfone" onClick={close}><X size={19}/></button></div></header>
+    <header><div><span className="bank-voice-eyebrow">INTELIGÊNCIA ARTIFICIAL DO SISTEMA</span><h2 id="bank-voice-title">{assistant}</h2></div><div className="bank-voice-window-controls"><button aria-label="Minimizar IA e continuar conversa" onClick={()=>{setMinimized(true);dialog.current?.close();button.current?.focus();}}><Minus size={19}/></button><button aria-label="Fechar ajuda e desligar microfone" onClick={close}><X size={19}/></button></div></header>
+    <BankAssistantPersonalization/>
     <p className="bank-voice-working-hint">Pode continuar usando o sistema enquanto conversamos. Minimizar mantém a conversa; fechar desliga o microfone.</p>
     <div className={'bank-voice-stage '+status}>
      <div className="bank-voice-halo" aria-hidden="true"><IntelligenceOrb/></div>

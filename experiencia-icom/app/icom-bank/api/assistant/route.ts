@@ -1,3 +1,4 @@
+import {userPreferences} from '@/lib/icom-bank/preferences-server';
 import {bankAuthorize,bankError,bankOrigin,BankError} from '@/lib/icom-bank/server';
 import {helpForRole} from '@/lib/icom-bank/assistant-guide';
 import {boundedVoiceBody,voiceInput,VoiceError} from '@/lib/icom-bank/assistant-session';
@@ -14,7 +15,7 @@ export async function POST(req:Request){try{
  if(!req.headers.get('content-type')?.startsWith('application/json'))throw new BankError('Reabra a ajuda para conversar.',415);
  const input=voiceInput(await boundedVoiceBody(req),profile.role);
  void quickAssistant(auth).catch(()=>{});
- return Response.json(await startVoice(profile.user_id,profile.role,input,req.signal),{headers});
+ return Response.json(await startVoice(profile.user_id,profile.role,input,req.signal,(await userPreferences(auth.token,profile.user_id)).assistant_name),{headers});
  }catch(e){return failure(e);}}
 export async function DELETE(req:Request){try{
  bankOrigin(req);const {profile}=await bankAuthorize();const id=new URL(req.url).searchParams.get('id')||'';

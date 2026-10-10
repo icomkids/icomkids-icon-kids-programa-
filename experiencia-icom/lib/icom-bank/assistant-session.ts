@@ -15,8 +15,8 @@ export function voiceInput(body:unknown,role:BankRole){
  if(/^m=video\s/m.test(b.sdp))throw new VoiceError('Esta ajuda usa somente áudio.');
  return {sdp:b.sdp,section:helpSection(b.section,role)};
 }
-export function voiceSession(role:BankRole,section:unknown,model=voiceDefaultModel){return {
- type:'realtime',model,instructions:assistantInstructions(role,section),
+export function voiceSession(role:BankRole,section:unknown,model=voiceDefaultModel,name='IA Bank'){return {
+ type:'realtime',model,instructions:assistantInstructions(role,section,name),
  output_modalities:['audio'],max_output_tokens:role==='OWNER'?1600:400,tools:[assistantReadTool(role),assistantManualTool(),...(role==='OWNER'?[assistantExpenseTool(role)!,assistantFinancialTool(role)!]:[])],tool_choice:'auto',
  audio:{input:{noise_reduction:{type:'near_field'},turn_detection:{type:'server_vad',threshold:0.75,prefix_padding_ms:300,silence_duration_ms:450,create_response:true,interrupt_response:true}},output:{voice:'marin'}},
 };}
