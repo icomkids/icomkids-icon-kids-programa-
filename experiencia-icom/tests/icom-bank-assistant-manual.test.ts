@@ -33,7 +33,7 @@ test('Manual follows form stages, uses real labels, and does not invent supplier
  const supplier=readManual({topic:'fornecedor'},'administrativo','OWNER');assert.equal(supplier.available,false);assert.equal(supplier.steps.length,0);assert.match(supplier.notes.join(' '),/Não existe cadastro específico/);
  const paid=readManual({topic:'pagar_conta'},'pagar_conta_form','OWNER');assert.equal(paid.suggested_step,3);assert.match(paid.notes.join(' '),/não executa Pix/);
  for(const [topic,file,labels] of [
-  ['cliente','BankNewCustomer',['SALVAR CLIENTE','Nome completo']],
+  ['cliente','BankAdminForm',['SALVAR VENDA','Nome do cliente']],
   ['investidor','BankInvestors',['SALVAR INVESTIDOR','+ CADASTRAR INVESTIDOR']],
   ['funcionario','BankStaff',['REVISAR AUTORIZAÇÃO','CONFIRMAR AUTORIZAÇÃO']],
   ['relatorio','BankReports',['Aplicar período','EXPORTAR CSV']],
@@ -52,3 +52,5 @@ test('Manual endpoint uses server-authenticated role and voice lease, with no fi
  const client=source('components/icom-bank/BankVoiceAssistant.tsx');assert.match(client,/aria-modal="false"/);assert.match(client,/view:viewRef.current/);assert.match(client,/attributeFilter:\['data-bank-manual-view'\]/);assert.doesNotMatch(client,/innerText|textContent/);
  for(const n of ['BankNewCustomer','BankContractForm'])assert.doesNotMatch(source('components/icom-bank/'+n+'.tsx'),/location.assign/);
 });
+
+test('Owner sale guide follows free stages while finance onboarding keeps its own instructions',()=>{const saleGuide=readManual({topic:'venda'},'venda_veiculo','OWNER');assert.equal(saleGuide.suggested_step,3);assert.match(saleGuide.steps.map(s=>s.text).join(' '),/opcionais|sem concluir/);assert.match(readManual({topic:'cliente'},'cliente_novo','OWNER').steps.map(s=>s.text).join(' '),/CPF válido/);assert.match(readManual({topic:'venda'},'venda_form','OWNER').steps.map(s=>s.text).join(' '),/SALVAR LANÇAMENTO/);});

@@ -30,7 +30,7 @@ export async function POST(req:Request){try{
  if(input.details.trade_spec){input.details.trade_vehicle=(input.details.trade_spec.brand+' '+(input.details.trade_spec.version||input.details.trade_spec.model)).slice(0,160);if(input.details.trade_spec.year!==null)input.details.trade_year=input.details.trade_spec.year;}
  const {expected_updated_at,...payload}=input;
  const account=body.account_id||(previous?(await bankAccountLinks(token)).find(l=>l.ledger_entry_id===previous.id)?.account_id:null);
- const row=payload.status==='REALIZADO'&&payload.kind!=='TROCA'?await accountPost(token,'LANCAMENTO',{p_payload:payload,p_expected:expected_updated_at},account):await bankQuery<AdminEntry>(token,'rpc/icom_bank_save_admin_entry','POST',{p_payload:payload,p_expected:expected_updated_at});
+ const row=payload.status==='REALIZADO'&&payload.kind!=='TROCA'&&!(payload.kind==='VENDA'&&payload.amount_cents===0)?await accountPost(token,'LANCAMENTO',{p_payload:payload,p_expected:expected_updated_at},account):await bankQuery<AdminEntry>(token,'rpc/icom_bank_save_admin_entry','POST',{p_payload:payload,p_expected:expected_updated_at});
  return Response.json({row},{headers:{'Cache-Control':'no-store'}});
 }catch(e){return bankError(e);}}
 
