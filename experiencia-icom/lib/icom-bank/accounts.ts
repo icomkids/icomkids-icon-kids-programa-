@@ -31,7 +31,7 @@ export function resolveAccount(accounts:BankAccount[],name:unknown,transcript:st
  const phrase=fold(transcript),pf=/\b(?:conta (?:fisica|pessoal|pf)|pessoa fisica|minha pf|da pf)\b/.test(phrase),pj=/\b(?:conta (?:juridica|da empresa|da loja|pj)|pessoa juridica|da pj|pela pj)\b/.test(phrase);
  const named=typeof name==='string'&&name.trim()&&phrase.includes(fold(name));
  if(pf&&pj&&!named)throw new Error('Diga de qual conta saiu o pagamento: PF ou PJ.');
- const scopeAlias=typeof name==='string'&&/^(?:(?:minha|da|pela) )?(?:(?:conta|pessoa) )?(?:fisica|juridica|pessoal|pf|pj|da loja|da empresa)$/.test(fold(name));
+ const scopeAlias=typeof name==='string'&&/^(?:(?:de|da|do|pela|pelo|minha|meu|a|o)\s+)*(?:(?:conta|pessoa)\s+)?(?:fisica|juridica|pessoal|pf|pj|da loja|da empresa)$/.test(fold(name));
  const explicit=!!named&&active.filter(a=>fold(a.name)===fold(name)||fold(a.bank)===fold(name));
  if(named&&explicit&&!explicit.length&&!scopeAlias)throw new Error('Não encontrei essa conta. Diga o nome cadastrado em Contas bancárias.');
  let found=explicit||[];
