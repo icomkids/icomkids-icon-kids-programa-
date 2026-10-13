@@ -28,3 +28,21 @@ test('Personal write input rejects invalid dates, arbitrary categories and princ
  const payload={...w('RENDA',20_000),expected_updated_at:null};assert.equal(wealthInput(payload,'2026-10-08').amount_cents,20_000);
  for(const change of [{record_date:'2026-10-09'},{record_date:'2026-02-30'},{category:'injected'},{rate_percent:1},{debt_cents:2},{source_id:'not-an-id'},{amount_cents:0},{active:'true'}])assert.throws(()=>wealthInput({...payload,...change},'2026-10-08'));
 });
+
+import {ownerSummary} from '../lib/icom-bank/owner-summary.ts';
+import type {ProlaboreRecord} from '../lib/icom-bank/prolabore.ts';
+const salary=(extra:Partial<ProlaboreRecord>={}):ProlaboreRecord=>({id:crypto.randomUUID(),owner_id:id,reference_month:'2026-10',paid_at:'2026-10-08',due_date:'2026-10-08',amount_cents:3_000_000,source_account_id:id,target_account_id:crypto.randomUUID(),status:'REALIZADO',notes:'',created_at:'2026-10-08T12:00:00Z',updated_at:'2026-10-08T12:00:00Z',...extra});
+test('Owner sections separate property installments from family costs and preserve original financial totals',()=>{
+ const installment=e('PESSOAL',250_000),family=e('PESSOAL',200_000),rows=[e('ENTRADA',1_200_000),e('CUSTO',400_000),family,installment],wealth=[w('ATIVO',80_000_000,{debt_cents:25_000_000,invested_cents:65_000_000}),w('RENDA',650_000)];
+ const before=financialOverview(rows,wealth,'2026-10','2026-10-08'),s=ownerSummary(rows,wealth,[salary()],[installment.id,installment.id],'2026-10','2026-10-08');
+ assert.equal(s.original.company,800_000);assert.equal(s.personalCosts,200_000);assert.equal(s.propertyCosts,250_000);assert.equal(s.propertyResult,400_000);assert.equal(s.personalBalance,2_800_000);assert.equal(s.original.wealth.net,55_000_000);assert.deepEqual(s.original,before);assert.equal(s.personalCosts+s.propertyCosts,before.personal);
+});
+test('Registered recurring salary shows the current month but never creates received balance',()=>{
+ const rows=[e('PESSOAL',200_000)],planned=salary({status:'PREVISTO',paid_at:null}),future=salary({status:'PREVISTO',paid_at:null,reference_month:'2026-11',due_date:'2026-11-08'}),cancelled=salary({status:'CANCELADO'});
+ const s=ownerSummary(rows,[],[planned,future,cancelled],[],'2026-10','2026-10-08');assert.equal(s.prolaboreRegistered,3_000_000);assert.equal(s.prolaboreReceived,0);assert.equal(s.personalBalance,-200_000);assert.equal(s.personalPlannedBalance,2_800_000);assert.equal(s.original.cash.available,-200_000);
+ assert.equal(ownerSummary(rows,[],[planned,future],[],'','2026-10-08').prolaboreRegistered,3_000_000);
+});
+test('Only realized active property costs in the chosen period count; contributions are not income',()=>{
+ const paid=e('PESSOAL',100_000),old=e('PESSOAL',50_000,{entry_date:'2026-09-08'}),pending=e('PESSOAL',150_000,{status:'PREVISTO'}),archived=e('PESSOAL',200_000,{active:false}),future=e('PESSOAL',250_000,{entry_date:'2026-10-09'});
+ const s=ownerSummary([paid,old,pending,archived,future],[w('APORTE',1_000_000)],[],[paid.id,old.id,pending.id,archived.id,future.id],'2026-10','2026-10-08');assert.equal(s.propertyCosts,100_000);assert.equal(s.personalCosts,0);assert.equal(s.propertyIncome,0);assert.equal(s.propertyResult,-100_000);
+});
