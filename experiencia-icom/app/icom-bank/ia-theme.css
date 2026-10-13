@@ -150,3 +150,11 @@
 @media(max-width:600px){.bank-sale-numbers header{align-items:flex-start;flex-direction:column;padding:18px 14px}.bank-sale-numbers th,.bank-sale-numbers td{padding:13px 14px}.bank-sale-numbers th{font-size:12px;width:55%}.bank-sale-numbers td{font-size:15px}.bank-sale-numbers thead th:last-child{width:45%}.bank-sale-numbers .bank-sale-value-row td{font-size:18px}.bank-sale-numbers tfoot td{font-size:22px}.bank-sale-numbers tfoot th{font-size:15px}.bank-sale-row-number{margin-right:6px;width:22px;height:22px}.bank-sale-numbers .bank-sale-summary-note{padding:13px 14px}.bank-cash-preview .bank-stock-finance{grid-template-columns:1fr}}
 
 .bank-wa-tabs{margin:20px 0 24px}.bank-wa-authorized{margin:20px 0;padding:18px;border:1px solid #6b90af44;border-radius:14px}.bank-wa-authorized ul{list-style:none;margin:15px 0;padding:0}.bank-wa-authorized li{display:flex;justify-content:space-between;gap:14px;align-items:center;padding:10px 0;border-bottom:1px solid #6b90af33}.bank-wa-authorized li button{font-size:11px}.bank-wa-authorized small{display:block;margin-top:12px}.bank-wa-subscribers form{margin:24px 0}.bank-wa-subscribers .bank-table td{vertical-align:middle}
+
+.bank-app:not([data-bank-theme=light]) .bank-wa-switch{background:#102d43;color:#e4f2fb;border:1px solid #54758f66}
+.bank-app:not([data-bank-theme=light]) .bank-wa-status{background:#102b43;color:#d4e8f5;border:1px solid #54758f66}
+.bank-app:not([data-bank-theme=light]) .bank-wa-status :is(p,strong){color:#d4e8f5}
+.bank-app:not([data-bank-theme=light]) .bank-wa-status.connected{background:#0e3931;border-color:#4cb99366}
+.bank-app:not([data-bank-theme=light]) .bank-wa-status.connected :is(p,strong){color:#9cebc9}
+.bank-app:not([data-bank-theme=light]) .bank-wa-help blockquote{background:#10352f;color:#d4f7e9;border-left-color:#70d2ab}
+.bank-app .bank-wa-qr p{color:#29465c}

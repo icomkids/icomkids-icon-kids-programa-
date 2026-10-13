@@ -14,6 +14,12 @@ export default function BankWhatsappExpenses(){
  const [connection,setConnection]=useState<Connection|null>(null);
  const load=useCallback(async(signal?:AbortSignal)=>{const r=await fetch(bankPath('/api/whatsapp'),{cache:'no-store',signal}),d=await r.json() as Result;if(!r.ok)throw new Error(d.error||'Não foi possível abrir a integração.');return d;},[]);
  useEffect(()=>{const c=new AbortController();void load(c.signal).then(d=>{if(c.signal.aborted)return;setResult(d);setConnection(d.connection);setPhone(d.settings?.phone||'');setAllowed(d.settings?.allowed_phones.join('\n')||'');setEnabled(d.settings?.enabled||false);}).catch(e=>{if(!c.signal.aborted)setError(e instanceof Error?e.message:'Não foi possível carregar.');});return()=>c.abort();},[load]);
+ useEffect(()=>{
+  if(!connection?.qr&&!connection?.paircode||connection?.connected)return;
+  const controller=new AbortController();let inFlight=false,checks=0;
+  const timer=setInterval(()=>{if(inFlight||controller.signal.aborted)return;inFlight=true;void load(controller.signal).then(fresh=>{if(controller.signal.aborted)return;setResult(old=>old?{...old,history:fresh.history}:fresh);setConnection(old=>fresh.connection?.connected?fresh.connection:{...fresh.connection,configured:fresh.connection?.configured??true,connected:false,qr:old?.qr,paircode:old?.paircode});}).catch(()=>{}).finally(()=>{inFlight=false;checks++;if(checks>=18)clearInterval(timer);});},10000);
+  return()=>{clearInterval(timer);controller.abort();};
+ },[load,connection?.qr,connection?.paircode,connection?.connected]);
  async function action(kind:'save'|'connect'|'refresh',nextAllowed=allowed){
   setBusy(true);setError('');setNotice('');try{
    if(kind==='refresh'){const fresh=await load();setResult(fresh);setConnection(fresh.connection);return;}
