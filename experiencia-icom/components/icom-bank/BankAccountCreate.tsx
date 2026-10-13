@@ -19,7 +19,7 @@ export default function BankAccountCreate({onCreated,onCancel,defaultScope='PESS
   }catch(e){setError(e instanceof Error?e.message:'Confira os dados da conta.');}finally{saving.current=false;setBusy(false);}
  }
  return <section className="bank-account-create" aria-label="Cadastrar conta sem sair desta tela" data-bank-manual-view="conta_bancaria_form" onKeyDown={e=>{if(e.key==='Enter'&&e.target instanceof HTMLInputElement){e.preventDefault();void save();}}}>
-  <h3>Nova conta bancária</h3><p>Cadastre aqui e continue preenchendo. Os dados do patrimônio permanecem nesta tela.</p>
+  <h3>Nova conta bancária</h3><p>Cadastre aqui e continue preenchendo. Os dados que você preencheu permanecem nesta tela.</p>
   <fieldset disabled={busy}><div className="bank-form-grid">
    <label>Qual é o banco?<input list={listId} maxLength={100} placeholder="Ex.: Santander, Itaú ou Nubank" value={draft.bank} onChange={e=>setDraft(d=>({...d,bank:e.target.value}))}/><datalist id={listId}>{accountBanks.map(bank=><option key={bank} value={bank}/>)}</datalist></label>
    <label>Como você chama esta conta?<input maxLength={100} placeholder="Ex.: Santander pessoal" value={draft.name} onChange={e=>setDraft(d=>({...d,name:e.target.value}))}/><small>Use esse nome para identificar a conta por voz.</small></label>
