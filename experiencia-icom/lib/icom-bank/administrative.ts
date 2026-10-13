@@ -53,7 +53,17 @@ const allowed:Record<AdminKind,readonly (keyof AdminDetails)[]>={
  MENSAL:['due_day','notes','payment_method','trip_name','expense_audience','expense_nature'],PESSOAL:['notes','payment_method','trip_name','expense_audience','expense_nature'],
 };
 function amount(value:unknown,nullable=false){if(nullable&&(value===null||value===undefined||value===''))return null;if(typeof value!=='number'||!Number.isSafeInteger(value)||value<0||value>1000000000)throw new Error('Confira os valores em reais.');return value;}
-function text(value:unknown,max:number){if(value===undefined||value===null)return '';if(typeof value!=='string'||value.length>max)throw new Error('Confira os textos do lançamento.');return value.trim();}
+function text(value:unknown,max:number,label='Texto do lançamento'){if(value===undefined||value===null)return '';if(typeof value!=='string')throw new Error(label+': informe um texto.');if(value.trim().length>max)throw new Error(label+': use até '+max+' caracteres.');return value.trim();}
+export function adminPlateInput(value:unknown,trade=false){
+ const label=trade?'Placa do carro da troca':'Placa do veículo';
+ if(value===undefined||value===null||value==='')return '';
+ if(typeof value!=='string')throw new Error(label+': informe letras e números.');
+ const plate=value.trim().replace(/[\s-]/g,'').toUpperCase();
+ if(!plate)return '';
+ if(!/^[A-Z]{3}\d[A-Z0-9]\d{2}$/.test(plate))throw new Error(label+': use 7 caracteres. Exemplos: ABC1234 ou ABC1D23.'+(trade?'':' Você também pode deixar a placa vazia por enquanto.'));
+ return plate;
+}
+const detailTextLabels:Record<string,string>={customer_name:'Nome do cliente',customer_cpf:'CPF',customer_phone:'Telefone',customer_email:'E-mail',vehicle:'Carro',trade_vehicle:'Carro da troca',seller:'Vendedor',notes:'Observações',investor_name:'Investidor',trade_investor_name:'Investidor da troca'};
 export function adminInput(body:Record<string,unknown>){
  const id=text(body.id,36),kind=text(body.kind,20) as AdminKind,scope=text(body.scope,20) as AdminScope,entry_date=text(body.entry_date,10),description=text(body.description,160),category=text(body.category,80),status=text(body.status,20) as AdminStatus;
  if(!validId(id)||!adminKinds.includes(kind)||!['LOJA','PESSOAL'].includes(scope)||kind==='PESSOAL'&&scope!=='PESSOAL'||!['MENSAL','PESSOAL'].includes(kind)&&scope!=='LOJA'||!realDate(entry_date)||Number(entry_date.slice(0,4))<2000||Number(entry_date.slice(0,4))>2100||description.length<2||!['PREVISTO','REALIZADO'].includes(status))throw new Error('Confira data, descrição, área e situação.');
@@ -66,7 +76,8 @@ export function adminInput(body:Record<string,unknown>){
   const value=(raw as Record<string,unknown>)[key];if(value===undefined)continue;
   if(key==='vehicle_spec'||key==='trade_spec')Object.assign(details,{[key]:vehicleSpec(value)});
   else if((moneyKeys as readonly string[]).includes(key))Object.assign(details,{[key]:amount(value)});
-  else if((textKeys as readonly string[]).includes(key))Object.assign(details,{[key]:text(value,key==='notes'?2000:key==='plate'?7:160)});
+  else if(key==='plate'||key==='trade_plate')Object.assign(details,{[key]:adminPlateInput(value,key==='trade_plate')});
+  else if((textKeys as readonly string[]).includes(key))Object.assign(details,{[key]:text(value,key==='notes'?2000:160,detailTextLabels[key]||'Campo '+key)});
   else if(['trade_in','trade_has_debts','trade_has_payoff'].includes(key)){if(typeof value!=='boolean')throw new Error('Selecione Sim ou Não para a troca e os débitos.');Object.assign(details,{[key]:value});}
   else if(key==='trade_year'){if(typeof value!=='number'||!Number.isInteger(value)||value<1900||value>2100)throw new Error('Confira o ano do carro da troca.');details.trade_year=value;}
   else {const max=key==='due_day'?31:3;if(typeof value!=='number'||!Number.isInteger(value)||value<1||value>max)throw new Error('Confira dia do vencimento ou tipo de retorno.');Object.assign(details,{[key]:value});}
@@ -86,14 +97,14 @@ export function adminInput(body:Record<string,unknown>){
  if(details.stock_id&&!validId(details.stock_id))throw new Error('Veículo de estoque inválido.');
  if(details.vehicle_spec)details.vehicle=(details.vehicle_spec.brand+' '+(details.vehicle_spec.version||details.vehicle_spec.model)).slice(0,160);
  if(details.trade_spec){details.trade_vehicle=(details.trade_spec.brand+' '+(details.trade_spec.version||details.trade_spec.model)).slice(0,160);if(details.trade_spec.year!==null)details.trade_year=details.trade_spec.year;}
- if(details.plate){details.plate=details.plate.toUpperCase();if(!/^[A-Z]{3}\d[A-Z0-9]\d{2}$/.test(details.plate))throw new Error('Confira a placa.');}
+ if(details.plate)details.plate=adminPlateInput(details.plate);
  if(['VENDA','RETORNO','TROCA'].includes(kind)&&!details.vehicle)throw new Error('Informe o carro.');
  if(kind==='VENDA'&&['purchase_cents','vehicle_cost_cents','commission_cents','sale_cents'].some(k=>details[k as keyof AdminDetails]===undefined))throw new Error('Informe compra, custos, comissão e venda.');
  if(kind==='VENDA'&&details.trade_in!==undefined){
   if(!details.trade_in){for(const key of Object.keys(details))if(key.startsWith('trade_')&&key!=='trade_in')delete details[key as keyof AdminDetails];}
   else {
    if(!details.trade_vehicle||!details.trade_plate||!details.trade_year||!details.trade_value_cents||typeof details.trade_has_debts!=='boolean')throw new Error('Informe modelo, placa, ano, valor da troca e se há débitos.');
-   details.trade_plate=details.trade_plate.toUpperCase();if(!/^[A-Z]{3}\d[A-Z0-9]\d{2}$/.test(details.trade_plate))throw new Error('Confira a placa do carro da troca.');
+   details.trade_plate=adminPlateInput(details.trade_plate,true);
    if(!details.trade_has_debts){for(const key of ['trade_ipva_cents','trade_fines_cents','trade_has_payoff','trade_payoff_cents','trade_payoff_bank','trade_payoff_bank_other'] as const)delete details[key];}
    else {
     if(details.trade_ipva_cents===undefined||details.trade_fines_cents===undefined||typeof details.trade_has_payoff!=='boolean')throw new Error('Informe IPVA, multas e se há quitação. Use 0,00 quando não houver.');

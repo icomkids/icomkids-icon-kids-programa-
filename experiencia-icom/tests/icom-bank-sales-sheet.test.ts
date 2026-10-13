@@ -18,3 +18,9 @@ test('Sale metadata permits blank optional buyer fields and preserves Mercosul p
  const a=sale(),input=adminInput({...a,expected_updated_at:null,details:{...a.details,customer_name:'',customer_cpf:'',customer_phone:'',customer_email:'',untrusted:'discard me'}});assert.equal(input.details.customer_name,'');assert.equal(input.details.plate,'ABC1D23');assert.equal(input.details.sale_cents,a.details.sale_cents);assert.equal('untrusted' in input.details,false);
  for(const value of [23,{},'x'.repeat(161)])assert.throws(()=>adminInput({...a,expected_updated_at:null,details:{...a.details,customer_name:value}}));
 });
+
+test('Formatted old and Mercosul plates save normalized; invalid lengths explain the field',()=>{
+ const a=sale();for(const [raw,expected] of [['abc-1234','ABC1234'],['abc 1d23','ABC1D23'],['','']])assert.equal(adminInput({...a,expected_updated_at:null,details:{...a.details,plate:raw}}).details.plate,expected);
+ for(const plate of ['ABCD1234','ABC!1234','ABC123','ABC12D3'])assert.throws(()=>adminInput({...a,expected_updated_at:null,details:{...a.details,plate}}),/Placa do veículo: use 7 caracteres/);
+ assert.throws(()=>adminInput({...a,expected_updated_at:null,details:{...a.details,customer_name:'x'.repeat(161)}}),/Nome do cliente: use até 160 caracteres/);
+});

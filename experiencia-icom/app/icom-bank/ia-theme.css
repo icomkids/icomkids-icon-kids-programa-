@@ -105,3 +105,46 @@
 
 /* Sales entry: free step navigation and a compact, shared profit journal. */
 .bank-sale-step-tabs{display:flex;gap:10px;flex-wrap:wrap}.bank-sale-step-tabs button{flex:1;min-width:140px;padding:13px 16px;border:1px solid #526d8788;border-radius:12px;background:#112b44;color:#c9dced;text-align:left}.bank-sale-step-tabs button.active{background:linear-gradient(145deg,#ebd39b,#b29458);color:#142338;border-color:#f1d99c;font-weight:bold}.bank-sale-wizard[data-sale-step="0"] :is(.bank-sale-panel-vehicle,.bank-sale-panel-finance,.bank-sale-panel-review),.bank-sale-wizard[data-sale-step="1"] :is(.bank-sale-panel-client,.bank-sale-panel-finance,.bank-sale-panel-review),.bank-sale-wizard[data-sale-step="2"] :is(.bank-sale-panel-client,.bank-sale-panel-vehicle,.bank-sale-panel-review),.bank-sale-wizard[data-sale-step="3"] :is(.bank-sale-panel-client,.bank-sale-panel-vehicle,.bank-sale-panel-finance){display:none!important}.bank-sale-panel-client{margin-bottom:24px}.bank-sales-sheet td,.bank-sales-sheet th{vertical-align:top;padding:12px 10px;white-space:normal}.bank-sales-sheet table{min-width:860px;width:100%}.bank-sale-cost-details summary{display:flex;gap:8px;flex-direction:column;cursor:pointer}.bank-sale-cost-details summary span{font-size:11px;color:#cfb67d}.bank-sale-cost-details dl{min-width:220px;margin-top:14px}.bank-sale-cost-details dl>div{display:flex;justify-content:space-between;gap:14px;margin:9px 0;font-size:12px}.bank-sale-cost-details dd{margin:0;white-space:nowrap}.bank-sales-sheet tfoot{background:#d4b46b10}.bank-sales-sheet tfoot td,.bank-sales-sheet tfoot th{padding-top:23px;padding-bottom:23px;border-top:2px solid #b2965780}.bank-sales-sheet tfoot :is(span,small){display:block;font-size:11px;font-weight:normal;margin-bottom:8px;color:#b6cbdd}.bank-sales-sheet tfoot strong{display:block;white-space:nowrap;font-size:21px;font-variant-numeric:tabular-nums}.bank-sales-sheet .bank-sales-profit-total strong{font-size:29px}.bank-sales-filters{margin:22px 0}.bank-app[data-bank-theme=light] .bank-sale-step-tabs button{background:#edf5fa;color:#365773}.bank-app[data-bank-theme=light] .bank-sale-step-tabs button.active{background:linear-gradient(145deg,#f4dfad,#d9bd79);color:#263951}.bank-app[data-bank-theme=light] .bank-sale-cost-details summary span{color:#765615}.bank-app[data-bank-theme=light] .bank-sales-sheet tfoot{background:#f7f1e5}.bank-app[data-bank-theme=light] .bank-sales-sheet tfoot :is(span,small){color:#456177}
+
+/* Sale review: aligned numbers and an explicit, unchanged profit calculation. */
+.bank-sale-numbers{margin:24px 0;border:1px solid #6685a055;border-radius:18px;overflow:hidden;background:linear-gradient(145deg,#18364f,#10273d);box-shadow:0 14px 35px #06132244}
+.bank-sale-numbers header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:22px 24px;border-bottom:1px solid #6685a044}
+.bank-sale-numbers h3{margin:5px 0 0;font-size:21px;color:#f1f7fc}
+.bank-sale-eyebrow{font-size:10px;letter-spacing:.15em;color:#dcc38a;font-weight:700}
+.bank-sale-number-badge{font-size:11px;padding:7px 11px;border-radius:20px;background:#d3b57118;color:#e7d29f;border:1px solid #d3b57144;white-space:nowrap}
+.bank-sale-numbers table{width:100%;border-collapse:collapse;table-layout:fixed}
+.bank-sale-numbers th,.bank-sale-numbers td{padding:16px 24px;border-bottom:1px solid #6685a02b;vertical-align:middle}
+.bank-sale-numbers th{width:60%;text-align:left;font-size:14px;font-weight:500;color:#d7e6f2}
+.bank-sale-numbers td{text-align:right;font-size:18px;font-weight:600;color:#f4f8fc;font-variant-numeric:tabular-nums;white-space:nowrap}
+.bank-sale-numbers thead th{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:#99b5cb;background:#071a2b44;padding-top:11px;padding-bottom:11px}
+.bank-sale-numbers thead th:last-child{width:40%;text-align:right}
+.bank-sale-numbers small{display:block;font-size:11px;color:#a7bfd2;font-weight:400;margin-top:5px}
+.bank-sale-row-number{display:inline-flex;align-items:center;justify-content:center;margin-right:12px;width:26px;height:26px;border-radius:7px;background:#719bc119;color:#93bad9;font-size:10px}
+.bank-sale-numbers .bank-sale-cost-row{background:#6b93b014}
+.bank-sale-numbers .bank-sale-cost-row :is(th,td){font-weight:700;border-top:1px solid #7da3bf55}
+.bank-sale-numbers .bank-sale-value-row td{font-size:22px}
+.bank-sale-numbers tfoot :is(th,td){border-bottom:0;padding-top:23px;padding-bottom:23px}
+.bank-sale-numbers tfoot th{font-size:19px;font-weight:700}
+.bank-sale-numbers tfoot td{font-size:30px;font-weight:800}
+.bank-sale-profit-row{background:linear-gradient(90deg,#1aa68720,#1aa6870b)}
+.bank-sale-numbers .bank-sale-profit-row :is(th,td){color:#78e9bd}
+.bank-sale-loss-row{background:#ed62621a}
+.bank-sale-numbers .bank-sale-loss-row :is(th,td){color:#ffa3a3}
+.bank-sale-numbers .bank-sale-summary-note{font-size:11px;line-height:1.6;color:#adc6d8;margin:0;padding:13px 24px;border-top:1px solid #6685a030}
+.bank-cash-preview .bank-stock-finance{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:16px 0}
+.bank-cash-preview .bank-stock-finance>div{padding:16px;border:1px solid #6b90af44;border-radius:12px;background:#0a213555;display:flex;flex-direction:column;gap:8px}
+.bank-cash-preview .bank-stock-finance span{font-size:12px;color:#aec5d6}
+.bank-cash-preview .bank-stock-finance strong{font-size:21px;color:#edf7fd;font-variant-numeric:tabular-nums}
+.bank-app[data-bank-theme=light] .bank-sale-numbers{background:linear-gradient(145deg,#ffffff,#f3f7fb);border-color:#c6d6e3;box-shadow:0 12px 25px #1b456511}
+.bank-app[data-bank-theme=light] .bank-sale-numbers :is(h3,th,td){color:#18374e}
+.bank-app[data-bank-theme=light] .bank-sale-numbers :is(header,th,td){border-color:#dbe6ee}
+.bank-app[data-bank-theme=light] .bank-sale-eyebrow{color:#88662b}
+.bank-app[data-bank-theme=light] .bank-sale-number-badge{color:#74551c}
+.bank-app[data-bank-theme=light] .bank-sale-numbers thead th{background:#eaf2f8;color:#56738a}
+.bank-app[data-bank-theme=light] .bank-sale-numbers :is(small,.bank-sale-summary-note){color:#58758a}
+.bank-app[data-bank-theme=light] .bank-sale-profit-row :is(th,td){color:#087759}
+.bank-app[data-bank-theme=light] .bank-sale-loss-row :is(th,td){color:#b33434}
+.bank-app[data-bank-theme=light] .bank-cash-preview .bank-stock-finance>div{background:#edf5fa;border-color:#c6d6e3}
+.bank-app[data-bank-theme=light] .bank-cash-preview .bank-stock-finance span{color:#526f83}
+.bank-app[data-bank-theme=light] .bank-cash-preview .bank-stock-finance strong{color:#18374e}
+@media(max-width:600px){.bank-sale-numbers header{align-items:flex-start;flex-direction:column;padding:18px 14px}.bank-sale-numbers th,.bank-sale-numbers td{padding:13px 14px}.bank-sale-numbers th{font-size:12px;width:55%}.bank-sale-numbers td{font-size:15px}.bank-sale-numbers thead th:last-child{width:45%}.bank-sale-numbers .bank-sale-value-row td{font-size:18px}.bank-sale-numbers tfoot td{font-size:22px}.bank-sale-numbers tfoot th{font-size:15px}.bank-sale-row-number{margin-right:6px;width:22px;height:22px}.bank-sale-numbers .bank-sale-summary-note{padding:13px 14px}.bank-cash-preview .bank-stock-finance{grid-template-columns:1fr}}
