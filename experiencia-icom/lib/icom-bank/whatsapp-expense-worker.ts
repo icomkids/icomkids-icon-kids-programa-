@@ -1,3 +1,5 @@
+import {readAssistantData,type AssistantReader} from './assistant-data';
+import {extractWhatsAppConsultation,mayBeWhatsAppQuestion,whatsappReadReply,whatsappManualReply,sortWhatsAppRows} from './whatsapp-consultations';
 import {botAssistantName} from './preferences-server';
 import {addressAssistant} from './preferences';
 import {resolveAccount,type BankAccount} from './accounts';
@@ -26,7 +28,7 @@ export async function downloadExpenseAudio(b:BotConfig,id:string){
  const bytes=Buffer.from(encoded,'base64');if(bytes.length<32||bytes.length>5000000)throw new Error('Áudio inválido ou maior que 5 MB. Envie por texto.');return {bytes,mime};
 }
 async function patch(m:Inbox,payload:Record<string,unknown>){await db('icom_bank_whatsapp_inbox?id=eq.'+m.id+'&claim_id=eq.'+m.claim_id,'PATCH',{...payload,updated_at:new Date().toISOString()});}
-async function reply(b:BotConfig,m:Inbox){if(!m.reply)return;const acquired=await botDb<boolean>('rpc/icom_bank_whatsapp_reply_claim',{p_id:m.id});if(!acquired)return;const name=await botAssistantName(b.owner_id);const r=await sendText(botCredentials(b),m.sender,name+': '+m.reply);await db('icom_bank_whatsapp_inbox?id=eq.'+m.id,'PATCH',{reply_status:r.status==='accepted'?'ACEITO':r.status==='failed'?'FALHOU':'INCERTO',updated_at:new Date().toISOString()});}
+async function reply(b:BotConfig,m:Inbox){if(!m.reply)return;const current=await botConfig();if(!current?.enabled||current.owner_id!==m.owner_id||!current.allowed_phones.includes(m.sender))return;const acquired=await botDb<boolean>('rpc/icom_bank_whatsapp_reply_claim',{p_id:m.id});if(!acquired)return;const name=await botAssistantName(b.owner_id);const r=await sendText(botCredentials(b),m.sender,'IA Bank · '+name+':\n'+m.reply.replace(/^IA Bank · /,''));await db('icom_bank_whatsapp_inbox?id=eq.'+m.id,'PATCH',{reply_status:r.status==='accepted'?'ACEITO':r.status==='failed'?'FALHOU':'INCERTO',updated_at:new Date().toISOString()});}
 export async function processExpenses(){
  const b=await botConfig();if(!b?.enabled||b.status!=='PRONTO')return;
  const [owner]=await botDb<{role:string;active:boolean}[]>('icom_bank_user_access?user_id=eq.'+b.owner_id+'&select=role,active');if(!owner?.active||owner.role!=='OWNER')return;
@@ -44,6 +46,20 @@ export async function processExpenses(){
    if(expenseStatusQuestion(transcript)){
     const recent=await botDb<Inbox[]>('icom_bank_whatsapp_inbox?sender=eq.'+m.sender+'&owner_id=eq.'+m.owner_id+'&status=in.(LANCADO,ESCLARECER,ERRO,PROCESSANDO,FILA)&created_at=gt.'+encodeURIComponent(since)+'&created_at=lt.'+encodeURIComponent(m.created_at)+'&order=created_at.desc&limit=2');
     const original=recent[0],message=original?.status==='LANCADO'?'Sim, a despesa anterior foi lançada.\n'+original.reply:original?'A despesa anterior ainda não foi lançada. Confira o motivo no histórico do painel. Esta pergunta não cria uma segunda despesa.':'Não localizei uma despesa recente desta conversa para confirmar. Confira o histórico no painel; esta pergunta não cria um lançamento.';
+    await patch(m,{status:'RESOLVIDO',reply:message});m.reply=message;await reply(b,m);continue;
+   }
+   const addressed=addressAssistant(transcript,await botAssistantName(m.owner_id));
+   if(mayBeWhatsAppQuestion(addressed)){
+    const request=await extractWhatsAppConsultation(addressed,brazilDay(new Date(m.created_at)),key);
+    let message:string;
+    if(request.mode==='MANUAL')message=whatsappManualReply(request.topic);
+    else if(request.mode==='FORA')message=request.message;
+    else {
+     const memo=new Map<string,Promise<unknown[]>>();
+     const rows=(table:string)=>{let value=memo.get(table);if(!value){value=botDb<unknown[]>('rpc/icom_bank_whatsapp_read_rows',{p_id:m.id,p_claim:m.claim_id,p_table:table});memo.set(table,value);}return value;};
+     const reader:AssistantReader={rows:async path=>{const table=/^(icom_bank_[a-z_]+)\?/.exec(path)?.[1];if(!table)throw new Error('Consulta indisponível no WhatsApp.');return sortWhatsAppRows(await rows(table),path);},ledger:async()=>await rows('ledger') as import('./cash').CashEntry[],staff:()=>rows('icom_bank_user_access')};
+     const {from,to,...query}=request.input;message=whatsappReadReply(await readAssistantData(reader,request.input.period==='personalizado'?{...query,from,to}:query,'OWNER',brazilDay(new Date(m.created_at))),request.input);
+    }
     await patch(m,{status:'RESOLVIDO',reply:message});m.reply=message;await reply(b,m);continue;
    }
    const [previous]=await botDb<Inbox[]>('icom_bank_whatsapp_inbox?sender=eq.'+m.sender+'&owner_id=eq.'+m.owner_id+'&status=eq.ESCLARECER&created_at=gt.'+encodeURIComponent(since)+'&created_at=lt.'+encodeURIComponent(m.created_at)+'&order=created_at.desc&limit=1');
@@ -77,7 +93,7 @@ export async function processExpenses(){
    // Never overwrite an atomic commit when only its HTTP acknowledgement or WhatsApp delivery failed.
    const [current]=await botDb<{status:string}[]>('icom_bank_whatsapp_inbox?id=eq.'+m.id+'&select=status');
    if(current?.status==='LANCADO')continue;
-   const message=msg.slice(0,600)+'\nNada foi lançado. Responda com os dados que faltam ou envie uma nova despesa completa.';
+   const message=msg.slice(0,600)+(mayBeWhatsAppQuestion(transcript)?'\nNenhum lançamento foi criado. Informe o painel, o filtro e o período para consultar novamente.':'\nNada foi lançado. Responda com os dados que faltam ou envie uma nova despesa completa.');
    await patch(m,{status:msg.includes('Não foi possível concluir')?'ERRO':'ESCLARECER',transcript,reply:message});m.reply=message;await reply(b,m);
   }
  }

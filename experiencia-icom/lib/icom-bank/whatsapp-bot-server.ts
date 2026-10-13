@@ -1,3 +1,4 @@
+import {ensureOwnedWebhook} from './whatsapp-webhooks';
 import {randomBytes} from 'node:crypto';
 import {BankError} from './server';
 import {config,db} from '../server';
@@ -17,7 +18,8 @@ async function providerToken(){const [row]=await db<{token_cipher:string}[]>('ex
 export async function saveBot(profile:BankProfile,body:Record<string,unknown>){
  if(profile.role!=='OWNER')throw new BankError('Somente o proprietário pode configurar os lançamentos por WhatsApp.',400);
  const phone=phoneBR(body.phone);if(!Array.isArray(body.allowed_phones)||body.allowed_phones.length<1||body.allowed_phones.length>10||typeof body.enabled!=='boolean')throw new BankError('Informe de um a dez números autorizados e se deseja ativar o bot.',400);
- const allowed=Array.from(new Set(body.allowed_phones.map(phoneBR)));if(allowed.includes(phone))throw new BankError('Use um número próprio para o ICOM Bank e envie os áudios de outro número autorizado.',400);
+ const allowed=Array.from(new Set(body.allowed_phones.map(phoneBR)));
+ const subscribers=await db<{phone:string}[]>('ia_bank_whatsapp_subscriber_contacts?active=eq.true&select=phone');if(subscribers.some(s=>allowed.includes(s.phone)))throw new BankError('Este número pertence a outra loja assinante. Ele não pode acessar os dados desta loja.',400);if(allowed.includes(phone))throw new BankError('Use um número próprio para o ICOM Bank e envie os áudios de outro número autorizado.',400);
  const old=await botConfig();if(old&&old.owner_id!==profile.user_id)throw new BankError('A integração já pertence a outro proprietário.',400);
  if(old&&body.expected_updated_at!==old.updated_at)throw new BankError('A configuração mudou. Atualize a página antes de salvar.',400);
  if(old&&old.phone!==phone&&old.status!=='NOVO')throw new BankError('O número já está vinculado à conexão. Desative e peça a troca da integração antes de alterar o número.',400);
@@ -44,12 +46,11 @@ export async function connectBot(profile:BankProfile):Promise<Connection>{
  let b=await botConfig();if(profile.role!=='OWNER'||!b||b.owner_id!==profile.user_id)throw new BankError('Salve o número do ICOM Bank e os números autorizados primeiro.',400);
  if(b.status!=='PRONTO'){await provisionBot(b);b=(await botConfig())!;}
  const c=botCredentials(b),origin=process.env.APP_URL;if(!origin||new URL(origin).protocol!=='https:')throw new BankError('Endereço seguro do sistema não configurado.',400);
- // This dedicated instance never modifies seller/global webhooks.
- const hook=await fetch(UAZAPI_URL+'/webhook',{method:'POST',headers:{token:c.token,'Content-Type':'application/json'},body:JSON.stringify({enabled:true,url:new URL('/experiencia-icom/icom-bank/api/whatsapp/webhook?key='+botHook(b),origin).href,events:['messages'],excludeMessages:['wasSentByApi','fromMeYes','isGroupYes'],addUrlEvents:false,addUrlTypesMessages:false}),signal:AbortSignal.timeout(10000),redirect:'error'});
- if(!hook.ok)throw new BankError('Não foi possível ativar o recebimento de áudios. Atualize a conexão.',400);
+ // Only add/update this app's destination. Never use the provider's single-webhook mode.
+ await ensureOwnedWebhook(UAZAPI_URL,c.token,new URL('/experiencia-icom/icom-bank/api/whatsapp/webhook?key='+botHook(b),origin).href);
  const current=await readBotConnection(b);if(current.connected||current.wrongNumber||current.connecting)return current;
  const r=await fetch(UAZAPI_URL+'/instance/connect',{method:'POST',headers:{token:c.token,'Content-Type':'application/json'},body:'{}',cache:'no-store',signal:AbortSignal.timeout(10000),redirect:'error'});if(!r.ok)throw new BankError('Não foi possível gerar o QR Code. Atualize a conexão.',400);
  return connection(await r.json(),b.phone);
 }
-export async function readBotConnection(b:BotConfig):Promise<Connection>{if(b.status!=='PRONTO')return {configured:false,connected:false,message:'Salve os números e clique em Conectar WhatsApp.'};try{const c=botCredentials(b),r=await fetch(UAZAPI_URL+'/instance/status',{headers:{token:c.token},cache:'no-store',signal:AbortSignal.timeout(10000),redirect:'error'});if(!r.ok)throw new Error();const status=connection(await r.json(),b.phone);return {...status,message:status.connected?'ICOM Bank conectado. Envie uma despesa por áudio ou texto.':status.wrongNumber?'O número conectado é diferente do número do ICOM Bank. Nenhum lançamento será autorizado.':'Conecte o número do ICOM Bank pelo QR Code.'};}catch{return {configured:true,connected:false,message:'Não consegui consultar a conexão. Clique em Atualizar conexão.'};}}
+export async function readBotConnection(b:BotConfig):Promise<Connection>{if(b.status!=='PRONTO')return {configured:false,connected:false,message:'Salve os números e clique em Conectar WhatsApp.'};try{const c=botCredentials(b),r=await fetch(UAZAPI_URL+'/instance/status',{headers:{token:c.token},cache:'no-store',signal:AbortSignal.timeout(10000),redirect:'error'});if(!r.ok)throw new Error();const status=connection(await r.json(),b.phone);return {...status,message:status.connected?'IA Bank conectado. Envie uma consulta ou lançamento por áudio ou texto.':status.wrongNumber?'O número conectado é diferente do número do ICOM Bank. Nenhum lançamento será autorizado.':'Conecte o número do ICOM Bank pelo QR Code.'};}catch{return {configured:true,connected:false,message:'Não consegui consultar a conexão. Clique em Atualizar conexão.'};}}
 export async function publicBotSettings(profile:BankProfile,live?:Connection){const b=await botConfig();if(b&&b.owner_id!==profile.user_id)throw new BankError('Acesso não autorizado.',400);return {settings:b?{phone:b.phone,allowed_phones:b.allowed_phones,enabled:b.enabled,status:b.status,updated_at:b.updated_at}:null,connection:live||(b?await readBotConnection(b):null),ai_configured:!!process.env.OPENAI_API_KEY};}
