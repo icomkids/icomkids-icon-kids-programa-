@@ -4,7 +4,7 @@ import {bankPath,brazilDay} from '@/lib/icom-bank/model';
 import {accountBanks,accountInput,type BankAccount} from '@/lib/icom-bank/accounts';
 
 // This editor sits inside financial forms, so it must never create a nested form.
-export default function BankAccountCreate({onCreated,onCancel,defaultScope='PESSOAL'}:{onCreated:(account:BankAccount)=>void;onCancel:()=>void;defaultScope?:'LOJA'|'PESSOAL'}){
+export default function BankAccountCreate({onCreated,onCancel,defaultScope='PESSOAL',lockScope=false}:{onCreated:(account:BankAccount)=>void;onCancel:()=>void;defaultScope?:'LOJA'|'PESSOAL';lockScope?:boolean}){
  const listId=useId(),saving=useRef(false);
  const [draft,setDraft]=useState(()=>({id:crypto.randomUUID(),name:'',bank:'',scope:defaultScope,active:true,initial_cents:0,initial_date:brazilDay(),expected_updated_at:null}));
  const [busy,setBusy]=useState(false),[error,setError]=useState('');
@@ -22,8 +22,8 @@ export default function BankAccountCreate({onCreated,onCancel,defaultScope='PESS
   <h3>Nova conta bancária</h3><p>Cadastre aqui e continue preenchendo. Os dados que você preencheu permanecem nesta tela.</p>
   <fieldset disabled={busy}><div className="bank-form-grid">
    <label>Qual é o banco?<input list={listId} maxLength={100} placeholder="Ex.: Santander, Itaú ou Nubank" value={draft.bank} onChange={e=>setDraft(d=>({...d,bank:e.target.value}))}/><datalist id={listId}>{accountBanks.map(bank=><option key={bank} value={bank}/>)}</datalist></label>
-   <label>Como você chama esta conta?<input maxLength={100} placeholder="Ex.: Santander pessoal" value={draft.name} onChange={e=>setDraft(d=>({...d,name:e.target.value}))}/><small>Use esse nome para identificar a conta por voz.</small></label>
-   <label>De quem é a conta?<select value={draft.scope} onChange={e=>setDraft(d=>({...d,scope:e.target.value as 'LOJA'|'PESSOAL'}))}><option value="PESSOAL">Pessoal</option><option value="LOJA">Loja</option></select></label>
+   <label>Como você chama esta conta?<input maxLength={100} placeholder={defaultScope==='LOJA'?'Ex.: Santander loja':'Ex.: Santander pessoal'} value={draft.name} onChange={e=>setDraft(d=>({...d,name:e.target.value}))}/><small>Use nomes diferentes para a conta da loja e a pessoal, mesmo que sejam do mesmo banco.</small></label>
+   <label>De quem é a conta?<select disabled={lockScope} value={draft.scope} onChange={e=>setDraft(d=>({...d,scope:e.target.value as 'LOJA'|'PESSOAL'}))}><option value="PESSOAL">Pessoal (PF)</option><option value="LOJA">Loja (PJ)</option></select>{lockScope&&<small>{defaultScope==='LOJA'?'Esta é a conta da loja, de onde sai o pró-labore.':'Esta é a conta pessoal, que recebe o pró-labore.'}</small>}</label>
   </div><p className="bank-note">Este cadastro começa com saldo zero e não lança aluguel nem pagamento. Para informar um saldo inicial, use Contas bancárias.</p><div className="bank-actions"><button type="button" onClick={onCancel}>Cancelar cadastro da conta</button><button type="button" className="bank-primary" onClick={()=>void save()}>{busy?'Cadastrando…':'Cadastrar e usar esta conta'}</button></div></fieldset>
   {error&&<p className="bank-error" role="alert">{error}</p>}
  </section>;

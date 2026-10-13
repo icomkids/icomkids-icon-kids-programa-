@@ -35,5 +35,5 @@ test('PF and PJ voice aliases select only an unambiguous account in the explicit
 });
 test('Cancellation uses the existing deletion password and manual instructions match the new screen',()=>{
  assert.deepEqual(deletionTarget('/api/prolabore',{id,action:'cancel'}),{operation:'cancel_prolabore',id});assert.equal(deletionTarget('/api/prolabore',{id}),null);
- const m=readManual({topic:'prolabore'},'prolabore_form','OWNER');assert.equal(m.available,true);assert.ok(m.steps.some(s=>s.text.includes('Em qual conta PF entrou?')));assert.equal(readManual({topic:'prolabore'},'dashboard','VENDEDOR').available,false);
+ const m=readManual({topic:'prolabore'},'prolabore_form','OWNER');assert.equal(m.available,true);assert.ok(m.steps.some(s=>s.text.includes('Conta pessoal (PF)')));assert.equal(readManual({topic:'prolabore'},'dashboard','VENDEDOR').available,false);
 });

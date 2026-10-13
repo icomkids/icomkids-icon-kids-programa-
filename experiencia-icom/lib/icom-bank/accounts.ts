@@ -19,7 +19,7 @@ export function accountInput(b:Record<string,unknown>,today=brazilDay()){
 }
 export function accountSummary(data:AccountData,today=brazilDay()){
  const linkByEntry=new Map(data.links.map(l=>[l.ledger_entry_id,l])),done=data.entries.filter(e=>e.active&&e.status==='REALIZADO'&&e.entry_date<=today);
- const transfers=(data.prolabore||[]).filter(r=>r.status==='REALIZADO'&&r.paid_at<=today);
+ const transfers=(data.prolabore||[]).filter(r=>r.status==='REALIZADO'&&r.paid_at!==null&&r.paid_at<=today);
  const rows=data.accounts.map(a=>{const entries=done.filter(e=>linkByEntry.get(e.id)?.account_id===a.id),s=adminStats(entries,''),incoming=transfers.filter(r=>r.target_account_id===a.id),outgoing=transfers.filter(r=>r.source_account_id===a.id);return {...a,balance:s.combined+incoming.reduce((n,r)=>n+Number(r.amount_cents),0)-outgoing.reduce((n,r)=>n+Number(r.amount_cents),0),movements:entries.length+incoming.length+outgoing.length};});
  const unassigned=done.filter(e=>!linkByEntry.has(e.id)),s=adminStats(unassigned,''),cash=cashPosition(data.entries,today);
  return {rows,personal:rows.filter(a=>a.scope==='PESSOAL').reduce((n,a)=>n+a.balance,0),company:rows.filter(a=>a.scope==='LOJA').reduce((n,a)=>n+a.balance,0),unassigned:s.combined,unassignedCount:unassigned.length,gross:cash.gross,available:cash.available,reserved:cash.gross-cash.available};
@@ -41,3 +41,8 @@ export function resolveAccount(accounts:BankAccount[],name:unknown,transcript:st
  return found[0];
 }
 export function annotateAccounts(entries:CashEntry[],links:AccountLink[]){const map=new Map(links.map(l=>[l.ledger_entry_id,l]));return entries.map(e=>({...e,...(map.has(e.id)?{cash_account_id:map.get(e.id)!.account_id,cash_account_purpose:map.get(e.id)!.purpose}:{})}));}
+export function existingAccount(accounts:BankAccount[],b:{name:string;bank:string;scope:unknown;initial_cents:number;expected_updated_at:string|null;active:boolean}){
+ if(b.expected_updated_at!==null)return null;const existing=accounts.find(a=>fold(a.name)===fold(b.name));if(!existing)return null;
+ if(existing.active&&b.active&&existing.scope===b.scope&&fold(existing.bank)===fold(b.bank)&&b.initial_cents===0)return existing;
+ throw new Error(existing.scope!==b.scope?`O nome “${existing.name}” já pertence a uma conta ${existing.scope==='PESSOAL'?'pessoal (PF)':'da loja (PJ)'}. Use outro nome, como Santander ${b.scope==='LOJA'?'loja':'pessoal'}.`:'Já existe uma conta com esse nome. Selecione a conta cadastrada ou use outro nome para a nova conta.');
+}

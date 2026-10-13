@@ -30,7 +30,7 @@ export default function BankAccountSelect({value,onChange,label,entryId,disabled
   {!loading&&!error&&!choices.length&&<small>{requireAccount?'Ainda não há contas cadastradas. Você pode criar a primeira aqui, sem sair desta tela.':'Ainda não há contas cadastradas. Você pode cadastrar aqui ou manter este movimento sem conta identificada.'}</small>}
   <small>{hint||'Registro interno do movimento já feito. Não acessa nem movimenta seu banco.'}</small>
   {!disabled&&!fixed&&!creating&&<button type="button" disabled={loading} className="bank-account-add" onClick={()=>{setCreating(true);setNotice('');}}>+ Cadastrar conta aqui</button>}
-  {creating&&!disabled&&!fixed&&<BankAccountCreate defaultScope={scope||'PESSOAL'} onCreated={created} onCancel={()=>setCreating(false)}/>}
+  {creating&&!disabled&&!fixed&&<BankAccountCreate defaultScope={scope||'PESSOAL'} lockScope={!!scope} onCreated={created} onCancel={()=>setCreating(false)}/>}
   {notice&&<p className="bank-note" role="status">{notice}</p>}
  </div>;
 }
