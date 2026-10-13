@@ -1,10 +1,11 @@
 import {validId,realDate} from './contracts.ts';
-import {adminStats,type AdminEntry} from './administrative.ts';
+import {adminStats} from './administrative.ts';
 import {cashPosition,type CashEntry} from './cash.ts';
 import {brazilDay} from './model.ts';
+import type {ProlaboreRecord} from './prolabore.ts';
 export type BankAccount={id:string;owner_id:string;name:string;bank:string;scope:'LOJA'|'PESSOAL';active:boolean;created_at:string;updated_at:string};
 export type AccountLink={ledger_entry_id:string;account_id:string;owner_id:string;purpose:'MOVIMENTO'|'SALDO_INICIAL'|'RENDA_PESSOAL';wealth_id:string|null;created_at:string};
-export type AccountData={accounts:BankAccount[];links:AccountLink[];entries:CashEntry[]};
+export type AccountData={accounts:BankAccount[];links:AccountLink[];entries:CashEntry[];prolabore?:ProlaboreRecord[]};
 export const accountBanks=['Santander','Itaú','Bradesco','Banco do Brasil','Caixa','Safra','Sicredi','Sicoob','C6 Bank','Banco PAN','Inter','Nubank','BTG Pactual','Mercado Pago','PicPay','Dinheiro em mãos','Outro'] as const;
 export function accountId(value:unknown,required=false){if(value===undefined||value===null||value===''){if(required)throw new Error('Escolha de qual conta sai ou em qual conta entra o dinheiro.');return null;}if(typeof value!=='string'||!validId(value))throw new Error('Escolha uma conta cadastrada.');return value;}
 export function accountInput(b:Record<string,unknown>,today=brazilDay()){
@@ -18,16 +19,24 @@ export function accountInput(b:Record<string,unknown>,today=brazilDay()){
 }
 export function accountSummary(data:AccountData,today=brazilDay()){
  const linkByEntry=new Map(data.links.map(l=>[l.ledger_entry_id,l])),done=data.entries.filter(e=>e.active&&e.status==='REALIZADO'&&e.entry_date<=today);
- const rows=data.accounts.map(a=>{const entries=done.filter(e=>linkByEntry.get(e.id)?.account_id===a.id),s=adminStats(entries,'');return {...a,balance:s.combined,movements:entries.length};});
+ const transfers=(data.prolabore||[]).filter(r=>r.status==='REALIZADO'&&r.paid_at<=today);
+ const rows=data.accounts.map(a=>{const entries=done.filter(e=>linkByEntry.get(e.id)?.account_id===a.id),s=adminStats(entries,''),incoming=transfers.filter(r=>r.target_account_id===a.id),outgoing=transfers.filter(r=>r.source_account_id===a.id);return {...a,balance:s.combined+incoming.reduce((n,r)=>n+Number(r.amount_cents),0)-outgoing.reduce((n,r)=>n+Number(r.amount_cents),0),movements:entries.length+incoming.length+outgoing.length};});
  const unassigned=done.filter(e=>!linkByEntry.has(e.id)),s=adminStats(unassigned,''),cash=cashPosition(data.entries,today);
- return {rows,unassigned:s.combined,unassignedCount:unassigned.length,gross:cash.gross,available:cash.available,reserved:cash.gross-cash.available};
+ return {rows,personal:rows.filter(a=>a.scope==='PESSOAL').reduce((n,a)=>n+a.balance,0),company:rows.filter(a=>a.scope==='LOJA').reduce((n,a)=>n+a.balance,0),unassigned:s.combined,unassignedCount:unassigned.length,gross:cash.gross,available:cash.available,reserved:cash.gross-cash.available};
 }
 const fold=(v:string)=>v.normalize('NFD').replace(/\p{M}/gu,'').toLowerCase().trim();
 export function resolveAccount(accounts:BankAccount[],name:unknown,transcript:string){
  const active=accounts.filter(a=>a.active);
- if(!active.length){if(typeof name==='string'&&name.trim())throw new Error('Cadastre essa conta em Contas bancárias antes de usá-la.');return null;}
- if(typeof name!=='string'||!name.trim()||!fold(transcript).includes(fold(name)))throw new Error('De qual conta saiu ou em qual conta entrou o dinheiro? Diga o nome cadastrado.');
- const found=active.filter(a=>fold(a.name)===fold(name)||fold(a.bank)===fold(name));
+ if(!active.length){if(typeof name==='string'&&name.trim()||/\b(?:conta (?:fisica|juridica|pessoal|pf|pj)|pessoa (?:fisica|juridica)|da pf|da pj)\b/.test(fold(transcript)))throw new Error('Cadastre essa conta em Contas bancárias antes de usá-la.');return null;}
+ const phrase=fold(transcript),pf=/\b(?:conta (?:fisica|pessoal|pf)|pessoa fisica|minha pf|da pf)\b/.test(phrase),pj=/\b(?:conta (?:juridica|da empresa|da loja|pj)|pessoa juridica|da pj|pela pj)\b/.test(phrase);
+ const named=typeof name==='string'&&name.trim()&&phrase.includes(fold(name));
+ if(pf&&pj&&!named)throw new Error('Diga de qual conta saiu o pagamento: PF ou PJ.');
+ const scopeAlias=typeof name==='string'&&/^(?:(?:minha|da|pela) )?(?:(?:conta|pessoa) )?(?:fisica|juridica|pessoal|pf|pj|da loja|da empresa)$/.test(fold(name));
+ const explicit=!!named&&active.filter(a=>fold(a.name)===fold(name)||fold(a.bank)===fold(name));
+ if(named&&explicit&&!explicit.length&&!scopeAlias)throw new Error('Não encontrei essa conta. Diga o nome cadastrado em Contas bancárias.');
+ let found=explicit||[];
+ if(pf!==pj){const scope=pf?'PESSOAL':'LOJA';found=found.length?found.filter(a=>a.scope===scope):active.filter(a=>a.scope===scope);}
+ if(!named&&pf===pj)throw new Error('De qual conta saiu ou em qual conta entrou o dinheiro? Diga o nome cadastrado.');
  if(found.length!==1)throw new Error(found.length?'Há mais de uma conta nesse banco. Diga o nome da conta.':'Não encontrei essa conta. Diga o nome cadastrado em Contas bancárias.');
  return found[0];
 }
