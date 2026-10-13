@@ -17,7 +17,7 @@ export default function BankWhatsappExpenses(){
  useEffect(()=>{
   if(!connection?.qr&&!connection?.paircode||connection?.connected)return;
   const controller=new AbortController();let inFlight=false,checks=0;
-  const timer=setInterval(()=>{if(inFlight||controller.signal.aborted)return;inFlight=true;void load(controller.signal).then(fresh=>{if(controller.signal.aborted)return;setResult(old=>old?{...old,history:fresh.history}:fresh);setConnection(old=>fresh.connection?.connected?fresh.connection:{...fresh.connection,configured:fresh.connection?.configured??true,connected:false,qr:old?.qr,paircode:old?.paircode});}).catch(()=>{}).finally(()=>{inFlight=false;checks++;if(checks>=18)clearInterval(timer);});},10000);
+  const timer=setInterval(()=>{if(inFlight||controller.signal.aborted)return;inFlight=true;void load(controller.signal).then(fresh=>{if(controller.signal.aborted)return;setResult(old=>old?{...old,history:fresh.history}:fresh);setConnection(old=>fresh.connection?.connected?fresh.connection:{...fresh.connection,configured:fresh.connection?.configured??true,connected:false,message:fresh.connection?.message||old?.message||'Aguardando a leitura do QR Code.',qr:old?.qr,paircode:old?.paircode});}).catch(()=>{}).finally(()=>{inFlight=false;checks++;if(checks>=18)clearInterval(timer);});},10000);
   return()=>{clearInterval(timer);controller.abort();};
  },[load,connection?.qr,connection?.paircode,connection?.connected]);
  async function action(kind:'save'|'connect'|'refresh',nextAllowed=allowed){
