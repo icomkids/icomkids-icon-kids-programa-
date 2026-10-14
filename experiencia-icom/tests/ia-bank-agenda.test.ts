@@ -1,3 +1,4 @@
+import {readManual} from '../lib/icom-bank/assistant-manual.ts';
 import {agendaChoice,agendaStatusQuestion,agendaPreviewReply,agendaCorrectedDraft,type AgendaPreview} from '../lib/icom-bank/whatsapp-agenda-confirmation.ts';
 import {extractSimpleAgenda,agendaPaymentScope,agendaScopeQuestion} from '../lib/icom-bank/agenda-commands.ts';
 import test from 'node:test';
@@ -61,7 +62,7 @@ test('Agenda queries honor role/date filters, include existing bills and preserv
  assert.equal(quickWhatsAppConsultation('Quais meus compromissos hoje?',today)?.mode,'CONSULTA');
 });
 test('Agenda is added without changing seller grants or a saved menu order',()=>{
- assert.equal(canBank('OWNER','agenda'),true);assert.equal(canBank('VENDEDOR','agenda'),false);assert.equal(canBank('ADMIN','agenda'),false);
+ assert.equal(canBank('OWNER','agenda'),true);assert.equal(canBank('VENDEDOR','agenda'),false);assert.equal(canBank('ADMIN','agenda'),true);assert.equal(canBank('ADMIN','administrativo'),false);
  assert.deepEqual(orderedMenu('OWNER',['clientes','dashboard']).slice(0,2).map(([id])=>id),['clientes','dashboard']);
  assert.ok(orderedMenu('OWNER',['clientes','dashboard']).some(([id])=>id==='agenda'));
  assert.deepEqual(preferencesPatch({menu_order:orderedMenu('OWNER').map(([id])=>id)}).menu_order?.length,13);
@@ -98,7 +99,7 @@ test('A future payment asks CPF or CNPJ and accepts a short choice with optional
 });
 test('Payment scope cannot be hallucinated by the model and ambiguous appointments cannot be saved',async()=>{
  const d:FinancialDraft={operation:'CONTA_PAGAR',form:JSON.stringify({title:'Água',scope:'LOJA',amount_cents:'250',due_date:'2026-10-20'}),evidence:JSON.stringify({amount_cents:'250',due_date:'dia 20'}),confidence:'ALTA',question:''};
- await assert.rejects(()=>prepareFinancial(d,'Lança uma dívida de 250 para dia 20',today,async()=>[],id),/1 — CPF/);
+ await assert.rejects(()=>prepareFinancial(d,'Lança uma dívida de 250 para dia 20',today,async()=>[],id),/1 — PF/);
  assert.equal(extractSimpleAgenda('Agende reunião dia 19 do 10 e dia 20 do 10 às 19 horas',today)?.confidence,'BAIXA');
  assert.equal(extractSimpleAgenda('Agende reunião dia 19 às 19 horas e às 20 horas',today)?.confidence,'BAIXA');
  assert.equal(extractSimpleAgenda('Agende reunião dia 31 do 2 às 19 horas',today)?.confidence,'BAIXA');
@@ -127,4 +128,33 @@ test('Model editing must trace each altered time/value/title to the actual corre
  assert.equal(JSON.parse(result.draft.form).due_time,'20:00');assert.equal(JSON.parse(result.draft.form).due_date,'2026-10-19');
  patch.due_time='21:00';await assert.rejects(()=>agendaCorrectedDraft(preview(),'o horário é 20 horas',today,'unused',transport as typeof fetch),/Confirme o horário/);
  await assert.rejects(()=>agendaCorrectedDraft(preview(),'transfira 250 reais',today,'unused',transport as typeof fetch),/manualmente/);
+});
+
+test('Payment without amount asks only PF/PJ then prepares a nonfinancial reminder',async()=>{
+ const source='agenda esse pagamento de tvs para dia 05/11 por favor!';
+ const first=extractSimpleAgenda(source,today)!;assert.equal(first.confidence,'BAIXA');assert.equal(first.question,agendaScopeQuestion);assert.doesNotMatch(first.question,/valor/i);
+ for(const answer of ['2','PJ','conta jurídica']){
+  const text=source+'\n'+answer,d=extractSimpleAgenda(text,today)!;assert.equal(d.confidence,'ALTA');assert.equal(d.operation,'AGENDA');
+  const p=await prepareFinancial(d,text,today,async()=>{throw Error('No financial lookup');},id),v=p.args.p_payload as Record<string,unknown>;
+  assert.equal(v.scope,'LOJA');assert.equal(v.due_date,'2026-11-05');assert.equal(v.title,'Pagamento: tvs');assert.equal(v.amount_cents,undefined);assert.equal(p.rpc,'icom_bank_save_agenda');assert.ok(p.summary.some(x=>/somente lembrete/.test(x.value)));
+  const reply=agendaPreviewReply({...p,operation:'AGENDA'});assert.match(reply,/1 — Confirmar/);assert.match(reply,/2 — Editar/);assert.match(reply,/Ainda não foi salvo/);
+ }
+ assert.equal(agendaPaymentScope(source+'\nconta física'),'PESSOAL');
+ const cash=extractSimpleAgenda('Agende pagamento de TV de 250 reais dia 05/11 PJ',today)!;assert.equal(cash.operation,'CONTA_PAGAR');
+});
+test('Administrator Agenda reads only company projection; personal records and table reads are excluded',async()=>{
+ const paths:string[]=[],reader={ledger:async()=>{throw Error('No ledger');},staff:async()=>[],rows:async(path:string)=>{paths.push(path);if(path.startsWith('icom_bank_agenda_events?'))return [event(),event({scope:'PESSOAL',title:'Privado'})];if(path.startsWith('rpc/icom_bank_agenda_company_items?'))return [bill(),bill({scope:'PESSOAL'})];throw Error('Restricted table '+path);}};
+ const r=await readAssistantData(reader,{topic:'agenda'},'ADMIN',today),d=r.dados as {quantidade:number;lista:unknown[]};assert.equal(d.quantidade,2);assert.doesNotMatch(JSON.stringify(r),/Privado/);assert.equal(paths.length,2);
+});
+
+test('Administrative manual describes the actual read-only company Agenda',()=>{
+ const m=readManual({topic:'agenda'},'agenda','ADMIN');assert.equal(m.available,true);assert.match(m.notes.join(' '),/somente para acompanhamento/);assert.doesNotMatch(m.steps.map(s=>s.text).join(' '),/Novo compromisso|Salvar compromisso|Conta a pagar/);
+});
+test('Adding a literal amount to a payment reminder produces a fresh pending bill preview',async()=>{
+ const p=preview();p.args.p_payload={...p.args.p_payload as Record<string,unknown>,title:'Pagamento: TVS',scope:'LOJA'};
+ const patch={confidence:'ALTA',question:'',title:null,due_date:null,due_date_excerpt:null,due_time:null,due_time_excerpt:null,clear_time:false,amount_reais:'250',amount_excerpt:'250 reais',scope:null,notes:null};
+ const transport=async()=>new Response(JSON.stringify({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify(patch)}]}]}),{status:200});
+ const changed=await agendaCorrectedDraft(p,'o valor é 250 reais',today,'unused',transport as typeof fetch);assert.equal(changed.draft.operation,'CONTA_PAGAR');
+ const prepared=await prepareFinancial(changed.draft,changed.source,today,async()=>{throw Error('No money movement');},id);assert.equal(prepared.rpc,'icom_bank_save_expense');assert.equal((prepared.args.p_payload as Record<string,unknown>).amount_cents,25000);assert.match(agendaPreviewReply(prepared),/Ainda não foi salvo/);
+ await assert.rejects(()=>agendaCorrectedDraft(preview(),'o valor é 250 reais',today,'unused',transport as typeof fetch),/envie um novo pedido/);
 });

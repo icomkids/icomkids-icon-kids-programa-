@@ -1,6 +1,6 @@
 import type {FinancialDraft,FinancialPending} from './assistant-financial.ts';
 import {refuseVoiceWithdrawal} from './assistant-financial.ts';
-import {parseAgendaDate,agendaStatedDate,agendaStatedTime} from './agenda.ts';
+import {parseAgendaDate,agendaStatedDate,agendaStatedTime,isPaymentReminderTitle} from './agenda.ts';
 import {agendaPaymentScope} from './agenda-commands.ts';
 import {adminMoneyInput} from './administrative.ts';
 export type AgendaPreview={id:string;version:string;operation:'AGENDA'|'CONTA_PAGAR';status:'PENDENTE'|'EDITANDO';args:FinancialPending['args'];summary:FinancialPending['summary'];source:string;expires_at:string};
@@ -33,19 +33,22 @@ export async function agendaCorrectedDraft(base:AgendaPreview,correction:string,
  if(edit.confidence!=='ALTA')throw Error(edit.question?.slice(0,240)||'Diga o que deseja corrigir.');
  if(!edit.clear_time&&[edit.title,edit.due_date,edit.due_time,edit.amount_reais,edit.scope,edit.notes].every(v=>v===null))throw Error('Diga a nova data, horário, descrição, observação ou valor.');
  const literal=(v:string|null)=>!!v&&fold(correction).includes(fold(v));
- const title=edit.title!==null?(literal(edit.title)?edit.title:(()=>{throw Error('Confirme o nome do compromisso ou pagamento.');})()):String(p.title);
+ const paymentReminder=isPaymentReminderTitle(String(p.title));
+ let title=edit.title!==null?(literal(edit.title)?edit.title:(()=>{throw Error('Confirme o nome do compromisso ou pagamento.');})()):String(p.title);
  const due=edit.due_date!==null?agendaStatedDate(edit.due_date,edit.due_date_excerpt||'',correction,today):String(p.due_date);
  if(edit.clear_time&&!/\b(?:sem horario|tir[ae]r? (?:o )?horario|remov[ae]r? (?:o )?horario)\b/.test(fold(correction)))throw Error('Confirme se deseja retirar o horário.');
  const time=edit.clear_time?null:edit.due_time!==null?agendaStatedTime(edit.due_time,edit.due_time_excerpt,correction):p.due_time||null;
- if(base.operation==='AGENDA'&&(edit.amount_reais!==null||edit.scope!==null))throw Error('Este rascunho é um compromisso. Para uma conta a pagar, envie um novo pedido com valor e data.');
+ if(base.operation==='AGENDA'&&!paymentReminder&&(edit.amount_reais!==null||edit.scope!==null))throw Error('Este rascunho é um compromisso. Para uma conta a pagar, envie um novo pedido com valor e data.');
  let scope=p.scope,amount=p.amount_cents;
  if(edit.scope!==null){if(agendaPaymentScope(correction)!==edit.scope)throw Error('Diga CPF para pessoal ou CNPJ para empresa.');scope=edit.scope;}
  if(edit.amount_reais!==null){if(!literal(edit.amount_excerpt))throw Error('Diga o novo valor em reais.');const n=edit.amount_excerpt!.replace(/^R\$\s*/i,'').replace(/\s*reais$/i,'').trim();if(!/^[\d.,]+$/.test(n)||adminMoneyInput(n)!==adminMoneyInput(edit.amount_reais))throw Error('Confirme o novo valor em números, por exemplo 250 reais.');amount=adminMoneyInput(edit.amount_reais);}
  if(edit.notes!==null&&!literal(edit.notes))throw Error('Diga a observação que deseja anotar.');
  const note=[String(p.notes||''),'Correção solicitada: '+correction].filter(Boolean).join('\n').slice(0,2000);
  const reais=typeof amount==='number'||typeof amount==='string'?(Number(amount)/100).toFixed(2).replace('.',','):'';
- const source=base.operation==='AGENDA'?'Agende '+title+' no dia '+due+(time?' às '+time:''):'Lança uma conta a pagar de '+reais+' reais para '+due+' · '+(scope==='LOJA'?'CNPJ':'CPF')+' · '+title;
- const form=base.operation==='AGENDA'?{title,scope:p.scope,due_date:due,...(time?{due_time:time}:{})}:{title,scope,amount_cents:reais,due_date:due,months:p.months||1,person:p.person||'AMBOS',category:p.category||'Conta agendada'};
- const evidence={due_date:due,...(time?{due_time:time}:{}),...(base.operation==='CONTA_PAGAR'?{amount_cents:reais}:{})};
- return {draft:{operation:base.operation,form:JSON.stringify(form),evidence:JSON.stringify(evidence),confidence:'ALTA',question:''},source,notes:note,observation:edit.notes};
+ const operation=paymentReminder&&edit.amount_reais!==null?'CONTA_PAGAR':base.operation;
+ if(paymentReminder&&!isPaymentReminderTitle(title))title='Pagamento: '+title;
+ const source=operation==='AGENDA'?'Agende '+title+' no dia '+due+(time?' às '+time:'')+(paymentReminder?' · '+(scope==='LOJA'?'PJ':'PF'):''):'Lança uma conta a pagar de '+reais+' reais para '+due+' · '+(scope==='LOJA'?'CNPJ':'CPF')+' · '+title;
+ const form=operation==='AGENDA'?{title,scope,due_date:due,...(time?{due_time:time}:{})}:{title,scope,amount_cents:reais,due_date:due,months:p.months||1,person:p.person||'AMBOS',category:p.category||'Conta agendada'};
+ const evidence={due_date:due,...(time?{due_time:time}:{}),...(operation==='CONTA_PAGAR'?{amount_cents:reais}:{})};
+ return {draft:{operation,form:JSON.stringify(form),evidence:JSON.stringify(evidence),confidence:'ALTA',question:''},source,notes:note,observation:edit.notes};
 }

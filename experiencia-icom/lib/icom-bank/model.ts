@@ -3,7 +3,7 @@ import type {VehicleSpec} from './vehicle-catalog.ts';
 export type BankRole='OWNER'|'ADMIN'|'GERENTE'|'FINANCEIRO'|'VENDEDOR';
 export type BankProfile={user_id:string;name:string;role:BankRole;active:boolean};
 export const bankMenu=[['dashboard','Visão Geral'],['clientes','Nova venda'],['contratos','Contratos'],['administrativo','Administrativo'],['agenda','Agenda'],['parcelas','Parcelas'],['pagamentos','Pagamentos'],['comprovantes','Comprovantes'],['inadimplencia','Inadimplência'],['veiculos','Veículos'],['relatorios','Relatórios'],['funcionarios','Funcionários'],['configuracoes','Configurações']] as const;
-const permissions:Record<BankRole,string[]>={OWNER:bankMenu.map(([key])=>key),ADMIN:bankMenu.filter(([key])=>!['administrativo','agenda'].includes(key)).map(([key])=>key),GERENTE:['dashboard','clientes','contratos','parcelas','pagamentos','comprovantes','inadimplencia','veiculos','relatorios'],FINANCEIRO:['dashboard','parcelas','pagamentos','comprovantes','inadimplencia'],VENDEDOR:['dashboard','clientes','contratos']};
+const permissions:Record<BankRole,string[]>={OWNER:bankMenu.map(([key])=>key),ADMIN:bankMenu.filter(([key])=>!['administrativo'].includes(key)).map(([key])=>key),GERENTE:['dashboard','clientes','contratos','parcelas','pagamentos','comprovantes','inadimplencia','veiculos','relatorios'],FINANCEIRO:['dashboard','parcelas','pagamentos','comprovantes','inadimplencia'],VENDEDOR:['dashboard','clientes','contratos']};
 export const canBank=(role:BankRole,section:string)=>permissions[role]?.includes(section)||false;
 export const bankPath=(path='')=>'/experiencia-icom/icom-bank'+path;
 export const currency=(cents:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(cents/100);

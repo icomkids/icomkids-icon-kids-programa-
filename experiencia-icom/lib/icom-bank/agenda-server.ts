@@ -1,9 +1,15 @@
+import type {BankRole} from './model';
 import {bankAll,bankQuery} from './server';
 import type {AgendaEvent} from './agenda';
 import type {Payable} from './payables';
 import type {StockRow} from './stock';
 export type AgendaData={events:AgendaEvent[];payables:Payable[];stocks:Pick<StockRow,'id'|'active'|'status'>[];notifications:{id:string;notification_day:string;status:string;attempts:number;updated_at:string}[]};
-export async function bankAgenda(token:string):Promise<AgendaData>{
+export async function bankAgenda(token:string,role:BankRole='OWNER'):Promise<AgendaData>{
+ if(role==='ADMIN'){
+  const [events,rows]=await Promise.all([bankAll(token,'icom_bank_agenda_events?scope=eq.LOJA&select=*&order=due_date.asc,id.asc'),bankAll(token,'rpc/icom_bank_agenda_company_items?select=*&order=due_date.asc,id.asc')]);
+  const payables=rows as (Payable&{stock_active:boolean;stock_status:StockRow['status']})[];
+  return {events:events as AgendaEvent[],payables,stocks:payables.filter(p=>p.stock_id).map(p=>({id:p.stock_id!,active:p.stock_active,status:p.stock_status})),notifications:[]};
+ }
  const [events,payables,stocks,notifications]=await Promise.all([
  bankAll(token,'icom_bank_agenda_events?select=*&order=due_date.asc,id.asc'),
  bankAll(token,'icom_bank_payables?active=eq.true&select=id,stock_id,kind,scope,title,amount_cents,due_date,active,status,paid_at,notes,created_at,updated_at&order=due_date.asc,id.asc'),

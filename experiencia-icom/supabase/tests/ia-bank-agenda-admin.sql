@@ -1,0 +1,32 @@
+begin;
+do $test$ declare o uuid;a uuid;e uuid:=gen_random_uuid();personal uuid:=gen_random_uuid();b uuid:=gen_random_uuid();pb uuid:=gen_random_uuid();begin
+ select user_id into strict o from public.icom_bank_user_access where active and role='OWNER';
+ select u.id into strict a from auth.users u where u.email='icommotors@hotmail.com';
+ update public.icom_bank_user_access set role='ADMIN',active=true where user_id=a;
+ perform set_config('agenda.admin_id',a::text,true);perform set_config('agenda.owner_id',o::text,true);perform set_config('agenda.event_id',e::text,true);perform set_config('agenda.bill_id',b::text,true);perform set_config('agenda.personal_id',personal::text,true);perform set_config('agenda.personal_bill_id',pb::text,true);
+ perform set_config('request.jwt.claim.sub',o::text,true);
+ perform public.icom_bank_save_agenda(jsonb_build_object('id',e,'scope','LOJA','title','Pagamento: TEST COMPANY ROLLBACK','due_date',current_date,'status','PENDENTE'),null);
+ perform public.icom_bank_save_agenda(jsonb_build_object('id',personal,'scope','PESSOAL','title','TEST PERSONAL ROLLBACK','due_date',current_date,'status','PENDENTE'),null);
+ perform public.icom_bank_save_expense(jsonb_build_object('id',b,'scope','LOJA','person','AMBOS','title','TEST COMPANY BILL ROLLBACK','category','Agenda','notes','','amount_cents',25000,'due_date',current_date,'months',1),null);
+ perform public.icom_bank_save_expense(jsonb_build_object('id',pb,'scope','PESSOAL','person','AMBOS','title','TEST PERSONAL BILL ROLLBACK','category','Agenda','notes','','amount_cents',50000,'due_date',current_date,'months',1),null);
+end $test$;
+set local role authenticated;
+select set_config('request.jwt.claim.sub',current_setting('agenda.admin_id'),true);
+do $test$ begin
+ if not exists(select 1 from public.icom_bank_agenda_events where id=current_setting('agenda.event_id')::uuid) then raise exception 'Admin company event missing';end if;
+ if exists(select 1 from public.icom_bank_agenda_events where scope='PESSOAL') then raise exception 'Personal events leaked';end if;
+ if not exists(select 1 from public.icom_bank_agenda_company_items() where id=current_setting('agenda.bill_id')::uuid) then raise exception 'Admin company bill missing';end if;
+ if exists(select 1 from public.icom_bank_agenda_company_items() where scope<>'LOJA' or id=current_setting('agenda.personal_bill_id')::uuid) then raise exception 'Personal bill leaked';end if;
+ if exists(select 1 from public.icom_bank_payables) or exists(select 1 from public.icom_bank_stock_vehicles) or exists(select 1 from public.icom_bank_agenda_notifications) then raise exception 'Restricted raw tables exposed';end if;
+ begin perform public.icom_bank_save_agenda(jsonb_build_object('id',gen_random_uuid(),'scope','LOJA','title','Forbidden','due_date',current_date,'status','PENDENTE'),null);raise exception 'Admin wrote event';exception when insufficient_privilege then null;end;
+ begin insert into public.icom_bank_agenda_events(id,owner_id,scope,title,due_date) values(gen_random_uuid(),current_setting('agenda.owner_id')::uuid,'LOJA','Forbidden',current_date);raise exception 'Admin inserted event';exception when insufficient_privilege then null;end;
+ update public.icom_bank_agenda_events set title='Forbidden' where id=current_setting('agenda.event_id')::uuid;
+ if exists(select 1 from public.icom_bank_agenda_events where title='Forbidden') then raise exception 'Admin updated event';end if;
+ perform set_config('request.jwt.claim.sub',gen_random_uuid()::text,true);
+ if exists(select 1 from public.icom_bank_agenda_events) then raise exception 'Anonymous event leak';end if;
+ begin perform public.icom_bank_agenda_company_items();raise exception 'Unknown user projection access';exception when insufficient_privilege then null;end;
+ perform set_config('request.jwt.claim.sub',current_setting('agenda.owner_id'),true);
+ if not exists(select 1 from public.icom_bank_agenda_events where id=current_setting('agenda.personal_id')::uuid) then raise exception 'Owner personal access changed';end if;
+end $test$;
+reset role;
+rollback;

@@ -1,11 +1,11 @@
 import {isAgendaWrite,parseAgendaDate,agendaStatedTime} from './agenda.ts';
 import type {FinancialDraft} from './assistant-financial.ts';
 const fold=(s:string)=>s.normalize('NFD').replace(/\p{M}/gu,'').toLowerCase();
-export const agendaScopeQuestion='Esse pagamento é de qual área?\n1 — CPF (pessoal)\n2 — CNPJ (empresa)\nPode incluir uma observação na resposta, por exemplo: “1 — água”.';
+export const agendaScopeQuestion='Esse pagamento é de qual área?\n1 — PF (pessoal)\n2 — PJ (empresa)\nPode incluir uma observação na resposta, por exemplo: “1 — água”.';
 export function agendaPaymentScope(source:string):'LOJA'|'PESSOAL'|null{
  const last=source.trim().split('\n').at(-1)||'',choice=/^\s*([12])(?:\s*[-—:,.]\s*.*|\s+.{2,}|\s*)$/.exec(last);
  if(choice&&source.includes('\n'))return choice[1]==='1'?'PESSOAL':'LOJA';
- const t=fold(source),company=/\b(?:cnpj|pj|loja|empresa|profissional)\b/.test(t),personal=/\b(?:cpf|pf|pessoal|pessoais|familia|minha casa)\b/.test(t);
+ const t=fold(source),company=/\b(?:cnpj|pj|loja|empresa|profissional|juridica)\b/.test(t),personal=/\b(?:cpf|pf|pessoal|pessoais|familia|minha casa|fisica)\b/.test(t);
  return company===personal?null:company?'LOJA':'PESSOAL';
 }
 export function extractSimpleAgenda(source:string,today:string):FinancialDraft|null{
@@ -46,21 +46,22 @@ export function extractSimpleAgenda(source:string,today:string):FinancialDraft|n
  if(new Set(times.map(t=>t.value)).size>1)return low('Encontrei horários diferentes. Qual é o horário do compromisso?');
  const isBill=/\b(?:divida|conta (?:a pagar|de|do|da)|pagamento|vou pagar|para pagar|a pagar)\b/.test(fold(source));
  const money=[...source.matchAll(/(?:R\$\s*\d[\d.,]*|\b\d[\d.,]*\s*reais)\b/gi)].map(m=>({excerpt:m[0],value:m[0].replace(/R\$\s*|\s*reais/gi,'')}));
- if(isBill&&!money.length)return null;
+ const hasAmount=isBill&&money.length>0;
  if(isBill&&new Set(money.map(m=>m.value)).size>1)return low('Informe um pagamento por vez, com o valor.');
  const scope=isBill?agendaPaymentScope(source):'PESSOAL';
- if(isBill&&!scope)return {...low(agendaScopeQuestion),operation:'CONTA_PAGAR'};
+ if(isBill&&!scope)return {...low(agendaScopeQuestion),operation:hasAmount?'CONTA_PAGAR':'AGENDA'};
  let title=source.split('\n')[0].replace(/\b(?:um |uma )?compromisso que eu vou ter\b/gi,'Compromisso');
  for(const d of dates)title=title.replace(d.excerpt,'');
  for(const t of times)title=title.replace(t.excerpt,'');
  for(const m of money)title=title.replace(m.excerpt,'');
- title=title.replace(/\bpor favor\b/gi,'').replace(/\b(?:agenda|agende|agendar|marque|lança|lance|lançar|registre)\s*(?:pra mim|para mim|um|uma|o|a)?/gi,'').replace(/\beu (?:tenho|vou ter)\s*/gi,'').replace(/\b(?:um |uma )?pagamento(?: a ser realizado)?(?: de)?\b/gi,'').replace(/\b(?:vou pagar|no próximo|próximo|no dia|dia|às|as)\b/gi,'').replace(/\s+/g,' ').replace(/^[\s,.:-]+|[\s,.:-]+$/g,'').trim();
- if(isBill){const last=source.trim().split('\n').at(-1)||'';if(source.includes('\n')){const observation=last.replace(/^\s*(?:[12]|CPF|CNPJ|pessoal|empresa|loja)(?:\s*[-—:,.]\s*|\s*)/i,'').trim();if(observation.length>=2&&observation!==last)title=observation;}}
+ title=title.replace(/\bpor favor\b/gi,'').replace(/\b(?:agenda|agende|agendar|marque|lança|lance|lançar|registre)\s*(?:(?:pra mim|para mim|um|uma|o|a|esse|essa|este|esta)\b)?/gi,'').replace(/\beu (?:tenho|vou ter)\s*/gi,'').replace(/\b(?:um |uma )?pagamento(?: a ser realizado)?(?: de)?\b/gi,'').replace(/\b(?:vou pagar|no próximo|próximo|no dia|dia|às|as)\b/gi,'').replace(/\s+/g,' ').replace(/^[\s,.:-]+|[\s,.:-]+$/g,'').trim();
+ if(isBill){const last=source.trim().split('\n').at(-1)||'';if(source.includes('\n')){const observation=last.replace(/^\s*(?:[12]|CPF|CNPJ|PF|PJ|pessoal|empresa|loja)(?:\s*[-—:,.]\s*|\s*)/i,'').trim();if(observation.length>=2&&observation!==last)title=observation;}}
  title=title.replace(/(?:^|\s)[àa]s(?=\s|$)/gi,' ').replace(/\s+/g,' ').trim();
  if(!isBill&&/^(?:na|no|em)\s/i.test(title))title='Compromisso '+title;
  if(isBill&&!fold(title).replace(/\b(?:um|uma|eu|tenho|de|do|da|no|na|em|para|a|o|ser|realizado|proximo|pagamento|divida|conta|pagar|cpf|cnpj)\b/g,'').replace(/[\s,.:-]/g,''))title='Pagamento agendado';
  title=title.slice(0,160)|| (isBill?'Pagamento agendado':'Compromisso');
- const form=isBill?{title,scope,amount_cents:money[0].value,due_date:date.value,category:'Conta agendada',months:1,person:'AMBOS'}:{title,scope,due_date:date.value,...(times[0]?{due_time:times[0].value}:{})};
- const evidence={due_date:date.excerpt,...(times[0]?{due_time:times[0].excerpt}:{}),...(isBill?{amount_cents:money[0].excerpt.replace(/R\$\s*|\s*reais/gi,'')}:{})};
- return {operation:isBill?'CONTA_PAGAR':'AGENDA',form:JSON.stringify(form),evidence:JSON.stringify(evidence),confidence:'ALTA',question:''};
+ if(isBill&&!hasAmount){title=title.replace(/[.!?,;:]+$/g,'').trim().replace(/^(?:esse|essa|este|esta)\s+/i,'').replace(/\s+(?:para|pra|no|na|em)\s*$/i,'').replace(/\b(?:cpf|cnpj|pf|pj)\b/gi,'').replace(/\s+/g,' ').trim();title='Pagamento: '+(title||'a realizar');title=title.slice(0,160);}
+ const form=hasAmount?{title,scope,amount_cents:money[0].value,due_date:date.value,category:'Conta agendada',months:1,person:'AMBOS'}:{title,scope,due_date:date.value,...(times[0]?{due_time:times[0].value}:{})};
+ const evidence={due_date:date.excerpt,...(times[0]?{due_time:times[0].excerpt}:{}),...(hasAmount?{amount_cents:money[0].excerpt.replace(/R\$\s*|\s*reais/gi,'')}:{})};
+ return {operation:hasAmount?'CONTA_PAGAR':'AGENDA',form:JSON.stringify(form),evidence:JSON.stringify(evidence),confidence:'ALTA',question:''};
 }
