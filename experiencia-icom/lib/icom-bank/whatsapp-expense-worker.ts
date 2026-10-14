@@ -1,3 +1,4 @@
+import {agendaChoice,agendaStatusQuestion,agendaInlineCorrection,agendaPreviewReply,agendaConfirmedReply,agendaCorrectedDraft,type AgendaPreview} from './whatsapp-agenda-confirmation';
 import {isAgendaWrite} from './agenda';
 import {readAssistantData,type AssistantReader} from './assistant-data';
 import {extractWhatsAppConsultation,mayBeWhatsAppQuestion,whatsappReadReply,whatsappManualReply,sortWhatsAppRows} from './whatsapp-consultations';
@@ -44,21 +45,46 @@ export async function processExpenses(){
    if(m.type==='audio'&&!transcript){const audio=await downloadExpenseAudio(b,m.provider_id);transcript=await transcribeExpense(audio.bytes,audio.mime,key);}
    await patch(m,{transcript});
    const since=new Date(Date.parse(m.created_at)-900000).toISOString();
-   if(expenseStatusQuestion(transcript)){
-    const recent=await botDb<Inbox[]>('icom_bank_whatsapp_inbox?sender=eq.'+m.sender+'&owner_id=eq.'+m.owner_id+'&status=in.(LANCADO,ESCLARECER,ERRO,PROCESSANDO,FILA)&created_at=gt.'+encodeURIComponent(since)+'&created_at=lt.'+encodeURIComponent(m.created_at)+'&order=created_at.desc&limit=2');
-    const original=recent[0],message=original?.status==='LANCADO'?'Sim, a despesa anterior foi lançada.\n'+original.reply:original?'A despesa anterior ainda não foi lançada. Confira o motivo no histórico do painel. Esta pergunta não cria uma segunda despesa.':'Não localizei uma despesa recente desta conversa para confirmar. Confira o histórico no painel; esta pergunta não cria um lançamento.';
+   const addressed=addressAssistant(transcript,await botAssistantName(m.owner_id));
+   const pending=await botDb<AgendaPreview|null>('rpc/icom_bank_whatsapp_agenda_draft',{p_id:m.id,p_claim:m.claim_id}),choice=agendaChoice(addressed),inlineCorrection=agendaInlineCorrection(addressed);
+   if(expenseStatusQuestion(transcript)||agendaStatusQuestion(transcript)){
+    if(pending){const message='Agenda: ainda não foi salvo. '+(pending.status==='EDITANDO'?'Envie a correção para receber um novo resumo.':'Confira o resumo anterior e responda 1 para confirmar ou 2 para editar.');await patch(m,{status:'RESOLVIDO',reply:message});m.reply=message;await reply(b,m);continue;}
+    const recent=await botDb<Inbox[]>('icom_bank_whatsapp_inbox?sender=eq.'+m.sender+'&owner_id=eq.'+m.owner_id+'&status=in.(LANCADO,ESCLARECER,ERRO,PROCESSANDO,FILA,RESOLVIDO)&created_at=gt.'+encodeURIComponent(since)+'&created_at=lt.'+encodeURIComponent(m.created_at)+'&order=created_at.desc&limit=2');
+    const original=recent[0],message=original?.status==='RESOLVIDO'&&original.reply.startsWith('Agenda: confirmado e salvo.')?'Sim, o agendamento foi confirmado e salvo.\n'+original.reply:original?.status==='LANCADO'?'Sim, a despesa anterior foi lançada.\n'+original.reply:original?'A despesa anterior ainda não foi lançada. Confira o motivo no histórico do painel. Esta pergunta não cria uma segunda despesa.':'Não localizei uma despesa recente desta conversa para confirmar. Confira o histórico no painel; esta pergunta não cria um lançamento.';
     await patch(m,{status:'RESOLVIDO',reply:message});m.reply=message;await reply(b,m);continue;
    }
-   const addressed=addressAssistant(transcript,await botAssistantName(m.owner_id));
+
+   if(pending&&choice==='CONFIRMAR'){
+    const message=pending.status==='EDITANDO'?'Agenda: você escolheu editar. Escreva a correção para eu mostrar um novo resumo antes de confirmar.':agendaConfirmedReply(pending);
+    await patch(m,{reply:message,transcript:addressed});
+    if(pending.status==='EDITANDO')await patch(m,{status:'RESOLVIDO'});
+    else{await botDb('rpc/icom_bank_whatsapp_agenda_confirm',{p_id:m.id,p_claim:m.claim_id,p_draft:pending.id,p_version:pending.version});sharedAssistantCache().clear();}
+    m.reply=message;await reply(b,m);continue;
+   }
+   if(pending&&(choice==='CANCELAR'||choice==='EDITAR'&&!inlineCorrection)){
+    const message=choice==='CANCELAR'?'Agenda: rascunho cancelado. Nada foi agendado.':'Agenda: escreva o que deseja alterar, por exemplo “mude para dia 20”, “às 20 horas” ou o novo local. Depois vou mostrar o resumo corrigido para você confirmar.';
+    await patch(m,{reply:message});await botDb('rpc/icom_bank_whatsapp_agenda_edit',{p_id:m.id,p_claim:m.claim_id,p_draft:pending.id,p_version:pending.version,p_cancel:choice==='CANCELAR'});m.reply=message;await reply(b,m);continue;
+   }
+   const editRequested=pending&&!isAgendaWrite(addressed)&&!mayBeWhatsAppQuestion(addressed)&&!/\b(?:paguei|gastei|comprei)\b/i.test(addressed)&&(pending.status==='EDITANDO'||inlineCorrection||/^(?:mude|muda|altere|troque|troca|corrija|corrige|na verdade)\b/i.test(addressed));
+   if(editRequested&&pending){
+    try{
+     const correction=inlineCorrection||addressed,today=brazilDay(new Date(m.created_at)),changed=await agendaCorrectedDraft(pending,correction,today,key),prepared=await prepareFinancial(changed.draft,changed.source,today,async()=>{throw Error('Agenda não movimenta dinheiro.');},m.id),payload=prepared.args.p_payload as Record<string,unknown>;
+     if(prepared.operation==='AGENDA')payload.origin='WHATSAPP';payload.notes=changed.notes;if(changed.observation)prepared.summary.push({label:'Observação',value:changed.observation});
+     const message=agendaPreviewReply(prepared);await patch(m,{reply:message,transcript:changed.source});await botDb('rpc/icom_bank_whatsapp_agenda_prepare',{p_id:m.id,p_claim:m.claim_id,p_operation:prepared.operation,p_args:prepared.args,p_summary:prepared.summary,p_source:changed.source});m.reply=message;await reply(b,m);
+    }catch(e){const [current]=await botDb<{status:string}[]>('icom_bank_whatsapp_inbox?id=eq.'+m.id+'&select=status');if(current?.status==='RESOLVIDO')continue;const message='Agenda: '+(e instanceof Error?e.message:'Diga o que deseja corrigir.').slice(0,400)+'\nNada foi salvo. Envie novamente a correção.';await patch(m,{status:'RESOLVIDO',reply:message});m.reply=message;await reply(b,m);}continue;
+   }
+   if(pending&&isAgendaWrite(addressed))await botDb('rpc/icom_bank_whatsapp_agenda_edit',{p_id:m.id,p_claim:m.claim_id,p_draft:pending.id,p_version:pending.version,p_cancel:true,p_finish_message:false});
+
    const [agendaPrevious]=mayBeWhatsAppQuestion(addressed)||isAgendaWrite(addressed)||/\b(?:paguei|gastei|comprei)\b/i.test(addressed)?[]:await botDb<Inbox[]>('icom_bank_whatsapp_inbox?sender=eq.'+m.sender+'&owner_id=eq.'+m.owner_id+'&status=in.(ESCLARECER,RESOLVIDO,LANCADO)&created_at=gt.'+encodeURIComponent(since)+'&created_at=lt.'+encodeURIComponent(m.created_at)+'&order=created_at.desc&limit=1');
    const agendaSource=isAgendaWrite(addressed)?addressed:agendaPrevious?.status==='ESCLARECER'&&agendaPrevious.reply.startsWith('Agenda:')&&agendaPrevious.transcript&&!mayBeWhatsAppQuestion(addressed)&&!/\b(?:paguei|gastei|comprei)\b/i.test(addressed)?agendaPrevious.transcript+'\n'+addressed:addressed;
    if(isAgendaWrite(agendaSource)){
     try{const today=brazilDay(new Date(m.created_at)),draft=await extractFinancial(agendaSource,today,key);if(!['AGENDA','CONTA_PAGAR'].includes(draft.operation))throw new Error('Diga se deseja um compromisso ou uma dívida a pagar, com a data.');
      const prepared=await prepareFinancial(draft,agendaSource,today,async()=>{throw new Error('Agendar não consulta contas bancárias nem movimenta dinheiro.');},m.id);const payload=prepared.args.p_payload as Record<string,unknown>;if(draft.operation==='AGENDA')payload.origin='WHATSAPP';else if(typeof payload.notes==='string')payload.notes=payload.notes.replace('Registro por voz:','Registro por WhatsApp:');
-     const message='Agenda: '+(draft.operation==='AGENDA'?'compromisso registrado. ':'conta a pagar registrada. ')+prepared.summary.map(x=>x.label+': '+x.value).join(' · ')+(draft.operation==='CONTA_PAGAR'?'\nEla aparece na Agenda e em Contas a pagar. Nenhum valor saiu do caixa.':'')+'\nO lembrete chega a partir das 8h pelo WhatsApp conectado.';
-     await patch(m,{reply:message,transcript:agendaSource});await botDb('rpc/icom_bank_whatsapp_agenda_commit',{p_id:m.id,p_claim:m.claim_id,p_operation:draft.operation,p_args:prepared.args});sharedAssistantCache().clear();m.reply=message;await reply(b,m);continue;
+     const message=agendaPreviewReply(prepared);
+     await patch(m,{reply:message,transcript:agendaSource});await botDb('rpc/icom_bank_whatsapp_agenda_prepare',{p_id:m.id,p_claim:m.claim_id,p_operation:draft.operation,p_args:prepared.args,p_summary:prepared.summary,p_source:agendaSource});m.reply=message;await reply(b,m);continue;
     }catch(e){const [current]=await botDb<{status:string}[]>('icom_bank_whatsapp_inbox?id=eq.'+m.id+'&select=status');if(current?.status==='RESOLVIDO')continue;const message='Agenda: '+(e instanceof Error?e.message:'Informe compromisso e data.').slice(0,500)+'\nNada foi agendado. Responda com o dado que faltou.';await patch(m,{status:'ESCLARECER',reply:message,transcript:agendaSource});m.reply=message;await reply(b,m);continue;}
    }
+   if(!pending&&choice){const message='Agenda: não há resumo aguardando confirmação. Envie o compromisso ou pagamento com a data para preparar um novo resumo.';await patch(m,{status:'RESOLVIDO',reply:message});m.reply=message;await reply(b,m);continue;}
    if(mayBeWhatsAppQuestion(addressed)){
     const request=await extractWhatsAppConsultation(addressed,brazilDay(new Date(m.created_at)),key);
     let message:string;

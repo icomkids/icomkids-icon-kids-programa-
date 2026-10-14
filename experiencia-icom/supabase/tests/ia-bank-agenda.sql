@@ -38,7 +38,7 @@ declare b public.icom_bank_whatsapp_bot;m uuid:=gen_random_uuid();cl uuid:=gen_r
 begin
  select * into strict b from public.icom_bank_whatsapp_bot where id=1 and enabled and status='PRONTO';
  insert into public.icom_bank_whatsapp_inbox(id,owner_id,provider_id,sender,type,text,transcript,sent_at,status,claim_id,reply)
- values(m,b.owner_id,'TEST_AGENDA_'||m::text,b.allowed_phones[1],'text','Agenda teste','Agenda teste',now(),'PROCESSANDO',cl,'Agenda: teste');
+ values(m,b.owner_id,'TEST_AGENDA_'||m::text,b.allowed_phones[1],'text','Agenda teste','Agenda teste',now(),'PROCESSANDO',cl,'Agenda: Confira os dados');
  perform set_config('agenda.test_message',m::text,true);perform set_config('agenda.test_claim',cl::text,true);
 end $test$;
 set local role service_role;
@@ -47,8 +47,17 @@ declare m uuid:=current_setting('agenda.test_message')::uuid;cl uuid:=current_se
 begin
  p:=jsonb_build_object('p_expected',null,'p_payload',jsonb_build_object('id',m,'title','TEST WHATSAPP AGENDA ROLLBACK','scope','PESSOAL','due_date',(now() at time zone 'America/Sao_Paulo')::date,'due_time',null,'notes','','status','PENDENTE','origin','WHATSAPP'));
  begin perform public.icom_bank_whatsapp_agenda_commit(m,gen_random_uuid(),'AGENDA',p);raise exception 'Wrong claim accepted';exception when raise_exception then if sqlerrm<>'BANK_FORBIDDEN' then raise;end if;end;
- r:=public.icom_bank_whatsapp_agenda_commit(m,cl,'AGENDA',p);
- perform public.icom_bank_whatsapp_agenda_commit(m,cl,'AGENDA',p);
+ begin perform public.icom_bank_whatsapp_agenda_commit(m,cl,'AGENDA',p);raise exception 'Saved before confirmation';exception when raise_exception then if sqlerrm<>'BANK_AGENDA_CONFIRMATION_REQUIRED' then raise;end if;end;
+ declare draft jsonb;confirm_id uuid:=gen_random_uuid();confirm_claim uuid:=gen_random_uuid();b public.icom_bank_whatsapp_bot;begin
+ select * into strict b from public.icom_bank_whatsapp_bot where id=1;
+ draft:=public.icom_bank_whatsapp_agenda_prepare(m,cl,'AGENDA',p,'[]','Agenda teste');
+ update public.icom_bank_whatsapp_inbox set reply_status='ACEITO' where id=m;
+ insert into public.icom_bank_whatsapp_inbox(id,owner_id,provider_id,sender,type,text,transcript,sent_at,status,claim_id,reply,created_at)
+ values(confirm_id,b.owner_id,'TEST_AGENDA_CONFIRM_'||confirm_id::text,b.allowed_phones[1],'text','1','1',clock_timestamp(),'PROCESSANDO',confirm_claim,'Agenda: confirmado',clock_timestamp()+interval '1 second');
+ r:=public.icom_bank_whatsapp_agenda_confirm(confirm_id,confirm_claim,m,(draft->>'version')::uuid);
+ perform public.icom_bank_whatsapp_agenda_confirm(confirm_id,confirm_claim,m,(draft->>'version')::uuid);
+ m:=confirm_id;cl:=confirm_claim;
+ end;
  if (select count(*) from public.icom_bank_agenda_events where id=m)<>1 then raise exception 'WhatsApp duplicated event';end if;
  if (select status from public.icom_bank_whatsapp_inbox where id=m)<>'RESOLVIDO' then raise exception 'Job not committed';end if;
  begin perform public.icom_bank_whatsapp_read_rows(m,cl,'icom_bank_agenda_events');raise exception 'Completed job retained read capability';exception when insufficient_privilege then null;end;
@@ -57,10 +66,17 @@ begin
  select * into strict b from public.icom_bank_whatsapp_bot where id=1;
  select count(*) into before_count from public.icom_bank_admin_entries;
  insert into public.icom_bank_whatsapp_inbox(id,owner_id,provider_id,sender,type,text,transcript,sent_at,status,claim_id,reply)
- values(debt,b.owner_id,'TEST_AGENDA_DEBT_'||debt::text,b.allowed_phones[1],'text','Debt test','Debt test',now(),'PROCESSANDO',debt_claim,'Agenda: conta teste');
+ values(debt,b.owner_id,'TEST_AGENDA_DEBT_'||debt::text,b.allowed_phones[1],'text','Debt test','Debt test',now(),'PROCESSANDO',debt_claim,'Agenda: Confira os dados');
  args:=jsonb_build_object('p_expected',null,'p_payload',jsonb_build_object('id',debt,'scope','PESSOAL','person','AMBOS','title','TEST WHATSAPP BILL ROLLBACK','category','Agenda','notes','Registro por WhatsApp','amount_cents',10000,'due_date',((now() at time zone 'America/Sao_Paulo')::date+1),'months',1));
- perform public.icom_bank_whatsapp_agenda_commit(debt,debt_claim,'CONTA_PAGAR',args);
- perform public.icom_bank_whatsapp_agenda_commit(debt,debt_claim,'CONTA_PAGAR',args);
+ declare draft jsonb;confirm_id uuid:=gen_random_uuid();confirm_claim uuid:=gen_random_uuid();begin
+ draft:=public.icom_bank_whatsapp_agenda_prepare(debt,debt_claim,'CONTA_PAGAR',args,'[]','Conta teste');
+ update public.icom_bank_whatsapp_inbox set reply_status='ACEITO' where id=debt;
+ insert into public.icom_bank_whatsapp_inbox(id,owner_id,provider_id,sender,type,text,transcript,sent_at,status,claim_id,reply,created_at)
+ values(confirm_id,b.owner_id,'TEST_AGENDA_DEBT_CONFIRM_'||confirm_id::text,b.allowed_phones[1],'text','confirmo','confirmo',clock_timestamp(),'PROCESSANDO',confirm_claim,'Agenda: confirmado',clock_timestamp()+interval '1 second');
+ perform public.icom_bank_whatsapp_agenda_confirm(confirm_id,confirm_claim,debt,(draft->>'version')::uuid);
+ perform public.icom_bank_whatsapp_agenda_confirm(confirm_id,confirm_claim,debt,(draft->>'version')::uuid);
+ debt:=confirm_id;
+ end;
  if (select count(*) from public.icom_bank_payables where id=debt and status='PENDENTE')<>1 or (select count(*) from public.icom_bank_admin_entries)<>before_count then raise exception 'WhatsApp debt changed cash or duplicated';end if;
  end;
  first_job:=public.icom_bank_agenda_notification_claim();

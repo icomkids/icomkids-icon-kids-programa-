@@ -1,3 +1,4 @@
+import {agendaChoice,agendaStatusQuestion,agendaPreviewReply,agendaCorrectedDraft,type AgendaPreview} from '../lib/icom-bank/whatsapp-agenda-confirmation.ts';
 import {extractSimpleAgenda,agendaPaymentScope,agendaScopeQuestion} from '../lib/icom-bank/agenda-commands.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -103,4 +104,27 @@ test('Payment scope cannot be hallucinated by the model and ambiguous appointmen
  assert.equal(extractSimpleAgenda('Agende reunião dia 31 do 2 às 19 horas',today)?.confidence,'BAIXA');
  assert.equal(extractSimpleAgenda('Como faço para agendar uma reunião amanhã?',today),null);
  assert.equal(extractSimpleAgenda('Paguei 250 reais na água da loja hoje',today),null);
+});
+
+const preview=():AgendaPreview=>({id,version:id,operation:'AGENDA',status:'PENDENTE',source:'Agende uma reunião dia 19 do 10 às 19 horas',expires_at:'2026-10-14T23:00:00Z',args:{p_payload:{id,scope:'PESSOAL',title:'Reunião no Via Vale',due_date:'2026-10-19',due_time:'19:00',notes:'Pedido original',status:'PENDENTE',origin:'WHATSAPP'},p_expected:null},summary:[{label:'Data',value:'2026-10-19'},{label:'Horário',value:'19:00'}]});
+test('WhatsApp preview clearly waits for 1/confirmo or 2/edit without treating CPF selection as approval',()=>{
+ const p=preview();const text=agendaPreviewReply({...p,rpc:'icom_bank_save_agenda',destination:'Agenda'});
+ assert.match(text,/19\/10\/2026/);assert.match(text,/1 — Confirmar/);assert.match(text,/2 — Editar/);assert.match(text,/Ainda não foi salvo/);
+ assert.equal(agendaStatusQuestion('Já agendou?'),true);assert.equal(agendaChoice('1'),'CONFIRMAR');assert.equal(agendaChoice('Confirmo!'),'CONFIRMAR');assert.equal(agendaChoice('2'),'EDITAR');assert.equal(agendaChoice('2 — mude para dia 20'),'EDITAR');
+ for(const t of ['1 — água','qual o lucro?','não confirme','2 reais','confirmo amanhã'])assert.equal(agendaChoice(t),null,t);
+});
+test('Editing the day preserves other fields and generates a fresh preview rather than a save',async()=>{
+ const noModel=async()=>{throw Error('Simple day edit must bypass model');};
+ for(const correction of ['mude para dia 20','altere para 2026-10-20']){
+  const result=await agendaCorrectedDraft(preview(),correction,today,'unused',noModel as typeof fetch),p=await prepareFinancial(result.draft,result.source,today,async()=>[],id),v=p.args.p_payload as Record<string,unknown>;
+  assert.equal(v.due_date,'2026-10-20');assert.equal(v.due_time,'19:00');assert.equal(v.title,'Reunião no Via Vale');assert.match(result.notes,/Pedido original/);assert.match(result.notes,/Correção solicitada/);
+ }
+});
+test('Model editing must trace each altered time/value/title to the actual correction',async()=>{
+ const patch={confidence:'ALTA',question:'',title:null,due_date:null,due_date_excerpt:null,due_time:'20:00',due_time_excerpt:'20 horas',clear_time:false,amount_reais:null,amount_excerpt:null,scope:null,notes:null};
+ const transport=async()=>new Response(JSON.stringify({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify(patch)}]}]}),{status:200});
+ const result=await agendaCorrectedDraft(preview(),'o horário é 20 horas',today,'unused',transport as typeof fetch);
+ assert.equal(JSON.parse(result.draft.form).due_time,'20:00');assert.equal(JSON.parse(result.draft.form).due_date,'2026-10-19');
+ patch.due_time='21:00';await assert.rejects(()=>agendaCorrectedDraft(preview(),'o horário é 20 horas',today,'unused',transport as typeof fetch),/Confirme o horário/);
+ await assert.rejects(()=>agendaCorrectedDraft(preview(),'transfira 250 reais',today,'unused',transport as typeof fetch),/manualmente/);
 });
