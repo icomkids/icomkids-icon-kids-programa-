@@ -73,7 +73,7 @@ test('The exact shopping appointment bypasses model questions about scope and ti
  assert.equal(draft.confidence,'ALTA');assert.equal(draft.operation,'AGENDA');
  const prepared=await prepareFinancial(draft,source,today,async()=>{throw Error('No account lookup');},id);
  const p=prepared.args.p_payload as Record<string,unknown>;
- assert.equal(p.due_date,'2026-10-19');assert.equal(p.due_time,'19:00');assert.match(String(p.title),/Via Vale Garden Shopping/);assert.equal(p.scope,'PESSOAL');
+ assert.equal(p.due_date,'2026-10-19');assert.equal(p.due_time,'19:00');assert.equal(p.title,'Compromisso no Via Vale Garden Shopping');assert.equal(p.scope,'PESSOAL');
  assert.ok(!prepared.summary.some(s=>s.label==='Área'));
 });
 test('Actual failed voice transcripts and repeated compatible follow-ups retain place, day and time',async()=>{
