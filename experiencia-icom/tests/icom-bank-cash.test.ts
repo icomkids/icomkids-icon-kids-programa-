@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {cashPosition,saleCash,type CashEntry} from '../lib/icom-bank/cash.ts';
+import {cashPosition,companyCashPosition,capitalOwnerLabel,saleCash,type CashEntry} from '../lib/icom-bank/cash.ts';
 import {adminInput,saleProfit,type AdminEntry} from '../lib/icom-bank/administrative.ts';
 const id='aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa',stamp='2026-10-06T12:00:00Z';
 const sale=(details:AdminEntry['details']={},amount=5000000):CashEntry=>({id,kind:'VENDA',scope:'LOJA',entry_date:'2026-10-06',description:'Venda exemplo',category:'',status:'REALIZADO',amount_cents:amount,active:true,created_at:stamp,updated_at:stamp,details:{vehicle:'Exemplo',purchase_cents:9000000,vehicle_cost_cents:100000,commission_cents:165000,sale_cents:10000000,sale_owner:'INVESTIDOR',investor_name:'Investidor A',trade_in:true,trade_has_debts:false,trade_value_cents:5000000,trade_destination:'INVESTIDOR',trade_investor_name:'Investidor A',...details}});
@@ -44,4 +44,31 @@ test('An unpaid trade debt for a store-retained car remains reserved separately'
 });
 test('Investor loss is debited once when fully collected and remains after return',()=>{
  const e=sale({purchase_cents:10000000},5000000);assert.equal(cashPosition([e]).available,-265000);assert.equal(cashPosition([e,out(5000000,'INVESTIDOR')]).available,-265000);
+});
+
+
+test('Consigned capital uses identical investor arithmetic and cannot inflate company cash before or after return',()=>{
+ const investor=sale(),consigned=sale({capital_owner_type:'CONSIGNADO'}),before=structuredClone(consigned);
+ assert.deepEqual(saleCash(consigned,[consigned]),saleCash(investor,[investor]));
+ assert.equal(capitalOwnerLabel(consigned.details),'Consignado');
+ assert.equal(companyCashPosition([consigned]).consignments,4265000);
+ assert.equal(companyCashPosition([consigned]).investors,0);
+ const paid=out(4265000,'INVESTIDOR'),after=companyCashPosition([consigned,paid]);
+ assert.equal(after.gross,735000);assert.equal(after.investor,0);assert.equal(after.available,735000);
+ assert.deepEqual(consigned,before);
+});
+test('Company cash excludes PF income and costs, subtracts only transferred prolabore and honors actual dated payments',()=>{
+ const e=sale({sale_owner:'LOJA',trade_in:false},1000000),pf:CashEntry={...out(200000),scope:'PESSOAL',kind:'PESSOAL',details:{}};
+ const income:CashEntry={...pf,id:crypto.randomUUID(),kind:'ENTRADA',scope:'LOJA',cash_account_purpose:'RENDA_PESSOAL',amount_cents:600000};
+ const pending={status:'PREVISTO',paid_at:null,amount_cents:300000},done={status:'REALIZADO',paid_at:'2026-10-06',amount_cents:300000};
+ assert.equal(companyCashPosition([e,pf,income],'2026-10-06',[pending]).available,1000000);
+ assert.equal(companyCashPosition([e,pf,income],'2026-10-06',[done]).available,700000);
+ assert.equal(companyCashPosition([e,pf,income],'2026-10-05',[done]).available,0);
+});
+test('Consignment metadata is allowed only on sales and store ownership clears third-party classification',()=>{
+ const e=sale({capital_owner_type:'CONSIGNADO'}),body={...e,expected_updated_at:null,details:{...e.details,trade_vehicle:'Troca',trade_plate:'XYZ1A23',trade_year:2020,payment_method:'PIX'}};
+ assert.equal(adminInput(body).details.capital_owner_type,'CONSIGNADO');
+ assert.throws(()=>adminInput({...body,details:{...body.details,capital_owner_type:'INVALIDO'}}));
+ assert.equal(adminInput({...body,details:{...body.details,sale_owner:'LOJA'}}).details.capital_owner_type,undefined);
+ assert.equal(adminInput({...body,kind:'CUSTO',details:{capital_owner_type:'CONSIGNADO'}}).details.capital_owner_type,undefined);
 });

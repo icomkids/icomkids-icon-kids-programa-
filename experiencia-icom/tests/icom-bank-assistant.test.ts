@@ -148,9 +148,9 @@ test('Cancellation after provider creation immediately hangs up and releases the
 });
 
 test('Quick seller and cash questions read only their own source, including active sellers and investor reserves',async()=>{
- let ledger=0,staff=0;const reader:AssistantReader={rows:async()=>{throw new Error('Unrelated source should not be read');},ledger:async()=>{ledger++;return[sale,personal];},staff:async()=>{staff++;return[{name:'João',role:'VENDEDOR',active:true},{name:'Outro',role:'VENDEDOR',active:true},{name:'Antigo',role:'VENDEDOR',active:false},{name:'Gerente',role:'GERENTE',active:true},{name:'Bruno',role:'OWNER',active:true}];}};
+ let ledger=0,staff=0;const reader:AssistantReader={rows:async path=>{if(!path.startsWith('icom_bank_prolabore?'))throw new Error('Unrelated source should not be read');return [];},ledger:async()=>{ledger++;return[sale,personal];},staff:async()=>{staff++;return[{name:'João',role:'VENDEDOR',active:true},{name:'Outro',role:'VENDEDOR',active:true},{name:'Antigo',role:'VENDEDOR',active:false},{name:'Gerente',role:'GERENTE',active:true},{name:'Bruno',role:'OWNER',active:true}];}};
  const sellers=await readAssistantData(reader,{topic:'vendedores'},'OWNER');const s=sellers.dados as {ativos:number;registros:{nome:string}[]};assert.equal(s.ativos,2);assert.deepEqual(s.registros.map(r=>r.nome),['João','Outro']);assert.equal(ledger,0);assert.equal(staff,1);
- const cash=await readAssistantData(reader,{topic:'caixa'},'OWNER','2026-10-07');const c=cash.dados as {saldo_livre:{centavos:number};reservado_investidores:{centavos:number}};assert.equal(c.saldo_livre.centavos,335000);assert.equal(c.reservado_investidores.centavos,4265000);assert.equal(ledger,1);assert.equal(staff,1);
+ const cash=await readAssistantData(reader,{topic:'caixa'},'OWNER','2026-10-07');const c=cash.dados as {saldo_livre:{centavos:number};reservado_investidores:{centavos:number}};assert.equal(c.saldo_livre.centavos,735000);assert.equal(c.reservado_investidores.centavos,4265000);assert.equal(ledger,1);assert.equal(staff,1);
  await assert.rejects(readAssistantData(reader,{topic:'vendedores'},'VENDEDOR'),/não tem acesso/);
 });
 

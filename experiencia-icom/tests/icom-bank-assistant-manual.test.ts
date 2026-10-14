@@ -34,7 +34,7 @@ test('Manual follows form stages, uses real labels, and does not invent supplier
  const paid=readManual({topic:'pagar_conta'},'pagar_conta_form','OWNER');assert.equal(paid.suggested_step,3);assert.match(paid.notes.join(' '),/não executa Pix/);
  for(const [topic,file,labels] of [
   ['cliente','BankAdminForm',['SALVAR VENDA','Nome do cliente']],
-  ['investidor','BankInvestors',['SALVAR INVESTIDOR','+ CADASTRAR INVESTIDOR']],
+  ['investidor','BankInvestors',['SALVAR PESSOA','+ CADASTRAR PESSOA']],
   ['funcionario','BankStaff',['REVISAR AUTORIZAÇÃO','CONFIRMAR AUTORIZAÇÃO']],
   ['relatorio','BankReports',['Aplicar período','EXPORTAR CSV']],
  ] as const){const text=readManual({topic},'dashboard','OWNER').steps.map(s=>s.text).join(' '),component=source('components/icom-bank/'+file+'.tsx');for(const label of labels){assert.ok(text.includes(label));assert.ok(component.includes(label));}}
@@ -54,3 +54,13 @@ test('Manual endpoint uses server-authenticated role and voice lease, with no fi
 });
 
 test('Owner sale guide follows free stages while finance onboarding keeps its own instructions',()=>{const saleGuide=readManual({topic:'venda'},'venda_veiculo','OWNER');assert.equal(saleGuide.suggested_step,3);assert.match(saleGuide.steps.map(s=>s.text).join(' '),/opcionais|sem concluir/);assert.match(readManual({topic:'cliente'},'cliente_novo','OWNER').steps.map(s=>s.text).join(' '),/CPF válido/);assert.match(readManual({topic:'venda'},'venda_form','OWNER').steps.map(s=>s.text).join(' '),/SALVAR LANÇAMENTO/);});
+
+
+test('Capital payout manual uses the actual cash screen and never instructs a bank transfer',()=>{
+ const guide=readManual({topic:'repasse_capital'},'caixa_empresa','OWNER'),text=guide.steps.map(s=>s.text).join(' ');
+ const component=source('components/icom-bank/BankCompanyCash.tsx');
+ for(const label of ['Já paguei · registrar repasse','Confirmar repasse pago']){assert.ok(text.includes(label));assert.ok(component.includes(label));}
+ assert.match(guide.notes.join(' '),/capital já fica reservado/);
+ assert.equal(readManual({topic:'repasse_capital'},'dashboard','VENDEDOR').available,false);
+ assert.equal(manualViewFromPath('/experiencia-icom/icom-bank/administrativo/caixa','OWNER'),'caixa_empresa');
+});

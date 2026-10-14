@@ -57,3 +57,18 @@ export function cashPosition(rows:CashEntry[],cutoff='2100-12-31'){
  const investor=sum('investor'),capital=sum('capital'),costs=sum('costs'),review=sum('review'),loss=sum('loss');
  return {gross:stats.combined,investor,capital,costs,review,loss,available:stats.combined-investor-capital-costs-review+sales.reduce((n,s)=>n+s.lossAdjustment,0),sales,reviewCount:sales.filter(s=>s.reviewNeeded).length};
 }
+
+
+// Consignments share the existing third-party capital math, keeping historical
+// investor records and all linked payments compatible.
+export function capitalOwnerLabel(d:AdminEntry['details']){
+ return d.sale_owner==='LOJA'?'Loja':d.sale_owner==='INVESTIDOR'?(d.capital_owner_type==='CONSIGNADO'?'Consignado':'Investidor'):'Dono a conferir';
+}
+export function companyCashPosition(rows:CashEntry[],cutoff='2100-12-31',prolabore:readonly {status:string;paid_at:string|null;amount_cents:number}[]=[]){
+ const company=rows.filter(e=>e.scope==='LOJA'&&e.cash_account_purpose!=='RENDA_PESSOAL');
+ const cash=cashPosition(company,cutoff);
+ const transferred=prolabore.filter(p=>p.status==='REALIZADO'&&p.paid_at!==null&&p.paid_at<=cutoff).reduce((n,p)=>n+Number(p.amount_cents),0);
+ const byId=new Map(company.map(e=>[e.id,e]));
+ const consignments=cash.sales.filter(s=>byId.get(s.id)?.details.capital_owner_type==='CONSIGNADO').reduce((n,s)=>n+s.investor,0);
+ return {...cash,gross:cash.gross-transferred,available:cash.available-transferred,consignments,investors:cash.investor-consignments,prolabore:transferred};
+}

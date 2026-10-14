@@ -158,3 +158,5 @@
 .bank-app:not([data-bank-theme=light]) .bank-wa-status.connected :is(p,strong){color:#9cebc9}
 .bank-app:not([data-bank-theme=light]) .bank-wa-help blockquote{background:#10352f;color:#d4f7e9;border-left-color:#70d2ab}
 .bank-app .bank-wa-qr p{color:#29465c}
+
+.ia-company-summary .ia-priority-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.bank-company-settlement{margin-top:22px}.bank-company-settlement td{vertical-align:top}.bank-company-settlement td small{display:block;margin-top:6px}.bank-capital-paid{color:#87dcc3}.bank-capital-pending{color:#f2d19b}@media(max-width:1200px){.ia-company-summary .ia-priority-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:700px){.ia-company-summary .ia-priority-grid{grid-template-columns:1fr}}

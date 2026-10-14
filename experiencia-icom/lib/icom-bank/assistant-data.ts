@@ -8,7 +8,7 @@ import {realDate} from './contracts.ts';
 import {adminStats,saleProfit} from './administrative.ts';
 import {wealthSummary,type WealthRecord} from './personal-wealth.ts';
 import {financialOverview} from './financial-overview.ts';
-import {cashPosition,type CashEntry} from './cash.ts';
+import {cashPosition,companyCashPosition,type CashEntry} from './cash.ts';
 import {payableState,type Payable} from './payables.ts';
 import {receivableState,receivableRemaining,type Receivable} from './receivables.ts';
 import type {StockRow} from './stock.ts';
@@ -64,7 +64,7 @@ export async function readAssistantData(reader:AssistantReader,raw:unknown,role:
  }
  if(input.topic==='resultado_empresa'){
   const entries=await reader.ledger();const s=financialOverview(entries,[],'',today,{from:input.from,to:input.to});
-  return result({entradas_de_lucro:money(s.earnings),gastos_operacionais:money(s.costs),despesas_pessoais:money(s.personal),resultado_empresa:money(s.company),resultado_apos_pessoais:money(s.real),caixa_livre_acumulado:money(s.cash.available),regra:'Mesmo resumo da Visão Geral. Lucro do carro já desconta compra, custos e comissão. Baixas desses mesmos custos e capital de investidores não são outra despesa. Caixa é separado do lucro.'});
+  return result({entradas_de_lucro:money(s.earnings),gastos_operacionais:money(s.costs),despesas_pessoais:money(s.personal),resultado_empresa:money(s.company),resultado_apos_pessoais:money(s.real),regra:'Mesmo resumo da Visão Geral. Lucro do carro já desconta compra, custos e comissão. Baixas desses mesmos custos e capital de investidores não são outra despesa. Caixa é separado do lucro.'});
  }
  if(input.topic==='despesas_pessoais'){
   if(input.scope==='LOJA')throw new AssistantDataError('Esta consulta é de despesas pessoais.');
@@ -80,8 +80,8 @@ export async function readAssistantData(reader:AssistantReader,raw:unknown,role:
   return result({...list(rows.map(e=>({data:e.entry_date,tipo:e.kind,area:e.scope,descricao:text(e.description),categoria:text(e.category),placa:text(e.details.plate,7),valor:e.amount_cents===null?'Valor não informado':money(Number(e.amount_cents)),situacao:e.status})),input),total_despesas_loja:money(stats.expenses),total_despesas_pessoais:money(stats.personal),total_entradas:money(stats.income),total_previsto:money(stats.planned),sem_valor:stats.missing,regra:'Totais de todos os registros do filtro, sem limitar à página. Despesas de retorno incluem impostos e repasses; valor de retorno não é todo despesa. Lançamentos são registros, não extrato bancário.'});
  }
  if(input.topic==='caixa'){
-  const entries=await reader.ledger(),cutoff=input.period==='total'?today:input.to,cash=cashPosition(entries,cutoff);
-  return result({data_corte:cutoff,saldo_livre:money(cash.available),saldo_registrado:money(cash.gross),reservado_investidores:money(cash.investor),reservado_capital:money(cash.capital),reservado_custos:money(cash.costs),aguardando_revisao:money(cash.review),observacao:'Saldo livre acumulado até a data de corte, descontadas as reservas. Não é consulta ao saldo bancário.'});
+  const [entries,prolabore]=await Promise.all([reader.ledger(),readRows(reader,'icom_bank_prolabore','*','paid_at.desc,id.asc')]);const cutoff=input.period==='total'?today:input.to,cash=companyCashPosition(entries,cutoff,prolabore as unknown as ProlaboreRecord[]);
+  return result({data_corte:cutoff,saldo_livre:money(cash.available),saldo_registrado:money(cash.gross),reservado_investidores:money(cash.investors),reservado_consignados:money(cash.consignments),reservado_capital:money(cash.capital),reservado_custos:money(cash.costs),aguardando_revisao:money(cash.review),prolabore_transferido:money(cash.prolabore),observacao:'Caixa dos registros da empresa, acumulado até a data de corte. Exclui capital de investidores e consignantes antes do pagamento; registrar o repasse baixa o dinheiro e a reserva juntos, sem descontar o lucro novamente. PF é separada. Não consulta o saldo bancário.'});
  }
  if(input.topic==='administrativo'||input.topic==='contas_pagar'){
   const [entries,payables,stocks]=await Promise.all([reader.ledger(),readRows(reader,'icom_bank_payables','id,stock_id,kind,scope,person,title,amount_cents,due_date,active,status,paid_at,created_at','due_date.asc,id.asc'),readRows(reader,'icom_bank_stock_vehicles','id,active,status')]);

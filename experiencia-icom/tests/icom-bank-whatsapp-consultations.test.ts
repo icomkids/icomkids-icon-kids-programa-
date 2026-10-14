@@ -46,3 +46,14 @@ test('WhatsApp list pagination preserves the reader order and never changes sour
  assert.deepEqual(sortWhatsAppRows(rows,'icom_bank_investors?select=id,name&order=name.asc,id.asc').map(r=>(r as {name:string}).name),['Ana','Zeca']);assert.deepEqual(rows,before);
  const input=quickWhatsAppConsultation('Qual é o lucro hoje?',today);assert.equal(input?.mode,'CONSULTA');if(input?.mode==='CONSULTA'){assert.equal(input.input.from,today);assert.equal(input.input.to,today);}
 });
+
+
+test('Profit reply never appends cash; company cash separates third-party reserves and PF',async()=>{
+ const sale={id:crypto.randomUUID(),kind:'VENDA',scope:'LOJA',entry_date:today,description:'Venda',category:'',status:'REALIZADO',active:true,amount_cents:10000000,details:{sale_owner:'INVESTIDOR',capital_owner_type:'CONSIGNADO',investor_name:'Consignante',trade_in:false,purchase_cents:8000000,vehicle_cost_cents:100000,commission_cents:165000,sale_cents:10000000}} as CashEntry;
+ const reader={ledger:async()=>[sale],rows:async()=>[],staff:async()=>[]};
+ const profit=await readAssistantData(reader,{topic:'resultado_empresa'},'OWNER',today);
+ assert.equal('caixa_livre_acumulado' in (profit.dados as Record<string,unknown>),false);
+ const cash=await readAssistantData(reader,{topic:'caixa'},'OWNER',today);
+ const d=cash.dados as {saldo_livre:{centavos:number};reservado_consignados:{centavos:number}};
+ assert.equal(d.saldo_livre.centavos,1735000);assert.equal(d.reservado_consignados.centavos,8265000);
+});
