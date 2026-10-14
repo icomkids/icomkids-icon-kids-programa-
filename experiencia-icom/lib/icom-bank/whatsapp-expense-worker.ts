@@ -1,3 +1,4 @@
+import {isAgendaWrite} from './agenda';
 import {readAssistantData,type AssistantReader} from './assistant-data';
 import {extractWhatsAppConsultation,mayBeWhatsAppQuestion,whatsappReadReply,whatsappManualReply,sortWhatsAppRows} from './whatsapp-consultations';
 import {botAssistantName} from './preferences-server';
@@ -49,6 +50,15 @@ export async function processExpenses(){
     await patch(m,{status:'RESOLVIDO',reply:message});m.reply=message;await reply(b,m);continue;
    }
    const addressed=addressAssistant(transcript,await botAssistantName(m.owner_id));
+   const [agendaPrevious]=mayBeWhatsAppQuestion(addressed)||isAgendaWrite(addressed)||/\b(?:paguei|gastei|comprei)\b/i.test(addressed)?[]:await botDb<Inbox[]>('icom_bank_whatsapp_inbox?sender=eq.'+m.sender+'&owner_id=eq.'+m.owner_id+'&status=in.(ESCLARECER,RESOLVIDO,LANCADO)&created_at=gt.'+encodeURIComponent(since)+'&created_at=lt.'+encodeURIComponent(m.created_at)+'&order=created_at.desc&limit=1');
+   const agendaSource=isAgendaWrite(addressed)?addressed:agendaPrevious?.status==='ESCLARECER'&&agendaPrevious.reply.startsWith('Agenda:')&&agendaPrevious.transcript&&!mayBeWhatsAppQuestion(addressed)&&!/\b(?:paguei|gastei|comprei)\b/i.test(addressed)?agendaPrevious.transcript+'\n'+addressed:addressed;
+   if(isAgendaWrite(agendaSource)){
+    try{const today=brazilDay(new Date(m.created_at)),draft=await extractFinancial(agendaSource,today,key);if(!['AGENDA','CONTA_PAGAR'].includes(draft.operation))throw new Error('Diga se deseja um compromisso ou uma dívida a pagar, com a data.');
+     const prepared=await prepareFinancial(draft,agendaSource,today,async()=>{throw new Error('Agendar não consulta contas bancárias nem movimenta dinheiro.');},m.id);const payload=prepared.args.p_payload as Record<string,unknown>;if(draft.operation==='AGENDA')payload.origin='WHATSAPP';else if(typeof payload.notes==='string')payload.notes=payload.notes.replace('Registro por voz:','Registro por WhatsApp:');
+     const message='Agenda: '+(draft.operation==='AGENDA'?'compromisso registrado. ':'conta a pagar registrada. ')+prepared.summary.map(x=>x.label+': '+x.value).join(' · ')+(draft.operation==='CONTA_PAGAR'?'\nEla aparece na Agenda e em Contas a pagar. Nenhum valor saiu do caixa.':'')+'\nO lembrete chega a partir das 8h pelo WhatsApp conectado.';
+     await patch(m,{reply:message,transcript:agendaSource});await botDb('rpc/icom_bank_whatsapp_agenda_commit',{p_id:m.id,p_claim:m.claim_id,p_operation:draft.operation,p_args:prepared.args});sharedAssistantCache().clear();m.reply=message;await reply(b,m);continue;
+    }catch(e){const [current]=await botDb<{status:string}[]>('icom_bank_whatsapp_inbox?id=eq.'+m.id+'&select=status');if(current?.status==='RESOLVIDO')continue;const message='Agenda: '+(e instanceof Error?e.message:'Informe compromisso e data.').slice(0,500)+'\nNada foi agendado. Responda com o dado que faltou.';await patch(m,{status:'ESCLARECER',reply:message,transcript:agendaSource});m.reply=message;await reply(b,m);continue;}
+   }
    if(mayBeWhatsAppQuestion(addressed)){
     const request=await extractWhatsAppConsultation(addressed,brazilDay(new Date(m.created_at)),key);
     let message:string;
@@ -92,7 +102,7 @@ export async function processExpenses(){
    const msg=e instanceof Error?e.message:'Não consegui interpretar. Envie novamente a despesa e o valor.';
    // Never overwrite an atomic commit when only its HTTP acknowledgement or WhatsApp delivery failed.
    const [current]=await botDb<{status:string}[]>('icom_bank_whatsapp_inbox?id=eq.'+m.id+'&select=status');
-   if(current?.status==='LANCADO')continue;
+   if(current?.status==='LANCADO'||current?.status==='RESOLVIDO')continue;
    const message=msg.slice(0,600)+(mayBeWhatsAppQuestion(transcript)?'\nNenhum lançamento foi criado. Informe o painel, o filtro e o período para consultar novamente.':'\nNada foi lançado. Responda com os dados que faltam ou envie uma nova despesa completa.');
    await patch(m,{status:msg.includes('Não foi possível concluir')?'ERRO':'ESCLARECER',transcript,reply:message});m.reply=message;await reply(b,m);
   }
