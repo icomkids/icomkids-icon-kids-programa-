@@ -73,3 +73,9 @@
 @media(max-width:800px){.bank-app .bank-header{height:236px;padding:0 18px 16px;align-items:flex-end}.bank-app .bank-voice-launch{top:10px;right:12px;width:144px;gap:5px}.bank-voice-launch .bank-ai-orb{width:78px;height:78px}.bank-voice-launch strong{font-size:11px}.bank-voice-launch small{font-size:9px}.bank-ai-label{padding:4px 10px 6px}.bank-content>.bank-heading{padding-right:0}.bank-voice-dialog{inset:20px 12px auto auto;max-height:calc(100dvh - 40px);width:calc(100vw - 24px)}.bank-voice-panel{padding:20px}.bank-voice-stage{padding-top:14px}.bank-voice-halo{height:170px}}
 @media(prefers-reduced-motion:reduce){.bank-voice-dialog *,.bank-voice-launch,.bank-voice-launch *,.bank-ai-orb::before{animation:none!important;transition:none!important}}
 @media(max-width:800px){.bank-voice-dialog{inset:auto 12px 16px auto;max-height:65dvh}.bank-voice-panel>header{position:sticky;top:-20px;z-index:2;padding:10px 0;background:#fff}.bank-voice-stage .bank-ai-orb{width:67px;height:67px}.bank-voice-halo{height:118px}}
+
+.bank-app .bank-assistant-dock{position:fixed;z-index:35;top:9px;right:20px;width:190px;display:flex;flex-direction:column;align-items:center;gap:12px}
+.bank-app .bank-assistant-dock .bank-voice-launch{position:relative;top:auto;right:auto;width:100%;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+.bank-app .bank-assistant-dock.is-dragging .bank-voice-launch{cursor:grabbing}
+.bank-app .bank-assistant-dock .bank-ai-report-open{position:static;width:175px}
+@media(max-width:800px){.bank-app .bank-assistant-dock{top:10px;right:12px;width:144px;gap:8px}.bank-app .bank-assistant-dock .bank-ai-report-open{width:144px}}

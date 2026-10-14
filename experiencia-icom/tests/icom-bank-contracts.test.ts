@@ -1,3 +1,5 @@
+import {saleContractSeed} from '../lib/icom-bank/sale-contract.ts';
+import type {AdminEntry} from '../lib/icom-bank/administrative.ts';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {moneyInput,contractInput,installmentPlan,realDate,type FinanceInput} from '../lib/icom-bank/contracts.ts';
@@ -14,4 +16,11 @@ test('Optional vehicle details do not block a sale or weaken financial validatio
  for(const plate of ['ABC1234','TTQ9F92'])assert.equal(contractInput({...body,vehicle:{plate}},'2026-10-03').vehicle.plate,plate);
  for(const vehicle of [{plate:'INVALIDA'},{chassis:'abc'},{renavam:'123'},{brand:'F'}])assert.throws(()=>contractInput({...body,vehicle},'2026-10-03'));
  for(const changed of [{installment_cents:1},{count:0},{down_payment_cents:1000000},{sale_date:'2026-10-04'}])assert.throws(()=>contractInput({...body,finance:{...finance,...changed}},'2026-10-03'));
+});
+
+test('Boleto próprio finances only the unpaid difference and does not count a trade or initial cash twice',()=>{
+ const s:AdminEntry={id:'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa',kind:'VENDA',scope:'LOJA',entry_date:'2026-10-14',description:'Venda teste',category:'Venda de veículo',status:'REALIZADO',amount_cents:2000000,active:true,created_at:'',updated_at:'2026-10-14T12:00:00Z',details:{sale_cents:10200000,payment_method:'BOLETO_PROPRIO',trade_in:true,trade_value_cents:5000000,trade_has_debts:true,trade_ipva_cents:500000,trade_fines_cents:0,trade_has_payoff:false}};
+ const p=saleContractSeed(s,100000);assert.equal(p.remaining_cents,3600000);assert.equal(p.down_payment_cents,6600000);assert.equal(p.price_cents,10200000);assert.equal(s.amount_cents,2000000);
+ for(const patch of [{active:false},{status:'PREVISTO'},{details:{...s.details,payment_method:'PIX'}}])assert.throws(()=>saleContractSeed({...s,...patch} as AdminEntry));
+ assert.throws(()=>saleContractSeed(s,3700000));assert.throws(()=>saleContractSeed(s,-1));
 });

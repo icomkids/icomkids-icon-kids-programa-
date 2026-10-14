@@ -117,7 +117,7 @@ export function adminInput(body:Record<string,unknown>){
   }
   const settlement=adminSaleSettlement(Number(details.sale_cents),details);
   if(Number(amount_cents)>settlement.remaining)throw new Error('O valor recebido supera o restante após a troca.');
-  if(!['PIX','DINHEIRO','CARTAO','FINANCIAMENTO','SEM_DIFERENCA'].includes(details.payment_method||''))throw new Error('Selecione a forma de pagamento.');
+  if(!['PIX','DINHEIRO','CARTAO','FINANCIAMENTO','BOLETO_PROPRIO','SEM_DIFERENCA'].includes(details.payment_method||''))throw new Error('Selecione a forma de pagamento.');
   if(details.payment_method==='SEM_DIFERENCA'&&settlement.remaining!==0)throw new Error('Existe uma diferença a pagar. Selecione a forma de pagamento.');
   if(details.payment_method==='FINANCIAMENTO'){
    if(!details.payment_bank||!validVehicleBank(details.payment_bank)||details.payment_bank==='OUTRO'&&!details.payment_bank_other)throw new Error('Selecione o banco do financiamento.');
