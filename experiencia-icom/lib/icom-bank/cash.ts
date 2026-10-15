@@ -1,3 +1,4 @@
+import {ownerSettlement} from './owner-settlement.ts';
 import {adminSaleSettlement,adminStats,saleProfit,type AdminEntry} from './administrative.ts';
 
 export const tradeDestinations={REPASSE:'Repasse',LOJA:'Loja · ICOM Motors',INVESTIDOR:'Investidor'} as const;
@@ -38,11 +39,12 @@ export function saleCash(sale:AdminEntry,rows:CashEntry[],cutoff='2100-12-31'):S
  const capitalForwarded=repasse&&originId&&active.some(e=>e.id===originId&&e.kind==='VENDA'&&e.details.sale_owner==='INVESTIDOR');
  const trade=adminSaleSettlement(Number(d.sale_cents||0),d);
  const sameInvestor=sameTradeInvestor(d);
- const principal=investor?Math.max(0,Number(d.sale_cents||0)-profit-(sameInvestor?trade.credit:0)-costPaid-(sameInvestor?debtPaid:0)):repasse?Math.max(0,Number(d.purchase_cents||0)):0;
+ const owner=ownerSettlement(d);
+ const principal=investor?Math.max(0,owner.target-(sameInvestor?trade.credit:0)-(owner.explicit?0:costPaid)-(sameInvestor?debtPaid:0)):repasse?Math.max(0,Number(d.purchase_cents||0)):0;
  const principalPaid=investor?returned:capitalPaid;
  const debtReserve=investor&&sameInvestor?0:Math.max(0,trade.debt-debtPaid);
  const held=capitalForwarded?0:Math.min(Math.max(0,received-principalPaid-(investor?costPaid+debtPaid+debtReserve:0)),Math.max(0,principal-principalPaid));
- const costTarget=(repasse?Math.max(0,Number(d.vehicle_cost_cents||0)+Number(d.commission_cents||0)-costPaid):0)+debtReserve;
+ const costTarget=(repasse||investor&&owner.explicit?Math.max(0,Number(d.vehicle_cost_cents||0)+Number(d.commission_cents||0)-costPaid):0)+debtReserve;
  const forwarded=capitalForwarded?Math.min(received,principal):0;
  const budget=received-principalPaid-held-costPaid-debtPaid-forwarded;
  const costs=Math.min(Math.max(0,budget),costTarget);
