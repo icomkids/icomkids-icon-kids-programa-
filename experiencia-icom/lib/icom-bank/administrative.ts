@@ -15,9 +15,31 @@ export function adminMoneyInput(value:string){
  return cents;
 }
 export const adminMoneyText=(cents:number)=>new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}).format(cents/100);
+export const saleServiceFields=[
+ {key:'documentation',label:'Documentação',question:'Vendeu documentação?'},
+ {key:'inspection',label:'Perícia cautelar',question:'Vendeu perícia cautelar?'},
+] as const;
+// Stored sale/cost totals include services once. Their breakdown lets the form
+// recover the original vehicle figures without changing legacy financial consumers.
+export function saleServices(details:AdminDetails){
+ const rows=saleServiceFields.map(s=>{const sold=details[`${s.key}_sold`]===true,cost=sold?Number(details[`${s.key}_cost_cents`]||0):0,sale=sold?Number(details[`${s.key}_sale_cents`]||0):0;return {...s,sold,cost,sale,profit:sale-cost};});
+ return {rows,cost:rows.reduce((n,r)=>n+r.cost,0),sale:rows.reduce((n,r)=>n+r.sale,0),profit:rows.reduce((n,r)=>n+r.profit,0)};
+}
+export function saleFormDetails(details:AdminDetails){
+ const result:Record<string,string>={};for(const [key,v] of Object.entries(details))result[key]=typeof v==='number'&&key.endsWith('_cents')?adminMoneyText(v):String(v);
+ const services=saleServices(details);
+ if(details.sale_cents!==undefined)result.sale_cents=adminMoneyText(details.sale_cents-services.sale);
+ if(details.vehicle_cost_cents!==undefined)result.vehicle_cost_cents=adminMoneyText(details.vehicle_cost_cents-services.cost);
+ return result;
+}
+export function saleServiceInput(values:Record<string,string>):AdminDetails{
+ const details:AdminDetails={};for(const s of saleServiceFields){const sold=values[`${s.key}_sold`]==='true';details[`${s.key}_sold`]=sold;if(sold){details[`${s.key}_cost_cents`]=adminMoneyInput(values[`${s.key}_cost_cents`]||'0');details[`${s.key}_sale_cents`]=adminMoneyInput(values[`${s.key}_sale_cents`]||'0');}}return details;
+}
 export function adminSaleCalculation(values:Record<string,string>){
  const purchase=adminMoneyInput(values.purchase_cents||'0'),cost=adminMoneyInput(values.vehicle_cost_cents||'0'),commission=adminMoneyInput(values.commission_cents||'0'),sale=adminMoneyInput(values.sale_cents||'0');
- return {purchase,cost,commission,sale,total:purchase+cost+commission,profit:sale-purchase-cost-commission};
+ const serviceDetails=saleServiceInput(values),services=saleServices(serviceDetails),total=purchase+cost+commission+services.cost,revenue=sale+services.sale;
+ if(cost+services.cost>1000000000||revenue>1000000000)throw new Error('O total da venda ou dos custos supera o limite permitido.');
+ return {purchase,cost,commission,sale:revenue,vehicleSale:sale,services,serviceDetails,total,profit:revenue-total};
 }
 export type SaleReceipt='INTEGRAL'|'PARCIAL'|'PENDENTE';
 export function adminSaleSettlement(sale:number,details:AdminDetails){
@@ -39,14 +61,14 @@ export const adminKinds=['VENDA','ENTRADA','CUSTO','RETORNO','TROCA','MENSAL','P
 export type AdminKind=(typeof adminKinds)[number];
 export type AdminScope='LOJA'|'PESSOAL';
 export type AdminStatus='PREVISTO'|'REALIZADO';
-export type AdminDetails={customer_name?:string;customer_cpf?:string;customer_phone?:string;customer_email?:string;investor_id?:string;trade_investor_id?:string;sale_owner?:'LOJA'|'INVESTIDOR';capital_owner_type?:'INVESTIDOR'|'CONSIGNADO';investor_name?:string;trade_destination?:'LOJA'|'REPASSE'|'INVESTIDOR';trade_investor_name?:string;sale_mode?:'NORMAL'|'REPASSE';sale_cost_id?:string;settlement_part?:'CUSTOS'|'INVESTIDOR'|'CAPITAL';stock_id?:string;vehicle_spec?:VehicleSpec;trade_spec?:VehicleSpec;trade_in?:boolean;trade_has_debts?:boolean;trade_has_payoff?:boolean;trade_plate?:string;trade_year?:number;trade_value_cents?:number;trade_ipva_cents?:number;trade_fines_cents?:number;trade_payoff_cents?:number;trade_payoff_bank?:string;trade_payoff_bank_other?:string;payment_bank?:string;payment_bank_other?:string;vehicle?:string;trade_vehicle?:string;plate?:string;seller?:string;bank?:string;return_level?:number;notes?:string;payment_method?:string;trip_name?:string;expense_audience?:ExpenseAudience;expense_nature?:ExpenseNature;purchase_cents?:number;vehicle_cost_cents?:number;commission_cents?:number;sale_cents?:number;financed_cents?:number;tax_cents?:number;manager_cents?:number;seller_cents?:number;paid_cents?:number;debt_cents?:number;document_cents?:number;cc_cents?:number;discount_cents?:number;division_cents?:number;profit_share_cents?:number;due_day?:number};
+export type AdminDetails={documentation_sold?:boolean;documentation_cost_cents?:number;documentation_sale_cents?:number;inspection_sold?:boolean;inspection_cost_cents?:number;inspection_sale_cents?:number;customer_name?:string;customer_cpf?:string;customer_phone?:string;customer_email?:string;investor_id?:string;trade_investor_id?:string;sale_owner?:'LOJA'|'INVESTIDOR';capital_owner_type?:'INVESTIDOR'|'CONSIGNADO';investor_name?:string;trade_destination?:'LOJA'|'REPASSE'|'INVESTIDOR';trade_investor_name?:string;sale_mode?:'NORMAL'|'REPASSE';sale_cost_id?:string;settlement_part?:'CUSTOS'|'INVESTIDOR'|'CAPITAL';stock_id?:string;vehicle_spec?:VehicleSpec;trade_spec?:VehicleSpec;trade_in?:boolean;trade_has_debts?:boolean;trade_has_payoff?:boolean;trade_plate?:string;trade_year?:number;trade_value_cents?:number;trade_ipva_cents?:number;trade_fines_cents?:number;trade_payoff_cents?:number;trade_payoff_bank?:string;trade_payoff_bank_other?:string;payment_bank?:string;payment_bank_other?:string;vehicle?:string;trade_vehicle?:string;plate?:string;seller?:string;bank?:string;return_level?:number;notes?:string;payment_method?:string;trip_name?:string;expense_audience?:ExpenseAudience;expense_nature?:ExpenseNature;purchase_cents?:number;vehicle_cost_cents?:number;commission_cents?:number;sale_cents?:number;financed_cents?:number;tax_cents?:number;manager_cents?:number;seller_cents?:number;paid_cents?:number;debt_cents?:number;document_cents?:number;cc_cents?:number;discount_cents?:number;division_cents?:number;profit_share_cents?:number;due_day?:number};
 export type AdminEntry={repasse?:import('./repasse.ts').RepasseRecord;id:string;kind:AdminKind;scope:AdminScope;entry_date:string;description:string;category:string;status:AdminStatus;amount_cents:number|null;details:AdminDetails;active:boolean;created_at:string;updated_at:string};
 export type AdminReference={closing:{source:string;period:string|null;income_cents:number;expense_cents:number;subtotal_cents:number;returns_cents:number;personal_cents:number};monthly:{label:string;due_day:number}[];sources:{file:string;purpose:string}[]};
 
-const moneyKeys=['trade_value_cents','trade_ipva_cents','trade_fines_cents','trade_payoff_cents','purchase_cents','vehicle_cost_cents','commission_cents','sale_cents','financed_cents','tax_cents','manager_cents','seller_cents','paid_cents','debt_cents','document_cents','cc_cents','discount_cents','division_cents','profit_share_cents'] as const;
+const moneyKeys=['documentation_cost_cents','documentation_sale_cents','inspection_cost_cents','inspection_sale_cents','trade_value_cents','trade_ipva_cents','trade_fines_cents','trade_payoff_cents','purchase_cents','vehicle_cost_cents','commission_cents','sale_cents','financed_cents','tax_cents','manager_cents','seller_cents','paid_cents','debt_cents','document_cents','cc_cents','discount_cents','division_cents','profit_share_cents'] as const;
 const textKeys=['capital_owner_type','customer_name','customer_cpf','customer_phone','customer_email','investor_id','trade_investor_id','sale_owner','investor_name','trade_destination','trade_investor_name','sale_mode','sale_cost_id','settlement_part','stock_id','trade_plate','trade_payoff_bank','trade_payoff_bank_other','payment_bank','payment_bank_other','vehicle','trade_vehicle','plate','seller','bank','notes','payment_method','trip_name','expense_audience','expense_nature'] as const;
 const allowed:Record<AdminKind,readonly (keyof AdminDetails)[]>={
- VENDA:['capital_owner_type','customer_name','customer_cpf','customer_phone','customer_email','investor_id','trade_investor_id','sale_owner','investor_name','trade_destination','trade_investor_name','sale_mode','stock_id','vehicle_spec','trade_spec','trade_in','trade_has_debts','trade_has_payoff','trade_plate','trade_year','trade_value_cents','trade_ipva_cents','trade_fines_cents','trade_payoff_cents','trade_payoff_bank','trade_payoff_bank_other','payment_bank','payment_bank_other','vehicle','trade_vehicle','plate','seller','purchase_cents','vehicle_cost_cents','commission_cents','sale_cents','notes','payment_method'],
+ VENDA:['documentation_sold','documentation_cost_cents','documentation_sale_cents','inspection_sold','inspection_cost_cents','inspection_sale_cents','capital_owner_type','customer_name','customer_cpf','customer_phone','customer_email','investor_id','trade_investor_id','sale_owner','investor_name','trade_destination','trade_investor_name','sale_mode','stock_id','vehicle_spec','trade_spec','trade_in','trade_has_debts','trade_has_payoff','trade_plate','trade_year','trade_value_cents','trade_ipva_cents','trade_fines_cents','trade_payoff_cents','trade_payoff_bank','trade_payoff_bank_other','payment_bank','payment_bank_other','vehicle','trade_vehicle','plate','seller','purchase_cents','vehicle_cost_cents','commission_cents','sale_cents','notes','payment_method'],
  ENTRADA:['notes','payment_method'],CUSTO:['sale_cost_id','settlement_part','stock_id','vehicle_spec','vehicle','plate','notes','payment_method'],
  RETORNO:['vehicle_spec','vehicle','plate','seller','bank','return_level','financed_cents','tax_cents','manager_cents','seller_cents','notes'],
  TROCA:['vehicle_spec','vehicle','plate','paid_cents','debt_cents','document_cents','cc_cents','discount_cents','division_cents','profit_share_cents','notes'],
@@ -78,7 +100,7 @@ export function adminInput(body:Record<string,unknown>){
   else if((moneyKeys as readonly string[]).includes(key))Object.assign(details,{[key]:amount(value)});
   else if(key==='plate'||key==='trade_plate')Object.assign(details,{[key]:adminPlateInput(value,key==='trade_plate')});
   else if((textKeys as readonly string[]).includes(key))Object.assign(details,{[key]:text(value,key==='notes'?2000:160,detailTextLabels[key]||'Campo '+key)});
-  else if(['trade_in','trade_has_debts','trade_has_payoff'].includes(key)){if(typeof value!=='boolean')throw new Error('Selecione Sim ou Não para a troca e os débitos.');Object.assign(details,{[key]:value});}
+  else if(['documentation_sold','inspection_sold','trade_in','trade_has_debts','trade_has_payoff'].includes(key)){if(typeof value!=='boolean')throw new Error('Selecione Sim ou Não para os serviços, a troca e os débitos.');Object.assign(details,{[key]:value});}
   else if(key==='trade_year'){if(typeof value!=='number'||!Number.isInteger(value)||value<1900||value>2100)throw new Error('Confira o ano do carro da troca.');details.trade_year=value;}
   else {const max=key==='due_day'?31:3;if(typeof value!=='number'||!Number.isInteger(value)||value<1||value>max)throw new Error('Confira dia do vencimento ou tipo de retorno.');Object.assign(details,{[key]:value});}
  }
@@ -101,6 +123,13 @@ export function adminInput(body:Record<string,unknown>){
  if(details.plate)details.plate=adminPlateInput(details.plate);
  if(['VENDA','RETORNO','TROCA'].includes(kind)&&!details.vehicle)throw new Error('Informe o carro.');
  if(kind==='VENDA'&&['purchase_cents','vehicle_cost_cents','commission_cents','sale_cents'].some(k=>details[k as keyof AdminDetails]===undefined))throw new Error('Informe compra, custos, comissão e venda.');
+ if(kind==='VENDA'){
+  for(const s of saleServiceFields){const sold=details[`${s.key}_sold`],cost=details[`${s.key}_cost_cents`],sale=details[`${s.key}_sale_cents`];
+   if(sold===true&&(cost===undefined||sale===undefined)||sold!==true&&(cost!==undefined||sale!==undefined))throw new Error('Confira custo e valor vendido de '+s.label+'.');
+  }
+  const services=saleServices(details);
+  if(services.cost>Number(details.vehicle_cost_cents)||services.sale>Number(details.sale_cents))throw new Error('Os serviços devem estar incluídos nos totais da venda.');
+ }
  if(kind==='VENDA'&&details.trade_in!==undefined){
   if(!details.trade_in){for(const key of Object.keys(details))if(key.startsWith('trade_')&&key!=='trade_in')delete details[key as keyof AdminDetails];}
   else {
