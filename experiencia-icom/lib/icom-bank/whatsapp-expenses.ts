@@ -1,3 +1,4 @@
+import {assertMoneyEvidence,writeIntentGuard} from './natural-money.ts';
 import {expenseContext,audienceLabel,natureLabel,type ExpenseAudience,type ExpenseNature} from './expense-context.ts';
 import {expenseDate} from './expense-date.ts';
 import {personalCategories,personalCategory,tripName,expenseFold} from './personal-expenses.ts';
@@ -31,12 +32,13 @@ export function messageFromWebhook(value:unknown,phone:string,now=Date.now()):Bo
 }
 export function expenseCents(value:unknown){if(typeof value!=='string'||!/^\d{1,7}(?:,\d{2})?$/.test(value))throw new Error('Informe um único valor em reais, por exemplo R$ 250,00.');const [reais,centavos='00']=value.split(',');const cents=Number(reais)*100+Number(centavos);if(!Number.isSafeInteger(cents)||cents<=0||cents>1000000000)throw new Error('Informe um valor positivo dentro do limite do sistema.');return cents;}
 export function expensePayload(d:ExpenseDraft,transcript:string,id:string,stocks:StockRow[],today=brazilDay(),origin:'WHATSAPP'|'VOICE'='WHATSAPP'){
+ writeIntentGuard(transcript);
  if(d.intent==='OUTRO')throw new Error('Envie uma despesa para lançar: o que foi pago, o valor e, se for da loja, diga isso no áudio.');
  if(d.intent==='MULTIPLAS')throw new Error('Envie uma despesa por mensagem, com o valor de cada uma separado.');
  if(d.intent!=='DESPESA')throw new Error('Envie uma despesa já paga para registrar.');
- if(d.confidence!=='ALTA')throw new Error('Não entendi a despesa com segurança. Envie novamente o valor e a finalidade, por texto ou áudio.');
+ if(d.confidence!=='ALTA')throw new Error(d.question?.trim().slice(0,240)||'Qual dado da despesa você quer completar?');
  if(!d.amount||!d.amount_excerpt||!transcript.toLocaleLowerCase('pt-BR').includes(d.amount_excerpt.toLocaleLowerCase('pt-BR')))throw new Error('Qual foi o valor? Informe a despesa e o valor em reais.');
- const amount_cents=expenseCents(d.amount);
+ const amount_cents=expenseCents(d.amount);assertMoneyEvidence(amount_cents,d.amount_excerpt,transcript);
  const numeric=d.amount_excerpt.replace(/^R\$\s*/i,'').trim();
  if(/^\d+(?:[.,]\d+)*$/.test(numeric)){const normalized=numeric.includes(',')?numeric.replaceAll('.',''):numeric.replace(/\.(?=\d{3}(?:\.|$))/g,'');if(expenseCents(normalized)!==amount_cents)throw new Error('O valor não ficou claro. Confirme o valor em reais.');}
  if(d.payment_method!==null&&!['PIX','DINHEIRO','CARTAO','TRANSFERENCIA','OUTRO'].includes(d.payment_method))throw new Error('Informe como a despesa foi paga.');
@@ -51,7 +53,7 @@ export function expensePayload(d:ExpenseDraft,transcript:string,id:string,stocks
   else {
   details.plate=plate;
   details.notes+=` · Gasto administrativo do veículo de placa ${plate} em ${date.split('-').reverse().join('/')}`;
-  if(origin==='VOICE')attachExpenseVehicle(details,stocks,date);
+  attachExpenseVehicle(details,stocks,date);
   if(!details.stock_id)details.notes+='; sem vínculo com estoque.';
   }
  }

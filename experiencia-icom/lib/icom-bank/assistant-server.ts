@@ -1,8 +1,9 @@
+import {validMemory,type ConversationMemory} from './conversation-context.ts';
 import {createHash,randomUUID} from 'node:crypto';
 import {callIdFromLocation,createVoiceLimiter,VoiceError,voiceDurationMs,voiceSession} from './assistant-session.ts';
 import type {BankRole} from './model.ts';
 
-type VoiceCall={user:string;callId:string;expiresAt:number;reads:number;timer:ReturnType<typeof setTimeout>};
+type VoiceCall={user:string;callId:string;expiresAt:number;reads:number;memory?:ConversationMemory;timer:ReturnType<typeof setTimeout>};
 const runtime=globalThis as unknown as {[key:symbol]:{limiter:ReturnType<typeof createVoiceLimiter>;calls:Map<string,VoiceCall>}|undefined};
 const state=runtime[Symbol.for('icom-bank.voice-state.v2')]??={limiter:createVoiceLimiter(),calls:new Map<string,VoiceCall>()};
 const {limiter,calls}=state;
@@ -36,3 +37,5 @@ export async function startVoice(user:string,role:BankRole,input:{sdp:string;sec
   calls.set(id,{user,callId,expiresAt,reads:0,timer});return {id,sdp,expiresAt};
  }catch(error){limiter.end(user);if(callId)await hangup(callId);if(error instanceof VoiceError)throw error;throw new VoiceError('Não foi possível conectar a voz. Tente novamente em alguns instantes.',502);}
 }
+
+export function voiceMemory(user:string,id:string,next?:ConversationMemory){const call=calls.get(id);if(!call||call.user!==user||call.expiresAt<=Date.now())throw new VoiceError('Inicie uma nova conversa.',403);if(next)call.memory=validMemory(next);return validMemory(call.memory);}

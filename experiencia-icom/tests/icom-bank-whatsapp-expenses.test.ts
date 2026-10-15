@@ -16,13 +16,14 @@ test('WhatsApp rejects missing, contradictory, uncertain or unpaid financial ins
  assert.equal(payload({amount:'2500,00',amount_excerpt:'2.500,00'},'Paguei 2.500,00 no Pix').amount_cents,250000);
  assert.equal(payload({amount_excerpt:'duzentos e cinquenta'},'Paguei duzentos e cinquenta reais').amount_cents,25000);
 });
-test('Vehicle expenses record an administrative plate without requiring or modifying stock',()=>{
+test('Vehicle expenses record a plate without requiring stock and link an unambiguous existing vehicle',()=>{
  const car={id,plate:'ABC1D23',active:true,status:'DISPONIVEL',entry_date:'2026-10-01',vehicle:{brand:'GM - Chevrolet',model:'ONIX',version:'ONIX LT'}} as StockRow;
  const d={...draft,scope:'LOJA' as const,description:'Pneu',plate:'abc-1d23'};
- for(const cars of [[],[car],[car,car],[{...car,active:false}],[{...car,status:'VENDIDO'}],[{...car,status:'PREVISTO'}]]){
- const p=expensePayload(d,'Paguei 250 no pneu da loja placa ABC1D23',id,cars as StockRow[],today);assert.equal(p.kind,'CUSTO');assert.equal(p.scope,'LOJA');assert.equal(p.details.stock_id,undefined);assert.equal(p.details.plate,'ABC1D23');assert.match(p.details.notes!,/sem vínculo com estoque/);assert.match(p.details.notes!,/07\/10\/2026/);
- }
- assert.equal(expensePayload({...d,date:'2026-09-30',date_excerpt:'30/09/2026'},'Paguei 250 em 30/09/2026 placa ABC1D23',id,[car],today).entry_date,'2026-09-30');assert.throws(()=>payload({plate:'XXX'}));
+ const text='Paguei 250 no pneu da loja placa ABC1D23';
+ for(const cars of [[],[{...car,active:false}],[{...car,status:'VENDIDO'}]]){const p=expensePayload(d,text,id,cars as StockRow[],today);assert.equal(p.kind,'CUSTO');assert.equal(p.scope,'LOJA');assert.equal(p.details.stock_id,undefined);assert.equal(p.details.plate,'ABC1D23');assert.match(p.details.notes!,/sem vínculo com estoque/);}
+ const linked=expensePayload(d,text,id,[car],today);assert.equal(linked.details.stock_id,id);assert.match(linked.details.notes!,/vinculado/);
+ assert.throws(()=>expensePayload(d,text,id,[car,car],today),/mais de um/);assert.throws(()=>expensePayload(d,text,id,[{...car,status:'PREVISTO'}],today),/ainda não entrou/);
+ assert.throws(()=>expensePayload({...d,date_excerpt:'30/09/2026'},'Paguei 250 em 30/09/2026 placa ABC1D23',id,[car],today),/ainda não entrou/);assert.throws(()=>payload({plate:'XXX'}));
  const personal=expensePayload({...d,scope:'PESSOAL'},'Paguei 250 no meu carro placa ABC1D23',id,[car],today);assert.equal(personal.details.stock_id,undefined);assert.match(personal.details.notes!,/veículo pessoal ABC1D23/);
 });
 const now=Date.parse('2026-10-07T20:00:00Z'),phone='5511999999999',sender='5511988888888';

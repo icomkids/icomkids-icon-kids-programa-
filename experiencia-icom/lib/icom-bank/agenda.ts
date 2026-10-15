@@ -25,7 +25,9 @@ export function isAgendaWrite(source:string){const t=source.normalize('NFD').rep
 export function parseAgendaDate(excerpt:string,today:string){
  const fold=(s:string)=>s.normalize('NFD').replace(/\p{M}/gu,'').toLowerCase().trim();const s=fold(excerpt).replace(/^no dia /,'').replace(/^dia /,'');
  let expected='';const shift=(n:number)=>{const d=new Date(today+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);};
- if(['hoje','amanha','depois de amanha','ontem'].includes(s))expected=shift(({hoje:0,amanha:1,'depois de amanha':2,ontem:-1} as Record<string,number>)[s]);
+ const relative=s.match(/^daqui a (\d{1,3}) dias?$/);if(relative)expected=shift(Number(relative[1]));
+ else if(s==='ultimo dia do mes')expected=new Date(Date.UTC(Number(today.slice(0,4)),Number(today.slice(5,7)),0,12)).toISOString().slice(0,10);
+ else if(['hoje','amanha','depois de amanha','ontem'].includes(s))expected=shift(({hoje:0,amanha:1,'depois de amanha':2,ontem:-1} as Record<string,number>)[s]);
  else if(/^\d{4}-\d{2}-\d{2}$/.test(s))expected=s;
  else {const br=s.match(/^(\d{1,2})(?:[/-]|\s+(?:do|de)\s+)(\d{1,2})(?:(?:[/-]|\s+(?:do|de)\s+)(\d{4}))?$/),written=s.match(/^(\d{1,2}) de (janeiro|fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)(?: de (\d{4}))?$/),day=s.match(/^\d{1,2}$/),weekday=s.match(/^(?:(?:na |proxima |na proxima ))?(domingo|segunda(?:-feira)?|terca(?:-feira)?|quarta(?:-feira)?|quinta(?:-feira)?|sexta(?:-feira)?|sabado)$/);
  if(br)expected=(br[3]||today.slice(0,4))+'-'+br[2].padStart(2,'0')+'-'+br[1].padStart(2,'0');

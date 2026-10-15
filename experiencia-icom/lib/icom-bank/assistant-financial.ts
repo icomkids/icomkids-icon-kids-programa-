@@ -1,3 +1,4 @@
+import {assertMoneyEvidence,writeIntentGuard,naturalMoney,naturalFold} from './natural-money.ts';
 import {extractSimpleAgenda,agendaPaymentScope,agendaScopeQuestion} from './agenda-commands.ts';
 import {agendaInput,agendaStatedDate,agendaStatedTime,isAgendaWrite,isPaymentReminderTitle} from './agenda.ts';
 import {resolveAccount,type BankAccount} from './accounts.ts';
@@ -23,7 +24,7 @@ export type FinancialPending={operation:Operation;rpc:string;args:Row;summary:{l
 const rpcs={AGENDA:'icom_bank_save_agenda',LANCAMENTO:'icom_bank_save_admin_entry',CONTA_PAGAR:'icom_bank_save_expense',CONTA_RECEBER:'icom_bank_save_receivable',PAGAR_CONTA:'icom_bank_pay_trade_debt',RECEBER_CONTA:'icom_bank_receive',PAGAR_PARCELA:'icom_bank_review_proof'};
 const fold=(s:unknown)=>String(s??'').normalize('NFD').replace(/\p{M}/gu,'').toLowerCase().trim();
 export function refuseVoiceWithdrawal(transcript:string){
- if(/\b(retirada|retire|retirei|retirar|saque|sacar|transfira|transferir|transferencia (?:entre|para|pra)|devolv[ae]r? (?:o )?capital|devolucao (?:ao|para o) investidor|(?:mande|envie|faca|faz) (?:um )?pix)\b/.test(fold(transcript))||/\b(?:devolv(?:er|a|i|eu|emos|endo)|devolucao)\b.*\b(?:investidor|capital)\b/.test(fold(transcript)))throw new Error('Retiradas, transferências e devoluções de capital devem ser registradas manualmente em Conferência diária.');
+ if(/\b(retirada|retire|retirei|retirar|saque|sacar|transfira|transferi|transferiu|transferimos|transferir|transferencia (?:entre|para|pra)|devolv[ae]r? (?:o )?capital|devolucao (?:ao|para o) investidor|(?:mande|envie|faca|faz) (?:um )?pix)\b/.test(fold(transcript))||/\b(?:devolv(?:er|a|i|eu|emos|endo)|devolucao)\b.*\b(?:investidor|capital)\b/.test(fold(transcript)))throw new Error('Retiradas, transferências e devoluções de capital devem ser registradas manualmente em Conferência diária.');
 }
 export function assistantFinancialTool(role:BankRole){return role==='OWNER'?{type:'function' as const,name:'preparar_lancamento_icom',description:'Prepara registro financeiro solicitado pelo usuário: entrada recebida, venda administrativa, retorno, troca, conta futura a pagar/receber, baixa de conta paga/recebida ou parcela com comprovante enviado. Nunca transfere dinheiro. Retiradas e devoluções são manuais. Despesas já pagas usam preparar_despesa_icom. Clientes e contratos continuam nas telas próprias. Envie o pedido literal completo. Resumo exige confirmação no botão; não diga salvo antes disso.',parameters:{type:'object',additionalProperties:false,properties:{transcript:{type:'string'}},required:['transcript']}}:null;}
 export async function extractFinancial(text:string,today:string,key:string,transport:typeof fetch=fetch):Promise<FinancialDraft>{
@@ -52,8 +53,7 @@ function only(form:Row,keys:string[]){if(Object.keys(form).some(k=>!keys.include
 function literal(evidence:Row,path:string,text:string){const value=evidence[path];if(typeof value!=='string'||!value.trim()||!fold(text).includes(fold(value)))throw new Error('Confirme o valor ou a data de '+path+' no pedido.');return value.trim();}
 function statedMoney(value:unknown,evidence:Row,path:string,text:string){
  if(typeof value!=='string')throw new Error('Confirme os valores em reais.');
- const cents=adminMoneyInput(value),excerpt=literal(evidence,path,text),numeric=excerpt.replace(/^R\$\s*/i,'').trim();
- if(/^[\d.,]+$/.test(numeric)&&adminMoneyInput(numeric)!==cents)throw new Error('O valor no pedido não coincide com o resumo.');return cents;
+ const cents=adminMoneyInput(value),excerpt=literal(evidence,path,text);assertMoneyEvidence(cents,excerpt,text);return cents;
 }
 function statedDate(value:unknown,evidence:Row,path:string,text:string,today:string,required=false){
  if(value===undefined){if(required)throw new Error('Informe o vencimento com dia, mês e ano.');return today;}
@@ -67,14 +67,14 @@ function statedDate(value:unknown,evidence:Row,path:string,text:string,today:str
  if(!expected&&value<=today)expected=expenseDate(excerpt,null,today);
  if(expected!==value)throw new Error('Diga a data com dia, mês e ano para conferir o resumo.');return value;
 }
-function unique(rows:Row[],label:string){if(rows.length!==1)throw new Error(rows.length?'Encontrei mais de um registro. Informe também o vencimento ou o número do contrato.':'Não encontrei '+label+'. Confira o nome e o vencimento.');return rows[0];}
+function unique(rows:Row[],label:string){if(rows.length!==1)throw new Error(rows.length?'Encontrei mais de um registro: '+rows.slice(0,3).map(r=>String(r.title||r.name||r.number||'Registro')+(r.amount_cents?' · '+currency(Number(r.amount_cents)-Number(r.received_cents||0)):'')+(r.due_date?' · '+String(r.due_date):'')).join('; ')+'. Qual deles?':'Não encontrei '+label+'. Confira o nome e o vencimento.');return rows[0];}
 const eq=(a:unknown,b:unknown)=>fold(a)===fold(b);
 const notes=(v:unknown,text:string)=>[typeof v==='string'?v.trim():'','Registro por voz: '+text].filter(Boolean).join('\n').slice(0,2000);
-export async function prepareFinancial(draft:FinancialDraft,transcript:string,today:string,reader:FinancialReader,id:string=randomUUID()):Promise<FinancialPending>{
- expenseVoiceText({transcript});refuseVoiceWithdrawal(transcript);
+export async function prepareFinancial(draft:FinancialDraft,transcript:string,today:string,reader:FinancialReader,id:string=randomUUID(),contextScope?:'PESSOAL'|'LOJA'):Promise<FinancialPending>{
+ expenseVoiceText({transcript});refuseVoiceWithdrawal(transcript);writeIntentGuard(transcript);
  if(!financialOperations.includes(draft.operation)||draft.confidence!=='ALTA')throw new Error(draft.question?.slice(0,240)||'Informe um único registro financeiro com os dados completos.');
  const form=object(JSON.parse(draft.form)),evidence=object(JSON.parse(draft.evidence)),op=draft.operation;
- const accountName=form.account_name;delete form.account_name;
+ const accountName=form.account_name;delete form.account_name;if(contextScope&&['LANCAMENTO','CONTA_PAGAR','PAGAR_CONTA','AGENDA'].includes(op))form.scope=contextScope;
  const summary:{label:string;value:string}[]=[],add=(label:string,value:unknown)=>summary.push({label,value:String(value??'')});
  let args:Row,destination='Administrativo';
  if(op==='LANCAMENTO'){
@@ -100,12 +100,15 @@ export async function prepareFinancial(draft:FinancialDraft,transcript:string,to
   args={p_payload:payload,p_expected:null};add('Registro',payload.kind);add('Área',payload.scope==='PESSOAL'?'Pessoal':'Loja');add('Descrição',payload.description);add('Valor efetivamente registrado',currency(amount));add('Data',date);add('Situação',payload.status);add('Categoria',payload.category);
   for(const [k,v] of Object.entries(payload.details))if(k!=='notes'&&!k.endsWith('_id'))add(({sale_owner:'Dono do carro vendido',investor_name:'Investidor do carro vendido',trade_destination:'Destino da troca',trade_investor_name:'Investidor da troca',trade_in:'Troca recebida',trade_has_debts:'Troca tem débitos',trade_has_payoff:'Tem quitação',trade_vehicle:'Carro da troca',trade_plate:'Placa da troca',trade_year:'Ano da troca',trade_value_cents:'Troca antes dos débitos',trade_ipva_cents:'IPVA',trade_fines_cents:'Multas',trade_payoff_cents:'Quitação',trade_payoff_bank:'Banco da quitação',payment_bank:'Banco do financiamento',vehicle:'Veículo',plate:'Placa',seller:'Vendedor',bank:'Banco',payment_method:'Forma de pagamento',trip_name:'Viagem',purchase_cents:'Valor de compra',vehicle_cost_cents:'Custos do veículo',commission_cents:'Comissão',sale_cents:'Valor da venda',financed_cents:'Valor financiado',tax_cents:'Impostos',manager_cents:'Repasse ao gerente',seller_cents:'Repasse ao vendedor',paid_cents:'Valor pago',debt_cents:'Débitos',document_cents:'Documentação',cc_cents:'CC',discount_cents:'Desconto',division_cents:'Divisão',profit_share_cents:'Participação no lucro',due_day:'Dia do vencimento',return_level:'Tipo de retorno',expense_audience:'Contexto',expense_nature:'Classificação'} as Record<string,string>)[k]||k,k.endsWith('_cents')?currency(Number(v)):typeof v==='boolean'?v?'Sim':'Não':v);
  }else if(op==='AGENDA'){
-  only(form,['title','scope','due_date','due_time','notes']);if(isPaymentReminderTitle(String(form.title||''))){const scope=agendaPaymentScope(transcript);if(!scope)throw Error(agendaScopeQuestion);form.scope=scope;}const date=statedDate(form.due_date,evidence,'due_date',transcript,today,true),time=agendaStatedTime(form.due_time,evidence.due_time,transcript);
+  only(form,['title','scope','due_date','due_time','notes']);if(isPaymentReminderTitle(String(form.title||''))){const scope=agendaPaymentScope(transcript)||contextScope;if(!scope)throw Error(agendaScopeQuestion);form.scope=scope;}const date=statedDate(form.due_date,evidence,'due_date',transcript,today,true),time=agendaStatedTime(form.due_time,evidence.due_time,transcript);
   args=agendaInput({id,scope:form.scope||'PESSOAL',title:form.title,due_date:date,due_time:time,notes:notes(form.notes,transcript),status:'PENDENTE',origin:'VOICE',expected_updated_at:null});destination='Agenda';add(isPaymentReminderTitle(String(form.title))?'Compromisso de pagamento':'Compromisso',form.title);add('Data',date);add('Horário',time||'Sem horário definido');if(isPaymentReminderTitle(String(form.title))){add('Área',form.scope);add('Valor','Não informado · somente lembrete');}add('Situação','Pendente · lembrete às 8h no WhatsApp');
  }else if(op==='CONTA_PAGAR'){
-  if(isAgendaWrite(transcript)&&!agendaPaymentScope(transcript))throw new Error(agendaScopeQuestion);
-  form.scope=agendaPaymentScope(transcript)||form.scope;form.title=form.title||'Pagamento agendado';
+  if(isAgendaWrite(transcript)&&!agendaPaymentScope(transcript)&&!contextScope)throw new Error(agendaScopeQuestion);
+  form.scope=agendaPaymentScope(transcript)||contextScope||form.scope;form.title=form.title||'Pagamento agendado';
   only(form,['title','scope','person','category','amount_cents','due_date','months','notes']);
+  const months=form.months??1,recurring=/\b(?:todo dia|todos os meses|mensal|por mes)\b/.test(naturalFold(transcript));
+  const counts=[...naturalFold(transcript).matchAll(/(?:por |proximos? |durante |sao )?([a-z]+(?: e [a-z]+)?|\d+) meses?\b/g)].map(m=>naturalMoney(m[1])).filter(v=>v!==null).map(v=>v!/100);
+  if((months!==1||recurring)&&!counts.includes(Number(months)))throw Error('Por quantos meses devo cadastrar essa conta? O sistema permite de 1 a 60 meses.');
   const amount=statedMoney(form.amount_cents,evidence,'amount_cents',transcript),due=statedDate(form.due_date,evidence,'due_date',transcript,today,true);
   args=expenseInput({...form,id,scope:form.scope||'PESSOAL',category:form.category||'Conta agendada',amount_cents:amount,due_date:due,months:form.months??1,person:form.person??'AMBOS',notes:notes(form.notes,transcript),expected_updated_at:null});destination='Contas a pagar';
   add('Conta',form.title);add('Área',form.scope);add('Valor por mês',currency(amount));add('Primeiro vencimento',due);add('Meses',form.months??1);add('Pessoa',form.person??'AMBOS');add('Categoria',form.category);add('Situação','Pendente — sem saída de caixa');
@@ -116,11 +119,15 @@ export async function prepareFinancial(draft:FinancialDraft,transcript:string,to
   add('Conta',form.title);add('Pagador',form.payer);add('Origem',form.kind);add('Banco',form.bank);add('Valor',currency(amount));add('Vencimento',due);add('Situação','Pendente — sem entrada de caixa');
  }else if(op==='PAGAR_CONTA'||op==='RECEBER_CONTA'){
   const paying=op==='PAGAR_CONTA';only(form,paying?['title','scope','due_date','paid_at','method','amount_cents']:['title','payer','due_date','received_at','method','amount_cents']);
-  if(typeof form.title!=='string'||!form.title.trim()||paying&&!['LOJA','PESSOAL'].includes(String(form.scope)))throw new Error('Informe o nome da conta e se é da loja ou pessoal.');
+  if((typeof form.title!=='string'||!form.title.trim())&&(paying||typeof form.payer!=='string'||!form.payer.trim())||paying&&!['LOJA','PESSOAL'].includes(String(form.scope)))throw new Error('Informe o nome da conta e se é da loja ou pessoal.');
   const due=form.due_date===undefined?undefined:statedDate(form.due_date,evidence,'due_date',transcript,today,true);
   const rows=await reader((paying?'icom_bank_payables':'icom_bank_receivables')+'?select=*');
-  const row=unique(rows.filter(r=>r.active&&eq(r.title,form.title)&&(!due||r.due_date===due)&&(paying?r.status==='PENDENTE'&&(r.scope||'LOJA')===form.scope:Number(r.amount_cents)>Number(r.received_cents)&&(!form.payer||eq(r.payer,form.payer)))),'a conta pendente');
-  const amount=statedMoney(form.amount_cents,evidence,'amount_cents',transcript),dateKey=paying?'paid_at':'received_at',date=statedDate(form[dateKey],evidence,dateKey,transcript,today);
+  const row=unique(rows.filter(r=>r.active&&(!form.title||fold(r.title).includes(fold(form.title)))&&(!due||r.due_date===due)&&(paying?r.status==='PENDENTE'&&(r.scope||'LOJA')===form.scope:Number(r.amount_cents)>Number(r.received_cents)&&(!form.payer||fold(r.payer).includes(fold(form.payer))))),'a conta pendente');
+  const balance=paying?Number(row.amount_cents):Number(row.amount_cents)-Number(row.received_cents),half=/\bmetade\b/.test(fold(transcript));
+  if(form.amount_cents===undefined&&half&&(paying||Number(row.received_cents)>0||balance%2))throw new Error('Qual foi o valor efetivamente pago ou recebido?');
+  if(form.amount_cents===undefined&&!half&&/\b(?:parte|parcial|um pouco)\b/.test(fold(transcript)))throw new Error('Qual foi o valor efetivamente pago ou recebido?');
+  const amount=form.amount_cents===undefined?(half?balance/2:balance):statedMoney(form.amount_cents,evidence,'amount_cents',transcript),dateKey=paying?'paid_at':'received_at',date=statedDate(form[dateKey],evidence,dateKey,transcript,today);
+  if(!form.method||form.method==='OUTRO')throw new Error('Foi Pix, dinheiro, cartão, transferência ou boleto?');
   if(paying&&amount!==Number(row.amount_cents)||!paying&&amount>Number(row.amount_cents)-Number(row.received_cents))throw new Error('O valor não corresponde ao saldo da conta. Confira o painel.');
   const linked=new Set(paying?rows.map(r=>r.ledger_entry_id): (await reader('icom_bank_receipts?select=ledger_entry_id')).map(r=>r.ledger_entry_id));
   const prior=(await reader('icom_bank_admin_entries?select=id,kind,scope,entry_date,status,amount_cents,details,active')).filter(r=>r.active&&r.status==='REALIZADO'&&r.entry_date===date&&Number(r.amount_cents)===amount&&r.scope===(paying?form.scope:'LOJA')&&((r.details||{}) as Row).payment_method===form.method&&!linked.has(r.id)&&(paying?['CUSTO','PESSOAL','MENSAL'].includes(String(r.kind)):r.kind==='ENTRADA'));
