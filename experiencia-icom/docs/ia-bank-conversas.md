@@ -56,3 +56,13 @@ Logs registram tempos por etapa (download, transcrição, interpretação, prepa
 - O texto e a validação do backend foram testados. A gravação física de áudio e a entrega ponta a ponta em celular devem ser conferidas com um número autorizado real.
 
 Referências técnicas: [Function calling](https://developers.openai.com/api/docs/guides/function-calling) e [Latency optimization](https://developers.openai.com/api/docs/guides/latency-optimization).
+
+## Situação da publicação — 15/10/2026
+
+Commit 2b923b8c7de6d013e8dc1e598842ddc871fb37d7 publicado no serviço icom/experiencia-icom. O EasyPanel concluiu com Success em 15/10/2026 às 23:01:53 UTC. A etapa de build do servidor levou 130,9 s. O build local foi interrompido após demora excessiva; o build confirmado é o do servidor. Tipos e lint passaram, assim como os 551 testes.
+
+Migração 20261015221013 aplicada ao projeto icomkids (swsfwthjxtqtkloexyjs). O teste SQL completo retornou CONVERSATION_ROLLBACK_OK, e a aplicação retornou CONVERSATION_APPLIED. O Security Advisor apresentou 0 erros, 100 avisos e 35 sugestões, os mesmos totais vistos antes da reanálise; as novas funções usam invoker e execução restrita a service_role. Não foi feita uma auditoria completa dos demais módulos antigos do IcomKids.
+
+As novas rotas /api/assistant/interpretation e /api/assistant/conversation responderam 401 sem autenticação e rejeitaram origem inválida. Esses resultados verificam disponibilidade e bloqueios, não a qualidade da interpretação de um pedido autenticado.
+
+**Pendente de acesso:** a sessão do aplicativo expirou e a credencial anteriormente fornecida foi recusada. A tela de entrada foi deixada aberta. Não foram obtidas ainda medições reais antes/depois da interpretação, nem amostras do novo fluxo com o modelo de produção. Não há número de latência ou ganho percentual afirmado sem evidência. O painel de simulação está publicado para concluir essa conferência assim que o proprietário entrar. A entrega ponta a ponta de novos áudios pelo WhatsApp também permanece a validar com um número autorizado.
