@@ -1,0 +1,32 @@
+{
+  "id": "/experiencia-icom/icom-bank/",
+  "name": "IA Bank Automotive",
+  "short_name": "IA Bank",
+  "description": "Sua empresa, vida pessoal e patrimônio em um só lugar.",
+  "lang": "pt-BR",
+  "start_url": "/experiencia-icom/icom-bank/dashboard",
+  "scope": "/experiencia-icom/icom-bank/",
+  "display": "standalone",
+  "background_color": "#092039",
+  "theme_color": "#092039",
+  "icons": [
+    {
+      "src": "/experiencia-icom/ia-bank-icons/crest-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/experiencia-icom/ia-bank-icons/crest-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/experiencia-icom/ia-bank-icons/crest-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
