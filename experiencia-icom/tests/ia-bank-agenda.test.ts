@@ -65,7 +65,7 @@ test('Agenda is added without changing seller grants or a saved menu order',()=>
  assert.equal(canBank('OWNER','agenda'),true);assert.equal(canBank('VENDEDOR','agenda'),false);assert.equal(canBank('ADMIN','agenda'),true);assert.equal(canBank('ADMIN','administrativo'),false);
  assert.deepEqual(orderedMenu('OWNER',['clientes','dashboard']).slice(0,2).map(([id])=>id),['clientes','dashboard']);
  assert.ok(orderedMenu('OWNER',['clientes','dashboard']).some(([id])=>id==='agenda'));
- assert.deepEqual(preferencesPatch({menu_order:orderedMenu('OWNER').map(([id])=>id)}).menu_order?.length,13);
+ assert.deepEqual(preferencesPatch({menu_order:orderedMenu('OWNER').map(([id])=>id)}).menu_order?.length,14);
 });
 
 test('The exact shopping appointment bypasses model questions about scope and title',async()=>{

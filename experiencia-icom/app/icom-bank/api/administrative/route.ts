@@ -1,3 +1,5 @@
+import {repasseInput} from '@/lib/icom-bank/repasse';
+import {sharedAssistantCache} from '@/lib/icom-bank/assistant-cache';
 import {deletionQuery} from '@/lib/icom-bank/deletion-server';
 import {accountPost,bankAccountLinks} from '@/lib/icom-bank/accounts-server';
 import {bankAuthorize,bankOrigin,bankQuery,bankCashEntries,bankError,BankError,bankAdminSellers} from '@/lib/icom-bank/server';
@@ -30,8 +32,12 @@ export async function POST(req:Request){try{
  if(input.details.trade_spec){input.details.trade_vehicle=(input.details.trade_spec.brand+' '+(input.details.trade_spec.version||input.details.trade_spec.model)).slice(0,160);if(input.details.trade_spec.year!==null)input.details.trade_year=input.details.trade_spec.year;}
  const {expected_updated_at,...payload}=input;
  const account=body.account_id||(previous?(await bankAccountLinks(token)).find(l=>l.ledger_entry_id===previous.id)?.account_id:null);
- const row=payload.status==='REALIZADO'&&payload.kind!=='TROCA'&&!(payload.kind==='VENDA'&&payload.amount_cents===0)?await accountPost(token,'LANCAMENTO',{p_payload:payload,p_expected:expected_updated_at},account):await bankQuery<AdminEntry>(token,'rpc/icom_bank_save_admin_entry','POST',{p_payload:payload,p_expected:expected_updated_at});
- return Response.json({row},{headers:{'Cache-Control':'no-store'}});
+ const tradeRepasse=repasseInput(body.repasse);
+ const manager=body.repasse_manager as {manager_id?:string|null;manager_cents?:number}|null;
+ const row=payload.kind==='VENDA'&&payload.details.sale_mode==='REPASSE'?await bankQuery<AdminEntry>(token,'rpc/icom_bank_save_repasse_sale','POST',{p_payload:payload,p_expected:expected_updated_at,p_account:account||null,p_manager:manager?.manager_id||null,p_manager_cents:manager?.manager_cents??0}):tradeRepasse?await bankQuery<AdminEntry>(token,'rpc/icom_bank_save_sale_trade_repasse','POST',{p_payload:payload,p_expected:expected_updated_at,p_account:account||null,p_repasse:tradeRepasse}):payload.status==='REALIZADO'&&payload.kind!=='TROCA'&&!(payload.kind==='VENDA'&&payload.amount_cents===0)?await accountPost(token,'LANCAMENTO',{p_payload:payload,p_expected:expected_updated_at},account):await bankQuery<AdminEntry>(token,'rpc/icom_bank_save_admin_entry','POST',{p_payload:payload,p_expected:expected_updated_at});
+ sharedAssistantCache().clear();
+ const enriched=(payload.kind==='VENDA'?await bankCashEntries(token):[]).find(e=>e.id===(row as AdminEntry).id)||row;
+ return Response.json({row:enriched},{headers:{'Cache-Control':'no-store'}});
 }catch(e){return bankError(e);}}
 
 export async function PATCH(req:Request){try{
