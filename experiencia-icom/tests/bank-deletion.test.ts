@@ -14,3 +14,10 @@ test('Cancellation rejects an invalid target and preserves password characters',
  assert.throws(()=>deletionTarget('/api/contracts',{action:'cancel',id:'not-an-id'}));
  assert.throws(()=>deletionPassword('short'));assert.throws(()=>deletionPassword('a'.repeat(65)));assert.throws(()=>deletionPassword(null));assert.equal(deletionPassword(' special ! '),' special ! ');
 });
+
+test('Removing a repasse commission asks for approval scoped to its payable',()=>{
+ const payable='bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb',sale='aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa';
+ assert.deepEqual(deletionTarget('/icom-bank/api/administrative',{id:sale,repasse_remove_payable_id:payable}),{operation:'archive_expense',id:payable});
+ assert.equal(deletionTarget('/icom-bank/api/administrative',{id:sale,repasse_manager:{manager_cents:50000}}),null);
+ assert.throws(()=>deletionTarget('/icom-bank/api/administrative',{id:sale,repasse_remove_payable_id:'invalid'}));
+});
