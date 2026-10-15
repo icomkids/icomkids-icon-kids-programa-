@@ -59,7 +59,7 @@ test('Owner sale guide follows free stages while finance onboarding keeps its ow
 test('Capital payout manual uses the actual cash screen and never instructs a bank transfer',()=>{
  const guide=readManual({topic:'repasse_capital'},'caixa_empresa','OWNER'),text=guide.steps.map(s=>s.text).join(' ');
  const component=source('components/icom-bank/BankCompanyCash.tsx');
- for(const label of ['Já paguei · registrar repasse','Confirmar repasse pago']){assert.ok(text.includes(label));assert.ok(component.includes(label));}
+ for(const label of ['Registrar devolução','Confirmar saída com senha']){assert.ok(text.includes(label));assert.ok(component.includes(label));}
  assert.match(guide.notes.join(' '),/capital já fica reservado/);
  assert.equal(readManual({topic:'repasse_capital'},'dashboard','VENDEDOR').available,false);
  assert.equal(manualViewFromPath('/experiencia-icom/icom-bank/administrativo/caixa','OWNER'),'caixa_empresa');

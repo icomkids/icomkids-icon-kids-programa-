@@ -4,7 +4,7 @@ import {cashPosition,type CashEntry} from './cash.ts';
 import {brazilDay} from './model.ts';
 import type {ProlaboreRecord} from './prolabore.ts';
 export type BankAccount={id:string;owner_id:string;name:string;bank:string;scope:'LOJA'|'PESSOAL';active:boolean;created_at:string;updated_at:string};
-export type AccountLink={ledger_entry_id:string;account_id:string;owner_id:string;purpose:'MOVIMENTO'|'SALDO_INICIAL'|'RENDA_PESSOAL';wealth_id:string|null;created_at:string};
+export type AccountLink={ledger_entry_id:string;account_id:string;owner_id:string;purpose:'MOVIMENTO'|'SALDO_INICIAL'|'APORTE'|'RENDA_PESSOAL';wealth_id:string|null;created_at:string};
 export type AccountData={accounts:BankAccount[];links:AccountLink[];entries:CashEntry[];prolabore?:ProlaboreRecord[];property_ledger_ids?:string[]};
 export const accountBanks=['Santander','Itaú','Bradesco','Banco do Brasil','Caixa','Safra','Sicredi','Sicoob','C6 Bank','Banco PAN','Inter','Nubank','BTG Pactual','Mercado Pago','PicPay','Dinheiro em mãos','Outro'] as const;
 export function accountId(value:unknown,required=false){if(value===undefined||value===null||value===''){if(required)throw new Error('Escolha de qual conta sai ou em qual conta entra o dinheiro.');return null;}if(typeof value!=='string'||!validId(value))throw new Error('Escolha uma conta cadastrada.');return value;}

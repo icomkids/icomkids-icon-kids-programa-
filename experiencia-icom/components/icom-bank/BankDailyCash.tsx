@@ -1,4 +1,5 @@
 'use client';
+import {bankSafeFetch as fetch} from '@/lib/icom-bank/deletion-client';
 import BankAccountSelect from './BankAccountSelect';
 import {useEffect,useState,useRef,type FormEvent} from 'react';
 import {bankPath,brazilDay,currency} from '@/lib/icom-bank/model';

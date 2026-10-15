@@ -1,8 +1,10 @@
 import {validId} from './contracts.ts';
-export type DeleteOperation='archive_admin'|'archive_expense'|'archive_receivable'|'archive_wealth'|'archive_account'|'reverse_payable'|'reverse_receipt'|'reverse_payment'|'cancel_contract'|'cancel_prolabore';
+export type DeleteOperation='return_investor'|'archive_admin'|'archive_expense'|'archive_receivable'|'archive_wealth'|'archive_account'|'reverse_payable'|'reverse_receipt'|'reverse_payment'|'cancel_contract'|'cancel_prolabore';
 export function deletionTarget(path:string,b:Record<string,unknown>):{operation:DeleteOperation;id:string}|null{
  const route=path.split('?')[0].replace(/^.*\/api\//,'');let operation:DeleteOperation|undefined;
+ if(route==='administrative'&&b.kind==='CUSTO'&&b.details&&typeof b.details==='object'&&(b.details as Record<string,unknown>).settlement_part==='INVESTIDOR'||route==='daily-cash'&&b.action==='withdrawal'&&b.purpose==='INVESTIDOR')operation='return_investor';
  if(route==='administrative'&&b.repasse_remove_payable_id!==undefined){if(typeof b.repasse_remove_payable_id!=='string'||!validId(b.repasse_remove_payable_id))throw new Error('Comissão inválida para cancelamento.');return {operation:'archive_expense',id:b.repasse_remove_payable_id};}
+ if(route==='administrative'&&b.active===true&&b.investor_return===true)operation='return_investor';
  if(route==='administrative'&&b.active===false)operation='archive_admin';
  if(route==='personal-wealth'&&b.active===false)operation='archive_wealth';
  if(route==='accounts'&&b.active===false&&b.expected_updated_at)operation='archive_account';

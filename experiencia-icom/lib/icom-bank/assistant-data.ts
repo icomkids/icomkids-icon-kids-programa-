@@ -95,7 +95,7 @@ export async function readAssistantData(reader:AssistantReader,raw:unknown,role:
   const stockMap=new Map(stocks.map(s=>[s.id,s]));
   const valid=payables.filter(p=>p.active&&(!p.stock_id||stockMap.get(p.stock_id)?.active&&stockMap.get(p.stock_id)?.status!=='PREVISTO'));
   const pending=valid.filter(p=>p.status==='PENDENTE'&&(input.period==='total'||inPeriod(input,p.due_date))&&scopeMatch(input,p.scope));
-  const selected=entries.filter(e=>inPeriod(input,e.entry_date)&&match(input,e.description,e.category,e.details.plate,e.details.vehicle,e.details.seller)),stats=adminStats(selected.filter(e=>!['SALDO_INICIAL','RENDA_PESSOAL'].includes(e.cash_account_purpose||'')),''),cash=cashPosition(entries,input.period==='total'?today:input.to);
+  const selected=entries.filter(e=>inPeriod(input,e.entry_date)&&match(input,e.description,e.category,e.details.plate,e.details.vehicle,e.details.seller)),stats=adminStats(selected.filter(e=>!['SALDO_INICIAL','APORTE','RENDA_PESSOAL'].includes(e.cash_account_purpose||'')),''),cash=cashPosition(entries,input.period==='total'?today:input.to);
   if(input.topic==='administrativo'){
    const storePending=pending.filter(p=>p.scope!=='PESSOAL'),personalPending=pending.filter(p=>p.scope==='PESSOAL');
    const sales=selected.filter(e=>e.active&&e.status==='REALIZADO'&&e.kind==='VENDA'&&match(input,e.details.vehicle,e.details.plate,e.details.seller,e.details.investor_name));

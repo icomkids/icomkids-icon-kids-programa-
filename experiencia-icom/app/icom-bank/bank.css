@@ -92,3 +92,6 @@
 
 /* Optional sale services use the existing theme and financial panels. */
 .bank-sale-services .bank-form-grid{align-items:start}.bank-sale-service{min-width:0;padding:18px;border:1px solid var(--bank-border,#435c74);border-radius:14px;background:var(--bank-card,transparent)}.bank-sale-service h4{margin:0 0 14px;font-size:17px}.bank-sale-service label{display:grid;gap:7px;margin:12px 0}.bank-sale-service-profit{display:flex;gap:12px;align-items:center;justify-content:space-between;padding-top:14px;border-top:1px solid var(--bank-border,#435c74);font-size:14px}.bank-sale-service-profit strong{font-size:20px;white-space:nowrap}
+
+/* Investor returns and owner capital are distinct from operating profit. */
+.bank-cash-clickable{position:relative}.bank-cash-clickable a{display:block;margin-top:12px;font-size:12px;font-weight:700;color:inherit}.bank-cash-clickable a::after{content:'';position:absolute;inset:0;border-radius:12px}.bank-cash-clickable:hover,.bank-cash-clickable:focus-within{outline:2px solid #c2a46b;outline-offset:2px}.bank-return-groups{display:grid;gap:18px}.bank-return-group{padding:18px;border:1px solid #6c8ba660;border-radius:14px}.bank-return-group h3{margin:0 0 6px}#devolucoes,#investor-return-form,#cash-funds-form{scroll-margin-top:24px}

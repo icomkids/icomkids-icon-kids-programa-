@@ -1,3 +1,5 @@
+import {deletionQuery} from '@/lib/icom-bank/deletion-server';
+import {sharedAssistantCache} from '@/lib/icom-bank/assistant-cache';
 import {accountPost} from '@/lib/icom-bank/accounts-server';
 import {bankAuthorize,bankOrigin,bankError,bankQuery,BankError} from '@/lib/icom-bank/server';
 import {cashDay,checkInput,dailyCash,withdrawalInput,type DailyContext,type CashCheck} from '@/lib/icom-bank/daily-cash';
@@ -9,7 +11,8 @@ export async function POST(req:Request){try{
  bankOrigin(req);const {token}=await bankAuthorize('administrativo');const raw=await req.text();if(raw.length>6000)throw new BankError('Registro muito extenso.',400);const body=JSON.parse(raw) as Record<string,unknown>;
  if(body.action==='withdrawal'){
   const payload=withdrawalInput(body);
-  const row=await accountPost(token,'RETIRADA',{p_payload:payload},body.account_id);
+  const row=body.purpose==='INVESTIDOR'?await deletionQuery<AdminEntry>(token,'return_investor',payload.id,'rpc/icom_bank_account_post',{p_operation:'RETIRADA',p_args:{p_payload:payload},p_account:body.account_id||null},body.deletion_password):await accountPost(token,'RETIRADA',{p_payload:payload},body.account_id);
+  sharedAssistantCache().clear();
   return Response.json({row},{headers:{'Cache-Control':'no-store'}});
  }
  if(body.action!=='check')throw new BankError('Selecione uma operação válida.',400);
