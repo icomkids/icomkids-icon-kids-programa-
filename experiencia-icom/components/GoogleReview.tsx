@@ -6,11 +6,14 @@ export default function GoogleReview({url}:{url:string}) {
  async function copyAndOpen() {
   const review=text.trim();if(!review||busy)return;
   setBusy(true);setStatus('');setFallback(false);
+  // Start copying while this page still has focus, then reserve the destination tab.
+  let copyRequest:Promise<void>;
+  try{copyRequest=navigator.clipboard.writeText(review)}catch{setStatus('Não foi possível copiar automaticamente. Selecione e copie seu relato no campo acima. Depois, use o link abaixo para abrir o Google.');setFallback(true);setBusy(false);return;}
   // Reserve the new tab during the click, before awaiting the clipboard permission.
   let reviewWindow:Window|null=null;
   try{reviewWindow=window.open('about:blank','_blank');if(reviewWindow){reviewWindow.opener=null;reviewWindow.document.title='Abrindo avaliação no Google…';const meta=reviewWindow.document.createElement('meta');meta.name='referrer';meta.content='no-referrer';reviewWindow.document.head.appendChild(meta)}}catch{}
   try{
-   try{await navigator.clipboard.writeText(review)}catch{reviewWindow?.close();setStatus('Não foi possível copiar automaticamente. Selecione e copie seu relato no campo acima. Depois, use o link abaixo para abrir o Google.');setFallback(true);return;}
+   try{await copyRequest}catch{reviewWindow?.close();setStatus('Não foi possível copiar automaticamente. Selecione e copie seu relato no campo acima. Depois, use o link abaixo para abrir o Google.');setFallback(true);return;}
    if(reviewWindow&&!reviewWindow.closed){try{reviewWindow.location.replace(url);setStatus('Relato copiado! No Google, escolha suas estrelas, cole o texto e toque em Postar.');return}catch{reviewWindow.close()}}
    setStatus('Relato copiado! Use o link abaixo para abrir o Google, colar o texto e publicar sua avaliação.');setFallback(true);
   }finally{setBusy(false)}
