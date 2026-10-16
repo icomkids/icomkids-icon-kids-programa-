@@ -1,3 +1,4 @@
+import {addendumTerms} from '@/lib/sale-addendum';
 import { authorize, config, db, errorResponse, log } from '@/lib/server';
 import { Experience, relationArray, resolutions } from '@/lib/experience';
 import {assertManagement,scopeRows,sellerFilter,sellerRegistration} from '@/lib/access';
@@ -9,8 +10,8 @@ import {saleDate} from '@/lib/sales-history';
 import {scheduledDate} from '@/lib/whatsapp-schedule';
 export async function GET() {try {
   const profile=await authorize();
-  const raw=await db<Experience[]>('customer_experiences?select=*,customers(*),salespeople(*),vehicles(*),experience_responses(*),experience_alerts(*,experience_alert_events(*)),experience_warranty_sessions(*),experience_referrals(*),experience_referral_reminders(*),experience_sale_closings(*)&order=created_at.desc'+sellerFilter(profile));
-  raw.forEach(r=>{r.experience_sale_closings=relationArray(r.experience_sale_closings);r.experience_responses=relationArray(r.experience_responses);r.experience_alerts=relationArray(r.experience_alerts);r.experience_warranty_sessions=relationArray(r.experience_warranty_sessions);r.experience_referrals=relationArray(r.experience_referrals);r.experience_referral_reminders=relationArray(r.experience_referral_reminders)});
+  const raw=await db<Experience[]>('customer_experiences?select=*,customers(*),salespeople(*),vehicles(*),experience_responses(*),experience_alerts(*,experience_alert_events(*)),experience_warranty_sessions(*),experience_referrals(*),experience_referral_reminders(*),experience_sale_closings(*),experience_sale_addenda(*,experience_addendum_receipts(*))&order=created_at.desc'+sellerFilter(profile));
+  raw.forEach(r=>{r.experience_sale_addenda=relationArray(r.experience_sale_addenda);r.experience_sale_closings=relationArray(r.experience_sale_closings);r.experience_responses=relationArray(r.experience_responses);r.experience_alerts=relationArray(r.experience_alerts);r.experience_warranty_sessions=relationArray(r.experience_warranty_sessions);r.experience_referrals=relationArray(r.experience_referrals);r.experience_referral_reminders=relationArray(r.experience_referral_reminders)});
   const rows=scopeRows(profile,profile.role==='seller'?raw.filter(r=>r.status!=='arquivada'):raw);
   if(profile.role==='seller') {
     const [person]=await db<{photo_url:string|null}[]>(`salespeople?id=eq.${encodeURIComponent(profile.salesperson_id!)}&select=photo_url`);profile.photo_url=person?.photo_url||null;
@@ -26,7 +27,7 @@ export async function POST(req:Request) {try {
   if(action==='seller_create') {
     const params=sellerRegistration(user,body);
     const due=scheduledDate(body.scheduled_at);
-    const token=await db<string>('rpc/experience_seller_create_sale','POST',{...params,p_due:due,p_purchase:saleDate(body.purchase_date)});
+    const token=await db<string>('rpc/experience_seller_create_with_addendum','POST',{...params,p_terms:addendumTerms(body.addendum),p_due:due,p_purchase:saleDate(body.purchase_date)});
     const [experience]=await db<{id:string;created_at:string;sent_at:string|null;whatsapp_due_at:string|null}[]>(`customer_experiences?token=eq.${encodeURIComponent(token)}${sellerFilter(user)}&select=id,created_at,sent_at,whatsapp_due_at`);
     if(!experience)throw new Error('Não foi possível localizar o atendimento salvo.');
     let delivery;
@@ -70,7 +71,7 @@ export async function POST(req:Request) {try {
   if(action === 'create') {
     const customerId=String(body.customer_id || ''); const salespersonId=String(body.salesperson_id || ''); const vehicleId=String(body.vehicle_id || '');
     if(!customerId || !salespersonId || !vehicleId || !body.purchase_date || !body.delivery_date) throw new Error('Selecione cliente, veículo, vendedor e datas.');
-    const token=await db<string>('rpc/experience_create','POST',{p_customer:customerId,p_seller:salespersonId,p_vehicle:vehicleId,p_purchase:body.purchase_date,p_delivery:body.delivery_date,p_payment:String(body.payment_method||''),p_trade:body.trade_in===true,p_demo:body.is_demo===true,p_user:user.id}); return Response.json({token});
+    const token=await db<string>('rpc/experience_create_with_addendum','POST',{p_terms:addendumTerms(body.addendum),p_customer:customerId,p_seller:salespersonId,p_vehicle:vehicleId,p_purchase:body.purchase_date,p_delivery:body.delivery_date,p_payment:String(body.payment_method||''),p_trade:body.trade_in===true,p_demo:body.is_demo===true,p_user:user.id}); return Response.json({token});
   }
   if(action === 'catalog') {
     const table=String(body.table); if(!['customers','salespeople','vehicles'].includes(table) || !String(body.name || '').trim()) throw new Error('Cadastro inválido.');

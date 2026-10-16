@@ -1,3 +1,5 @@
+import type {SaleAddendum} from '@/lib/sale-addendum';
+import {addendumReceipt} from '@/lib/sale-addendum';
 import { db, errorResponse } from '@/lib/server';
 import { Answers, alertRule, assertEditable, category, relationArray, sanitizeAnswers, validToken } from '@/lib/experience';
 interface PublicRecord {rating_scale:5|10;id:string;status:string;completed_at:string|null;expires_at:string|null;customers:{name:string};experience_responses:{answers:Answers}|{answers:Answers}[]|null}
@@ -19,7 +21,8 @@ export async function GET(_:Request, context:{params:Promise<{token:string}>}) {
     const sessions=await db<import('@/lib/warranty').WarrantySession[]>(`experience_warranty_sessions?experience_id=eq.${row.id}&order=started_at.desc`);
     const session=row.completed_at?sessions.find(s=>s.acknowledged_at):sessions.find(s=>s.version===warranty.version);
     const referrals=await db<{id:string}[]>(`experience_referrals?experience_id=eq.${row.id}&select=id`);
-    return Response.json({rating_scale:row.rating_scale,warranty,session:session||null,referral_received:!!referrals.length,name:row.customers.name.split(' ')[0],completed:!!row.completed_at,answers:relationArray(row.experience_responses)[0]?.answers || {},settings:{google_review_url:settings.google_review_url,intro_text:settings.intro_text,final_text:settings.final_text,estimated_time:settings.estimated_time}});
+    const [addendum]=await db<SaleAddendum[]>(`experience_sale_addenda?experience_id=eq.${row.id}&select=id,experience_id,version,has_discount,original_price_cents,final_price_cents,discount_cents,details,contract_reference,notice_text,created_at,experience_addendum_receipts(id,addendum_id,outcome,acknowledgement_text,recorded_at)`);
+    return Response.json({addendum:addendum?{...addendum,receipt:addendumReceipt(addendum)}:null,rating_scale:row.rating_scale,warranty,session:session||null,referral_received:!!referrals.length,name:row.customers.name.split(' ')[0],completed:!!row.completed_at,answers:relationArray(row.experience_responses)[0]?.answers || {},settings:{google_review_url:settings.google_review_url,intro_text:settings.intro_text,final_text:settings.final_text,estimated_time:settings.estimated_time}});
   } catch(e) {return errorResponse(e);}
 }
 export async function POST(req:Request,context:{params:Promise<{token:string}>}) {
