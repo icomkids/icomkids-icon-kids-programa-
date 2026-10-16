@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./icom.css";
+import "./customer-review.css";
 
 export const metadata: Metadata = {
   title: "Experiência Icom",

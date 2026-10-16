@@ -1,0 +1,20 @@
+/* Customer experience: green and white palette, with the review draft before its action. */
+.survey{--gold:#206f57}
+.survey .survey-card{background:#fff;border-top-color:#236b54}
+.survey .primary{background:linear-gradient(115deg,#25765e,#155440);border-color:#155440;color:#fff;box-shadow:0 4px 10px #1554401c}
+.survey .primary:hover{background:linear-gradient(115deg,#2c8269,#1b624c);box-shadow:0 5px 14px #15544028}
+.survey .primary:disabled{background:#dde9e3;border-color:#d2e0d8;color:#60766a;box-shadow:none;opacity:1;cursor:not-allowed}
+.survey .eyebrow,.survey .step-meta,.survey h1 em{color:#34705b}
+.survey .brand i{color:#b8d8c9}
+.survey .selected{background:#e8f4ed!important;border-color:#27755a!important;box-shadow:0 0 0 1px #27755a}
+.survey .warranty-law,.survey .notice{background:#f1f7f3;border-color:#d8e7de;border-left-color:#398467}
+.survey .google-review{background:#fff;border-color:#dce8e0}
+.google-review-compose{margin:24px 0;padding:20px;background:#f2f7f4;border:1px solid #d8e6dd;border-radius:14px}
+.google-review-compose label{margin:0 0 8px;font-size:16px;color:#224f3c}
+.google-review-compose .google-review-help{margin:0 0 14px}
+.survey .google-review-compose textarea{display:block;min-height:180px;margin:0 0 14px;background:#fff;line-height:1.7;font-size:16px}
+.google-review-compose .primary{display:flex;width:100%;white-space:normal;margin:0 0 14px}
+.google-review-compose .google-review-help:last-child{margin-bottom:0}
+.google-review-status{font-size:14px;line-height:1.6;color:#235b40;background:#e1eee5;border:1px solid #c6dfcf;border-radius:9px;padding:12px}
+.google-review-fallback{display:block;margin:12px 0;font-size:14px;color:#1b6548;text-decoration:underline;text-underline-offset:3px}
+@media(max-width:600px){.google-review-compose{padding:16px;margin:20px 0}.google-review-compose label{font-size:15px}.google-review-compose .primary{font-size:12px;letter-spacing:.6px;padding:14px 10px}}
