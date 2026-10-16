@@ -4,11 +4,11 @@ import { db, errorResponse } from '@/lib/server';
 import { Answers, alertRule, assertEditable, category, relationArray, sanitizeAnswers, validToken } from '@/lib/experience';
 interface PublicRecord {rating_scale:5|10;id:string;status:string;completed_at:string|null;expires_at:string|null;customers:{name:string};experience_responses:{answers:Answers}|{answers:Answers}[]|null}
 async function load(token: string) {
-  if(!validToken(token)) throw new Error('Este link não é válido. Solicite um novo link à Icom.');
+  if(!validToken(token)) throw new Error('Este link não é válido. Solicite um novo link à loja.');
   const [row] = await db<PublicRecord[]>(`customer_experiences?token=eq.${token}&select=id,rating_scale,status,completed_at,expires_at,customers(name),experience_responses(answers)`);
-  if(!row) throw new Error('Experiência não encontrada. Solicite seu link à Icom.');
-  if(row.status === 'arquivada') throw new Error('Este link foi arquivado. Solicite um novo link à Icom.');
-  if(row.expires_at && Date.parse(row.expires_at) < Date.now()) throw new Error('Este link expirou. Solicite um novo link à Icom.');
+  if(!row) throw new Error('Experiência não encontrada. Solicite seu link à loja.');
+  if(row.status === 'arquivada') throw new Error('Este link foi arquivado. Solicite um novo link à loja.');
+  if(row.expires_at && Date.parse(row.expires_at) < Date.now()) throw new Error('Este link expirou. Solicite um novo link à loja.');
   const [settings] = await db<Record<string,unknown>[]>('experience_settings?id=eq.1');
   if(!settings?.survey_active) throw new Error('A pesquisa está temporariamente indisponível.');
   return {row,settings};

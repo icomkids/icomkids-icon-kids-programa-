@@ -1,3 +1,4 @@
+import {getBranding} from './branding-server';
 import {db,type Profile} from './server';
 import {appPath} from './paths';
 import {sellerFilter} from './access';
@@ -32,9 +33,10 @@ export async function sendSurvey(user:Profile,id:string):Promise<{whatsapp_statu
  if(!state.connected)return {whatsapp_status:'not_sent',message:`Cliente salvo. ${state.message}`};
  const origin=process.env.APP_URL;
  if(!origin||new URL(origin).protocol!=='https:')throw new Error('Endereço da pesquisa não configurado.');
+ const brand=await getBranding();
  const claimed=await db<boolean>('rpc/experience_whatsapp_claim','POST',{p_user:user.id,p_experience:id});
  if(!claimed)return {whatsapp_status:'sending',message:'Este envio já está em processamento. Atualize para conferir.'};
- const result=await sendText(config,row.customers.phone,surveyMessage(row.customers.name,`${origin.replace(/\/$/,'')}${appPath('/experiencia/')}${row.token}`));
+ const result=await sendText(config,row.customers.phone,surveyMessage(row.customers.name,`${origin.replace(/\/$/,'')}${appPath('/experiencia/')}${row.token}`,brand.company_name));
  await db('rpc/experience_whatsapp_result','POST',{p_user:user.id,p_experience:id,p_status:result.status,p_provider:result.providerId??null});
  return {whatsapp_status:result.status,message:result.status==='accepted'?'Envio aceito pelo WhatsApp. A entrega depende do serviço e da conexão do cliente.':result.status==='failed'?'Cliente salvo, mas o WhatsApp recusou o envio. Você pode tentar novamente.':'Cliente salvo. Não foi possível confirmar o envio. Confira a conversa antes de reenviar.'};
 }

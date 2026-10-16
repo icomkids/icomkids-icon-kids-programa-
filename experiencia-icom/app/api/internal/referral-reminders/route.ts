@@ -1,3 +1,4 @@
+import {getBranding} from '@/lib/branding-server';
 import {db} from '@/lib/server';
 import {appPath} from '@/lib/paths';
 import {connection,sendText} from '@/lib/whatsapp';
@@ -9,6 +10,7 @@ export async function POST(req:Request){
  const secret=req.headers.get('x-experience-cron');
  if(!secret||secret.length!==64||!await db<boolean>('rpc/experience_reminder_authorize','POST',{p_secret:secret}))return Response.json({error:'Acesso não autorizado.'},{status:401});
  const origin=process.env.APP_URL;if(!origin||new URL(origin).protocol!=='https:')return Response.json({error:'Endereço não configurado.'},{status:503});
+ const brand=await getBranding();
  const started=Date.now(),surveys=await dispatchSurveys(started);
  // Interrupted/uncertain sends stay unknown and are never resent automatically.
  await db(`experience_referral_reminders?status=eq.sending&attempted_at=lt.${encodeURIComponent(new Date(Date.now()-10*60000).toISOString())}`,'PATCH',{status:'unknown'});
@@ -24,7 +26,7 @@ export async function POST(req:Request){
   const claimed=await db<Dispatch|null>('rpc/experience_referral_claim','POST',{p_id:job.id});if(!claimed)continue;
   if(claimed.salesperson_id!==row.salesperson_id){await db('rpc/experience_referral_result','POST',{p_id:job.id,p_status:'failed',p_provider:null});continue;}
   const url=`${origin.replace(/\/$/,'')}${appPath('/experiencia/')}${claimed.token}?indicacao=1`;
-  const result=await sendText(instance,claimed.phone,`Olá, ${claimed.name.trim().split(' ')[0]}! Você nos contou que gostaria de indicar a Icom e autorizou este lembrete. Se desejar, compartilhe um contato autorizado pelo link: ${url}\nVocê também pode cancelar o lembrete nesse link. Obrigado!`);
+  const result=await sendText(instance,claimed.phone,`Olá, ${claimed.name.trim().split(' ')[0]}! Você nos contou que gostaria de indicar ${brand.company_name} e autorizou este lembrete. Se desejar, compartilhe um contato autorizado pelo link: ${url}\nVocê também pode cancelar o lembrete nesse link. Obrigado!`);
   await db('rpc/experience_referral_result','POST',{p_id:job.id,p_status:result.status,p_provider:result.providerId??null});
   if(result.status==='accepted')accepted++;else uncertain++;
  }catch{uncertain++;}}

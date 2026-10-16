@@ -18,7 +18,7 @@ export async function GET() {try {
     const unique=(key:'customer_id'|'vehicle_id',relation:'customers'|'vehicles')=>[...new Map(rows.map(r=>[r[key],{id:r[key],...r[relation]}])).values()];
     return Response.json({profile,rows,connection:await sellerConnection(profile),settings:[],users:[],accesses:[],customers:unique('customer_id','customers'),salespeople:[{id:profile.salesperson_id,name:profile.name}],vehicles:unique('vehicle_id','vehicles')});
   }
-  const [settings,users,customers,salespeople,vehicles,accesses,warranty]=await Promise.all([db('experience_settings?id=eq.1'),db('experience_users?active=eq.true&select=id,name,role'),db('customers?order=name'),db('salespeople?order=name'),db('vehicles?order=name'),['owner','admin'].includes(profile.role)?db('rpc/experience_seller_accesses','POST',{p_actor:profile.id}):Promise.resolve([]),db('experience_warranty_config?id=eq.1')]);
+  const [settings,users,customers,salespeople,vehicles,accesses,warranty]=await Promise.all([db('experience_settings?id=eq.1&select=id,company_name,google_review_url,whatsapp_message_template,survey_active,intro_text,final_text,estimated_time,updated_at'),db('experience_users?active=eq.true&select=id,name,role'),db('customers?order=name'),db('salespeople?order=name'),db('vehicles?order=name'),['owner','admin'].includes(profile.role)?db('rpc/experience_seller_accesses','POST',{p_actor:profile.id}):Promise.resolve([]),db('experience_warranty_config?id=eq.1')]);
   return Response.json({profile,rows,settings,users,customers,salespeople,vehicles,accesses,warranty});
 }catch(e){return errorResponse(e);}}
 export async function POST(req:Request) {try {
@@ -80,7 +80,7 @@ export async function POST(req:Request) {try {
     if(user.role !== 'owner' && user.role !== 'admin') throw new Error('Acesso não autorizado.');
     const settings=body.settings as Record<string,unknown>; const url=String(settings.google_review_url || '');
     if(url && (!URL.canParse(url) || new URL(url).protocol !== 'https:')) throw new Error('Informe um link HTTPS válido.');
-    await db('experience_settings?id=eq.1','PATCH',{company_name:settings.company_name,google_review_url:url,whatsapp_message_template:settings.whatsapp_message_template,survey_active:settings.survey_active === true,intro_text:settings.intro_text,final_text:settings.final_text,estimated_time:settings.estimated_time,updated_at:new Date().toISOString()}); await log(user.id,'settings_updated','1');
+    await db('experience_settings?id=eq.1','PATCH',{google_review_url:url,whatsapp_message_template:settings.whatsapp_message_template,survey_active:settings.survey_active === true,intro_text:settings.intro_text,final_text:settings.final_text,estimated_time:settings.estimated_time,updated_at:new Date().toISOString()}); await log(user.id,'settings_updated','1');
   } else if(action === 'alert') {
     if(!resolutions.includes(String(body.status))) throw new Error('Status inválido.');
     await db('rpc/experience_treat_alert','POST',{p_id:body.id,p_user:user.id,p_assigned:body.assigned_to || null,p_status:body.status,p_notes:String(body.notes || '').slice(0,4000)});

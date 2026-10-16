@@ -27,7 +27,7 @@ export function connection(raw:unknown,expectedPhone:string):Connection {
  const safeQr=/^(?:data:image\/(?:png|jpeg);base64,)?[A-Za-z0-9+/=\s]+$/.test(qr)&&qr.length<1000000?qr:undefined;
  return {configured:true,connected:connected&&owns,connecting:state==='connecting',wrongNumber:connected&&!owns,phone:expectedPhone,...(!connected&&safeQr?{qr:safeQr.startsWith('data:')?safeQr:`data:image/png;base64,${safeQr}`}:{ }),...(!connected&&typeof instance.paircode==='string'&&/^[A-Za-z0-9-]{4,20}$/.test(instance.paircode)?{paircode:instance.paircode}:{}),message:connected?(owns?'WhatsApp conectado. As pesquisas saem do seu número.':'O número conectado não corresponde ao vendedor. Contate a gestão.'):'Seu WhatsApp está desconectado. Conecte antes do envio automático.'};
 }
-export function surveyMessage(name:string,url:string){return `Olá, ${name.trim().split(' ')[0]}! Como foi sua experiência com a Icom? Sua opinião é muito importante para nós. Responda pelo link: ${url}`;}
+export function surveyMessage(name:string,url:string,company='Icom'){return `Olá, ${name.trim().split(' ')[0]}! Como foi sua experiência com ${company}? Sua opinião é muito importante para nós. Responda pelo link: ${url}`;}
 export async function sendText(config:SellerInstance,phone:string,text:string,transport:typeof fetch=fetch):Promise<{status:'accepted'|'failed'|'unknown';providerId?:string}> {
  try {
   const res=await transport(`${config.url}/send/text`,{method:'POST',headers:{'Content-Type':'application/json',token:config.token},body:JSON.stringify({number:phoneBR(phone),text}),signal:AbortSignal.timeout(20000),redirect:'error'});
