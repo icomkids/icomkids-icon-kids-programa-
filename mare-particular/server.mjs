@@ -5,20 +5,31 @@ import { mkdirSync, readFileSync, existsSync } from 'node:fs';
 import { resolve, extname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { AppError, defaults, quote, guestDetails, settings, daysBetween } from './domain.mjs';
+import { SupabaseStore } from './supabase-store.mjs';
 
 export function createApp(options={}) {
   const demo=options.demo ?? process.env.DEMO_MODE!=='false';
   const dataDir=resolve(options.dataDir||process.env.DATA_DIR||'./data');
   mkdirSync(dataDir,{recursive:true});
-  const db=new DatabaseSync(resolve(dataDir,'mare.sqlite'));
-  db.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;
+  const useSupabase=options.supabase||process.env.STORAGE_BACKEND==='supabase';
+  const remote=useSupabase?new SupabaseStore(options.supabase||{url:process.env.SUPABASE_URL,key:process.env.SUPABASE_SERVICE_ROLE_KEY}):null;
+  const db=remote?null:new DatabaseSync(resolve(dataDir,'mare.sqlite'));
+  db?.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;
     CREATE TABLE IF NOT EXISTS settings(id INTEGER PRIMARY KEY CHECK(id=1), value TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS reservations(id TEXT PRIMARY KEY, code TEXT UNIQUE NOT NULL, name TEXT NOT NULL, email TEXT NOT NULL, phone TEXT NOT NULL, note TEXT NOT NULL, checkin TEXT NOT NULL, checkout TEXT NOT NULL, guests INTEGER NOT NULL, nights INTEGER NOT NULL, subtotal INTEGER NOT NULL, cleaning INTEGER NOT NULL, total INTEGER NOT NULL, status TEXT NOT NULL CHECK(status IN ('pending','confirmed','cancelled','expired')), created_at TEXT NOT NULL, expires_at TEXT, snapshot TEXT NOT NULL, request_key TEXT UNIQUE NOT NULL);
     CREATE TABLE IF NOT EXISTS blocks(id TEXT PRIMARY KEY, start TEXT NOT NULL, end TEXT NOT NULL, reason TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS occupancy(day TEXT PRIMARY KEY, reservation_id TEXT REFERENCES reservations(id), block_id TEXT REFERENCES blocks(id), CHECK((reservation_id IS NULL)!=(block_id IS NULL)));
     CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY AUTOINCREMENT, action TEXT NOT NULL, record_id TEXT, created_at TEXT NOT NULL);
   `);
-  db.prepare('INSERT OR IGNORE INTO settings(id,value) VALUES(1,?)').run(JSON.stringify(defaults));
+  db?.prepare('INSERT OR IGNORE INTO settings(id,value) VALUES(1,?)').run(JSON.stringify(defaults));
+  let snapshot=null;
+  if(remote&&existsSync(resolve(dataDir,'mare.sqlite'))){
+    const source=new DatabaseSync(resolve(dataDir,'mare.sqlite'),{readOnly:true});
+    try{source.exec('BEGIN');snapshot={config:JSON.parse(source.prepare('SELECT value FROM settings WHERE id=1').get().value),reservations:source.prepare('SELECT * FROM reservations').all(),blocks:source.prepare('SELECT * FROM blocks').all(),occupancy:source.prepare('SELECT * FROM occupancy').all(),audit:source.prepare('SELECT * FROM audit ORDER BY id').all()};source.exec('COMMIT');}finally{source.close();}
+  }
+  const ready=remote?remote.initialize(defaults,snapshot):Promise.resolve();
+  // Attach a rejection handler immediately; requests and startup still fail closed.
+  ready.catch(()=>{});
   const secret=randomBytes(32), salt=randomBytes(16), password=options.password??process.env.ADMIN_PASSWORD;
   const passwordHash=password?scryptSync(password,salt,64):null;
   const rates=new Map();
@@ -36,6 +47,7 @@ export function createApp(options={}) {
   function cookie(res,value,age=28800){res.setHeader('Set-Cookie',`mp_session=${value}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${age}${process.env.SECURE_COOKIES==='true'?'; Secure':''}`);}
   const server=http.createServer(async(req,res)=>{
     try{
+      await ready;
       res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','same-origin');res.setHeader('X-Frame-Options','DENY');
       res.setHeader('Content-Security-Policy',"default-src 'self'; img-src 'self' https://images.unsplash.com data:; style-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
       const url=new URL(req.url,'http://localhost'),path=url.pathname;
@@ -44,13 +56,14 @@ export function createApp(options={}) {
         if(req.headers.origin){let origin;try{origin=new URL(req.headers.origin).host;}catch{throw new AppError('Origem inválida.',403);}if(origin!==req.headers.host)throw new AppError('Origem inválida.',403);}
         if(!String(req.headers['content-type']||'').startsWith('application/json'))throw new AppError('Use JSON nesta solicitação.',415);
       }
-      if(path==='/api/health')return send(res,200,{ok:true,application:'mare-particular',mode:demo?'demo':'live',storage:'sqlite'});
-      if(path==='/api/public'&&req.method==='GET'){expire();return send(res,200,{config:config(),busy:busy(),demo,paymentsEnabled:false});}
-      if(path==='/api/quote'&&req.method==='POST'){expire();const input=await body(req);return send(res,200,quote(input,config(),busy()));}
+      if(path==='/api/health'){if(remote)await remote.health();return send(res,200,{ok:true,application:'mare-particular',mode:demo?'demo':'live',storage:remote?'supabase':'sqlite'});}
+      if(path==='/api/public'&&req.method==='GET'){if(!remote)expire();const current=remote?await remote.publicState():{config:config(),busy:busy()};return send(res,200,{...current,demo,paymentsEnabled:false});}
+      if(path==='/api/quote'&&req.method==='POST'){if(!remote)expire();const input=await body(req),current=remote?await remote.publicState():{config:config(),busy:busy()};return send(res,200,quote(input,current.config,current.busy));}
       if(path==='/api/reservations'&&req.method==='POST'){
-        rate(req,'reservation',30);expire();const input=await body(req),guest=guestDetails(input);
+        rate(req,'reservation',30);if(!remote)expire();const input=await body(req),guest=guestDetails(input);
         if(typeof input.requestKey!=='string'||!/^[a-zA-Z0-9-]{16,100}$/.test(input.requestKey))throw new AppError('Atualize a página e tente novamente.');
-        const result=transaction(()=>{
+        if(remote){daysBetween(input.checkin,input.checkout);if(!Number.isSafeInteger(Number(input.guests))||Number(input.guests)<1)throw new AppError('Informe uma quantidade válida de hóspedes.');input.guests=Number(input.guests);}
+        const result=remote?await remote.create({...input,...guest},demo):transaction(()=>{
           const existing=db.prepare('SELECT * FROM reservations WHERE request_key=?').get(input.requestKey);
           if(existing){if(existing.email!==guest.email||existing.checkin!==input.checkin||existing.checkout!==input.checkout||existing.guests!==Number(input.guests))throw new AppError('Solicitação já utilizada. Atualize a página.',409);return existing;}
           const cfg=config(),q=quote(input,cfg,busy()),id=randomUUID(),code=`MP-${randomBytes(4).toString('hex').toUpperCase()}`,created=new Date().toISOString(),expires=new Date(Date.now()+86400000).toISOString();
@@ -67,22 +80,22 @@ export function createApp(options={}) {
       }
       if(path==='/api/logout'&&req.method==='POST'){cookie(res,'',0);return send(res,200,{ok:true});}
       if(path.startsWith('/api/owner')){
-        owner(req);expire();
-        if(path==='/api/owner'&&req.method==='GET')return send(res,200,{config:config(),reservations:db.prepare('SELECT * FROM reservations ORDER BY created_at DESC').all().map(({snapshot,request_key,...r})=>r),blocks:db.prepare('SELECT * FROM blocks ORDER BY start').all(),busy:busy(),audit:db.prepare('SELECT * FROM audit ORDER BY id DESC LIMIT 30').all(),demo});
-        if(path==='/api/owner/settings'&&req.method==='PATCH'){const next=settings(await body(req),config());transaction(()=>{db.prepare('UPDATE settings SET value=? WHERE id=1').run(JSON.stringify(next));audit('settings.updated');});return send(res,200,{config:next});}
+        owner(req);if(!remote)expire();
+        if(path==='/api/owner'&&req.method==='GET'){const data=remote?await remote.ownerState():{config:config(),reservations:db.prepare('SELECT * FROM reservations ORDER BY created_at DESC').all().map(({snapshot,request_key,...r})=>r),blocks:db.prepare('SELECT * FROM blocks ORDER BY start').all(),busy:busy(),audit:db.prepare('SELECT * FROM audit ORDER BY id DESC LIMIT 30').all()};return send(res,200,{...data,demo});}
+        if(path==='/api/owner/settings'&&req.method==='PATCH'){const previous=remote?(await remote.publicState()).config:config();const next=settings(await body(req),previous);if(remote)await remote.saveSettings(next);else transaction(()=>{db.prepare('UPDATE settings SET value=? WHERE id=1').run(JSON.stringify(next));audit('settings.updated');});return send(res,200,{config:next});}
         const match=path.match(/^\/api\/owner\/reservations\/([a-f0-9-]{36})$/);
         if(match&&req.method==='PATCH'){
           const input=await body(req);if(!['confirmed','cancelled'].includes(input.status))throw new AppError('Situação inválida.');
-          transaction(()=>{const r=db.prepare('SELECT * FROM reservations WHERE id=?').get(match[1]);if(!r)throw new AppError('Reserva não encontrada.',404);if(!['pending','confirmed'].includes(r.status))throw new AppError('Esta reserva já foi encerrada.',409);if(input.status==='cancelled')db.prepare('DELETE FROM occupancy WHERE reservation_id=?').run(r.id);db.prepare('UPDATE reservations SET status=?, expires_at=NULL WHERE id=?').run(input.status,r.id);audit(`reservation.${input.status}`,r.id);});
+          if(remote)await remote.transition(match[1],input.status);else transaction(()=>{const r=db.prepare('SELECT * FROM reservations WHERE id=?').get(match[1]);if(!r)throw new AppError('Reserva não encontrada.',404);if(!['pending','confirmed'].includes(r.status))throw new AppError('Esta reserva já foi encerrada.',409);if(input.status==='cancelled')db.prepare('DELETE FROM occupancy WHERE reservation_id=?').run(r.id);db.prepare('UPDATE reservations SET status=?, expires_at=NULL WHERE id=?').run(input.status,r.id);audit(`reservation.${input.status}`,r.id);});
           return send(res,200,{ok:true});
         }
         if(path==='/api/owner/blocks'&&req.method==='POST'){
           const input=await body(req),nights=daysBetween(input.start,input.end),reason=String(input.reason||'Uso da proprietária').trim();if(reason.length>200)throw new AppError('Motivo muito longo.');
-          transaction(()=>{if(busy().some(d=>nights.includes(d)))throw new AppError('Há uma reserva ou bloqueio nesse período.',409);const id=randomUUID();db.prepare('INSERT INTO blocks VALUES(?,?,?,?)').run(id,input.start,input.end,reason);for(const day of nights)db.prepare('INSERT INTO occupancy(day,block_id) VALUES(?,?)').run(day,id);audit('block.created',id);});
+          if(remote)await remote.block({start:input.start,end:input.end,reason});else transaction(()=>{if(busy().some(d=>nights.includes(d)))throw new AppError('Há uma reserva ou bloqueio nesse período.',409);const id=randomUUID();db.prepare('INSERT INTO blocks VALUES(?,?,?,?)').run(id,input.start,input.end,reason);for(const day of nights)db.prepare('INSERT INTO occupancy(day,block_id) VALUES(?,?)').run(day,id);audit('block.created',id);});
           return send(res,201,{ok:true});
         }
         const block=path.match(/^\/api\/owner\/blocks\/([a-f0-9-]{36})$/);
-        if(block&&req.method==='DELETE'){transaction(()=>{const found=db.prepare('SELECT id FROM blocks WHERE id=?').get(block[1]);if(!found)throw new AppError('Bloqueio não encontrado.',404);db.prepare('DELETE FROM occupancy WHERE block_id=?').run(block[1]);db.prepare('DELETE FROM blocks WHERE id=?').run(block[1]);audit('block.removed',block[1]);});return send(res,200,{ok:true});}
+        if(block&&req.method==='DELETE'){if(remote)await remote.unblock(block[1]);else transaction(()=>{const found=db.prepare('SELECT id FROM blocks WHERE id=?').get(block[1]);if(!found)throw new AppError('Bloqueio não encontrado.',404);db.prepare('DELETE FROM occupancy WHERE block_id=?').run(block[1]);db.prepare('DELETE FROM blocks WHERE id=?').run(block[1]);audit('block.removed',block[1]);});return send(res,200,{ok:true});}
         throw new AppError('Recurso não encontrado.',404);
       }
       if(path.startsWith('/api/'))throw new AppError('Recurso não encontrado.',404);
@@ -95,9 +108,9 @@ export function createApp(options={}) {
       res.writeHead(200,{'Content-Type':mime,'Cache-Control':['.html','.css','.js'].includes(extname(file))?'no-cache':'public, max-age=3600'});res.end(req.method==='HEAD'?undefined:readFileSync(file));
     }catch(error){if(res.headersSent){res.end();return;}send(res,error instanceof AppError?error.status:500,{error:error instanceof AppError?error.message:'Não foi possível concluir. Tente novamente.'});if(!(error instanceof AppError))console.error('Request failure:',error.code||error.message);}
   });
-  return {server,db,close:()=>new Promise(resolve=>{server.close(()=>{db.close();resolve();});server.closeIdleConnections();})};
+  return {server,db,ready,close:()=>new Promise(resolve=>{server.close(()=>{db?.close();resolve();});server.closeIdleConnections();})};
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
-  const app=createApp();app.server.listen(Number(process.env.PORT||4317),process.env.HOST||'127.0.0.1',()=>console.log(`Maré Particular: http://${process.env.HOST||'127.0.0.1'}:${process.env.PORT||4317}`));
+  const app=createApp();app.ready.then(()=>app.server.listen(Number(process.env.PORT||4317),process.env.HOST||'127.0.0.1',()=>console.log(`Maré Particular: http://${process.env.HOST||'127.0.0.1'}:${process.env.PORT||4317}`))).catch(()=>{console.error('Não foi possível inicializar o armazenamento. Nenhum fallback foi ativado.');process.exit(1);});
   for(const signal of ['SIGINT','SIGTERM'])process.on(signal,()=>app.close().then(()=>process.exit(0)));
 }
