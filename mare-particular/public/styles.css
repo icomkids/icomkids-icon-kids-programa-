@@ -10,3 +10,9 @@
 
 /* Readable task-critical fields and statuses. */
 .dates input,.day,.form-grid label,.settings-form label,.tag,table,.row-action{font-size:.875rem}
+
+.owner-shell>div,.stat{min-width:0}.owner-topbar{min-width:0}.stat-number small{display:inline;font-size:.875rem;margin-left:2px}
+
+.dashboard-grid>div{min-width:0}
+
+@media(max-width:520px){.hero-gallery>button.gallery-all{height:auto;width:auto}}

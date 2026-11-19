@@ -92,7 +92,7 @@ export function createApp(options={}) {
       if(!file.startsWith(`${publicDir}${sep}`)||!existsSync(file))throw new AppError('Página não encontrada.',404);
       const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.svg':'image/svg+xml','.jpg':'image/jpeg','.webp':'image/webp','.png':'image/png'}[extname(file)];
       if(!mime)throw new AppError('Página não encontrada.',404);
-      res.writeHead(200,{'Content-Type':mime,'Cache-Control':extname(file)==='.html'?'no-cache':'public, max-age=3600'});res.end(req.method==='HEAD'?undefined:readFileSync(file));
+      res.writeHead(200,{'Content-Type':mime,'Cache-Control':['.html','.css','.js'].includes(extname(file))?'no-cache':'public, max-age=3600'});res.end(req.method==='HEAD'?undefined:readFileSync(file));
     }catch(error){if(res.headersSent){res.end();return;}send(res,error instanceof AppError?error.status:500,{error:error instanceof AppError?error.message:'Não foi possível concluir. Tente novamente.'});if(!(error instanceof AppError))console.error('Request failure:',error.code||error.message);}
   });
   return {server,db,close:()=>new Promise(resolve=>{server.close(()=>{db.close();resolve();});server.closeIdleConnections();})};
