@@ -2,6 +2,16 @@
 
 Aplicação exclusiva para um apartamento em Ubatuba. Código independente do Experiência, sem dependências npm em runtime. Node.js 24, HTML/CSS/JavaScript e SQLite nativo com transações.
 
+## Prévia publicada
+
+- Site: https://icom-mare-particular.pqaykh.easypanel.host/
+- Proprietária: https://icom-mare-particular.pqaykh.easypanel.host/proprietaria
+- Serviço `icom/mare-particular`, volume `mare-particular-data` em `/app/data`, HTTPS encaminhado à porta 3000.
+- Publicação verificada em 19/11/2026: página pública, painel, API de saúde e solicitação/aprovação de reserva fictícia no navegador.
+- Três testes automatizados aprovados (datas e preços; fluxo concorrente e persistência; autenticação).
+- Layout conferido em desktop e 390 px. Registros de exemplo usam domínio `example.test`.
+- Supabase pendente do acesso à conta Icom Kids. Pagamentos e e-mails desativados.
+
 ## O que já funciona
 
 - Página responsiva do apartamento e galeria de fotografias ilustrativas.
@@ -59,3 +69,4 @@ O modo demonstrativo está ativo deliberadamente. Não basta ocultar a faixa de 
 Os testes verificam datas e tarifas, limites de hóspedes, disputa simultânea de disponibilidade, idempotência, acesso administrativo, preservação de preços, cancelamento, conflitos de bloqueio, expiração, persistência após reinício, origem das solicitações e autenticação fora do modo demonstrativo.
 
 Fotografias de demonstração: Unsplash, IDs `photo-1600210492486-724fe5c67fb0`, `photo-1611892440504-42a792e24d32`, `photo-1510414842594-a61c69b5ae57` e `photo-1556912172-45b7abe8b7e1`. Não representam o apartamento real.
+
