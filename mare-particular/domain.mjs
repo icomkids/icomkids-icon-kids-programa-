@@ -1,3 +1,4 @@
+import { nightlyRate } from './public/rates.js';
 export class AppError extends Error {
   constructor(message, status = 400) { super(message); this.status = status; }
 }
@@ -24,16 +25,17 @@ export function daysBetween(start, end) {
   if (count < 1 || count > 365) throw new AppError('A saída precisa ser depois da entrada, em até 365 dias.');
   return Array.from({length:count}, (_,i)=>new Date(a.getTime()+i*86400000).toISOString().slice(0,10));
 }
-export function quote(input, config, busy = []) {
+export function quote(input, config, busy = [], rules = []) {
   const nights = daysBetween(input.checkin,input.checkout);
   const guests = Number(input.guests);
   if (input.checkin < today()) throw new AppError('Escolha uma data de entrada a partir de hoje.');
   if (!Number.isInteger(guests) || guests<1 || guests>config.guests) throw new AppError(`O apartamento recebe até ${config.guests} hóspedes.`);
-  if (nights.length<config.minNights || nights.length>config.maxNights) throw new AppError(`Escolha de ${config.minNights} a ${config.maxNights} noites.`);
+  const items=nights.map(day=>nightlyRate(day,config,rules));
+  const minimum=Math.max(config.minNights,...items.map(x=>x.minNights));
+  if (nights.length<minimum || nights.length>config.maxNights) throw new AppError(`Este período exige de ${minimum} a ${config.maxNights} noites.`);
   if (busy.some(d=>nights.includes(d))) throw new AppError('Essas datas já estão ocupadas. Escolha outro período.',409);
-  const items=nights.map(day=>({day,amount:[5,6].includes(date(day).getUTCDay())?config.weekend:config.weekday}));
   const subtotal=items.reduce((sum,n)=>sum+n.amount,0);
-  return {checkin:input.checkin,checkout:input.checkout,guests,nights:nights.length,items,subtotal,cleaning:config.cleaning,total:subtotal+config.cleaning};
+  return {checkin:input.checkin,checkout:input.checkout,guests,nights:nights.length,items,minimum,subtotal,cleaning:config.cleaning,total:subtotal+config.cleaning};
 }
 export function guestDetails(input) {
   const name=String(input.name||'').trim(), email=String(input.email||'').trim().toLowerCase(), phone=String(input.phone||'').trim(), note=String(input.note||'').trim();

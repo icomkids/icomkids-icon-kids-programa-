@@ -1,8 +1,1 @@
-{
-  "name": "mare-particular",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "engines": { "node": ">=24.0.0" },
-  "scripts": { "start": "node server.mjs", "dev": "node --watch server.mjs", "test": "node --test --test-isolation=none tests/*.test.mjs", "check": "node --check server.mjs && node --check domain.mjs && node --check public/app.js" }
-}
+{"name":"ap-house-select","version":"0.2.0","private":true,"type":"module","engines":{"node":">=24.0.0"},"scripts":{"start":"node server.mjs","dev":"node server.mjs","test":"node --test --test-isolation=none tests/reservations.test.mjs tests/admin.test.mjs","check":"node --check server.mjs && node --check domain.mjs && node --check admin-domain.mjs && node --check public/app.js && node --check public/admin.js"}}

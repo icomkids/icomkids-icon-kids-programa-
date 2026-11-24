@@ -5,6 +5,7 @@ import { mkdirSync, readFileSync, existsSync } from 'node:fs';
 import { resolve, extname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { AppError, defaults, quote, guestDetails, settings, daysBetween } from './domain.mjs';
+import { pricingRule, paymentEntry, paymentState } from './admin-domain.mjs';
 
 export function createApp(options={}) {
   const demo=options.demo ?? process.env.DEMO_MODE!=='false';
@@ -17,6 +18,9 @@ export function createApp(options={}) {
     CREATE TABLE IF NOT EXISTS blocks(id TEXT PRIMARY KEY, start TEXT NOT NULL, end TEXT NOT NULL, reason TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS occupancy(day TEXT PRIMARY KEY, reservation_id TEXT REFERENCES reservations(id), block_id TEXT REFERENCES blocks(id), CHECK((reservation_id IS NULL)!=(block_id IS NULL)));
     CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY AUTOINCREMENT, action TEXT NOT NULL, record_id TEXT, created_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS pricing_rules(id TEXT PRIMARY KEY,title TEXT NOT NULL,category TEXT NOT NULL,start TEXT NOT NULL,end TEXT NOT NULL,weekday INTEGER NOT NULL,weekend INTEGER NOT NULL,min_nights INTEGER NOT NULL,priority INTEGER NOT NULL,created_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS payment_entries(id TEXT PRIMARY KEY,reservation_id TEXT NOT NULL REFERENCES reservations(id),type TEXT NOT NULL CHECK(type IN ('payment','refund')),amount INTEGER NOT NULL CHECK(amount>0),method TEXT NOT NULL,occurred_on TEXT NOT NULL,reference TEXT NOT NULL,note TEXT NOT NULL,request_key TEXT UNIQUE NOT NULL,created_at TEXT NOT NULL);
+    CREATE INDEX IF NOT EXISTS payment_reservation ON payment_entries(reservation_id);
   `);
   db.prepare('INSERT OR IGNORE INTO settings(id,value) VALUES(1,?)').run(JSON.stringify(defaults));
   const secret=randomBytes(32), salt=randomBytes(16), password=options.password??process.env.ADMIN_PASSWORD;
@@ -25,6 +29,8 @@ export function createApp(options={}) {
   const publicDir=resolve(fileURLToPath(new URL('./public/',import.meta.url)));
   const config=()=>JSON.parse(db.prepare('SELECT value FROM settings WHERE id=1').get().value);
   const busy=()=>db.prepare('SELECT day FROM occupancy ORDER BY day').all().map(x=>x.day);
+  const pricingRules=()=>db.prepare('SELECT * FROM pricing_rules ORDER BY start,priority DESC').all();
+  const paymentEntries=()=>db.prepare('SELECT * FROM payment_entries ORDER BY occurred_on DESC,created_at DESC').all();
   const audit=(action,id='')=>db.prepare('INSERT INTO audit(action,record_id,created_at) VALUES(?,?,?)').run(action,id,new Date().toISOString());
   function transaction(fn){db.exec('BEGIN IMMEDIATE');try{const value=fn();db.exec('COMMIT');return value;}catch(e){db.exec('ROLLBACK');throw e;}}
   function expire(){transaction(()=>{const ids=db.prepare("SELECT id FROM reservations WHERE status='pending' AND expires_at<?").all(new Date().toISOString());for(const {id} of ids){db.prepare('DELETE FROM occupancy WHERE reservation_id=?').run(id);db.prepare("UPDATE reservations SET status='expired' WHERE id=?").run(id);audit('reservation.expired',id);}});}
@@ -45,15 +51,15 @@ export function createApp(options={}) {
         if(!String(req.headers['content-type']||'').startsWith('application/json'))throw new AppError('Use JSON nesta solicitação.',415);
       }
       if(path==='/api/health')return send(res,200,{ok:true,application:'mare-particular',mode:demo?'demo':'live',storage:'sqlite'});
-      if(path==='/api/public'&&req.method==='GET'){expire();return send(res,200,{config:config(),busy:busy(),demo,paymentsEnabled:false});}
-      if(path==='/api/quote'&&req.method==='POST'){expire();const input=await body(req);return send(res,200,quote(input,config(),busy()));}
+      if(path==='/api/public'&&req.method==='GET'){expire();return send(res,200,{config:config(),busy:busy(),pricingRules:pricingRules(),demo,paymentsEnabled:false});}
+      if(path==='/api/quote'&&req.method==='POST'){expire();const input=await body(req);return send(res,200,quote(input,config(),busy(),pricingRules()));}
       if(path==='/api/reservations'&&req.method==='POST'){
         rate(req,'reservation',30);expire();const input=await body(req),guest=guestDetails(input);
         if(typeof input.requestKey!=='string'||!/^[a-zA-Z0-9-]{16,100}$/.test(input.requestKey))throw new AppError('Atualize a página e tente novamente.');
         const result=transaction(()=>{
           const existing=db.prepare('SELECT * FROM reservations WHERE request_key=?').get(input.requestKey);
           if(existing){if(existing.email!==guest.email||existing.checkin!==input.checkin||existing.checkout!==input.checkout||existing.guests!==Number(input.guests))throw new AppError('Solicitação já utilizada. Atualize a página.',409);return existing;}
-          const cfg=config(),q=quote(input,cfg,busy()),id=randomUUID(),code=`MP-${randomBytes(4).toString('hex').toUpperCase()}`,created=new Date().toISOString(),expires=new Date(Date.now()+86400000).toISOString();
+          const cfg=config(),q=quote(input,cfg,busy(),pricingRules()),id=randomUUID(),code=`MP-${randomBytes(4).toString('hex').toUpperCase()}`,created=new Date().toISOString(),expires=new Date(Date.now()+86400000).toISOString();
           db.prepare('INSERT INTO reservations VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').run(id,code,guest.name,guest.email,guest.phone,guest.note,q.checkin,q.checkout,q.guests,q.nights,q.subtotal,q.cleaning,q.total,'pending',created,expires,JSON.stringify({rules:cfg.rules,cancellation:cfg.cancellation,quote:q,acceptedAt:created,demo}),input.requestKey);
           for(const day of q.items.map(x=>x.day))db.prepare('INSERT INTO occupancy(day,reservation_id) VALUES(?,?)').run(day,id);
           audit('reservation.requested',id);return db.prepare('SELECT * FROM reservations WHERE id=?').get(id);
@@ -68,8 +74,36 @@ export function createApp(options={}) {
       if(path==='/api/logout'&&req.method==='POST'){cookie(res,'',0);return send(res,200,{ok:true});}
       if(path.startsWith('/api/owner')){
         owner(req);expire();
-        if(path==='/api/owner'&&req.method==='GET')return send(res,200,{config:config(),reservations:db.prepare('SELECT * FROM reservations ORDER BY created_at DESC').all().map(({snapshot,request_key,...r})=>r),blocks:db.prepare('SELECT * FROM blocks ORDER BY start').all(),busy:busy(),audit:db.prepare('SELECT * FROM audit ORDER BY id DESC LIMIT 30').all(),demo});
-        if(path==='/api/owner/settings'&&req.method==='PATCH'){const next=settings(await body(req),config());transaction(()=>{db.prepare('UPDATE settings SET value=? WHERE id=1').run(JSON.stringify(next));audit('settings.updated');});return send(res,200,{config:next});}
+        if(path==='/api/owner'&&req.method==='GET'){
+          const entries=paymentEntries();
+          return send(res,200,{config:config(),reservations:db.prepare('SELECT * FROM reservations ORDER BY created_at DESC').all().map(({snapshot,request_key,...r})=>({...r,payment:paymentState(r,entries)})),payments:entries.map(({request_key,...e})=>e),pricingRules:pricingRules(),blocks:db.prepare('SELECT * FROM blocks ORDER BY start').all(),busy:busy(),audit:db.prepare('SELECT * FROM audit ORDER BY id DESC LIMIT 50').all(),demo});
+        }
+        if(path==='/api/owner/settings'&&req.method==='PATCH'){const next=settings(await body(req),config());transaction(()=>{if(pricingRules().some(r=>r.min_nights>next.maxNights))throw new AppError('Há períodos com estadia mínima superior ao novo máximo. Ajuste esses períodos primeiro.',409);db.prepare('UPDATE settings SET value=? WHERE id=1').run(JSON.stringify(next));audit('settings.updated');});return send(res,200,{config:next});}
+        const ruleMatch=path.match(/^\/api\/owner\/pricing-rules(?:\/([a-f0-9-]{36}))?$/);
+        if(ruleMatch&&['POST','PATCH','DELETE'].includes(req.method)){
+          const id=ruleMatch[1],input=await body(req);
+          if((req.method==='POST'&&id)||(req.method!=='POST'&&!id))throw new AppError('Endereço inválido.',404);
+          transaction(()=>{
+            if(id&&!db.prepare('SELECT id FROM pricing_rules WHERE id=?').get(id))throw new AppError('Período não encontrado.',404);
+            if(req.method==='DELETE'){db.prepare('DELETE FROM pricing_rules WHERE id=?').run(id);audit('pricing.removed',id);return;}
+            const rules=pricingRules();if(!id&&rules.length>=200)throw new AppError('Limite de 200 períodos atingido. Remova períodos antigos.');
+            const r=pricingRule(input,rules.filter(r=>r.id!==id),config().maxNights),key=id||randomUUID();
+            if(id)db.prepare('UPDATE pricing_rules SET title=?,category=?,start=?,end=?,weekday=?,weekend=?,min_nights=?,priority=? WHERE id=?').run(r.title,r.category,r.start,r.end,r.weekday,r.weekend,r.min_nights,r.priority,id);
+            else db.prepare('INSERT INTO pricing_rules VALUES(?,?,?,?,?,?,?,?,?,?)').run(key,r.title,r.category,r.start,r.end,r.weekday,r.weekend,r.min_nights,r.priority,new Date().toISOString());
+            audit(id?'pricing.updated':'pricing.created',key);
+          });return send(res,200,{ok:true});
+        }
+        const paymentMatch=path.match(/^\/api\/owner\/reservations\/([a-f0-9-]{36})\/payments$/);
+        if(paymentMatch&&req.method==='POST'){
+          const input=await body(req),reservationId=paymentMatch[1];
+          const result=transaction(()=>{
+            const reservation=db.prepare('SELECT * FROM reservations WHERE id=?').get(reservationId);if(!reservation)throw new AppError('Reserva não encontrada.',404);
+            const existing=db.prepare('SELECT * FROM payment_entries WHERE request_key=?').get(String(input.requestKey||''));
+            if(existing){if(existing.reservation_id!==reservationId||existing.type!==input.type||existing.amount!==Number(input.amount)||existing.method!==input.method||existing.occurred_on!==input.occurred_on||existing.reference!==String(input.reference||'').trim()||existing.note!==String(input.note||'').trim())throw new AppError('Este identificador já foi utilizado em outro registro.',409);return existing.id;}
+            const e=paymentEntry(input,reservation,paymentEntries()),id=randomUUID();
+            db.prepare('INSERT INTO payment_entries VALUES(?,?,?,?,?,?,?,?,?,?)').run(id,reservationId,e.type,e.amount,e.method,e.occurred_on,e.reference,e.note,e.request_key,new Date().toISOString());audit(e.type==='payment'?'payment.recorded':'refund.recorded',reservationId);return id;
+          });return send(res,201,{ok:true,id:result});
+        }
         const match=path.match(/^\/api\/owner\/reservations\/([a-f0-9-]{36})$/);
         if(match&&req.method==='PATCH'){
           const input=await body(req);if(!['confirmed','cancelled'].includes(input.status))throw new AppError('Situação inválida.');
@@ -87,7 +121,7 @@ export function createApp(options={}) {
       }
       if(path.startsWith('/api/'))throw new AppError('Recurso não encontrado.',404);
       let decoded;try{decoded=decodeURIComponent(path);}catch{throw new AppError('Endereço inválido.');}
-      const page=['/','/reservar','/proprietaria'].includes(decoded)?'/index.html':decoded;
+      const page=['/','/reservar','/proprietaria','/administrador'].includes(decoded)?'/index.html':decoded;
       const file=resolve(publicDir,`.${page}`);
       if(!file.startsWith(`${publicDir}${sep}`)||!existsSync(file))throw new AppError('Página não encontrada.',404);
       const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.svg':'image/svg+xml','.jpg':'image/jpeg','.webp':'image/webp','.png':'image/png'}[extname(file)];

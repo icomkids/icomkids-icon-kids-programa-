@@ -62,7 +62,7 @@ O modo demonstrativo está ativo deliberadamente. Não basta ocultar a faixa de 
 - Integrar pagamentos e notificações autenticadas. Aprovar uma reserva **não registra pagamento**.
 - Configurar envio de e-mails, privacidade e retenção dos dados; os formulários atuais são apenas demonstrativos.
 - Configurar backup e recuperação. Uma única instância grava no SQLite; não aumentar réplicas nesse modo.
-- Regras sazonais por data, cupons, integração com canais, área autenticada do hóspede e reembolso automático são etapas posteriores.
+- Cupons, integração com canais, área autenticada do hóspede e reembolso automático são etapas posteriores.
 
 ## Verificação
 
@@ -76,3 +76,15 @@ Fotografias de demonstração: Unsplash, IDs `photo-1600210492486-724fe5c67fb0`,
 As 19 fotos reais recebidas foram incluídas na galeria, com filtros por ambiente, nova capa da área externa, fotos dos quartos e atualização do painel. As imagens foram preparadas para web sem alterar as cenas; os arquivos originais permanecem na pasta de origem. Os avisos de fotos ilustrativas foram retirados. Preços, capacidade e regras continuam sujeitos à confirmação. Nome definido pelo usuário: AP House Select.
 
 Esta publicação modifica apenas arquivos de apresentação e imagens na branch `codex/mare-particular`. Não ativa a integração Supabase preparada na outra branch.
+
+## Painel administrativo — 24/11/2026
+
+- Acesso em `/administrador` ou `/proprietaria`; a demonstração permite explorar com dados fictícios. Em operação, as duas rotas usam a autenticação administrativa do servidor.
+- Visão geral: valor de reservas confirmadas, saldo a receber, recebimentos líquidos manuais, reservas pagas/parciais, hóspedes, pendências, cancelamentos e ocupação confirmada.
+- Relatórios por mês: reservas seguem a data de entrada; recebimentos e reembolsos seguem a data do registro. A taxa de limpeza compõe o total; não há cálculo de lucro ou impostos.
+- Calendário com preço por noite e situação de ocupação; consulta da reserva e ajuste de tarifa ao selecionar uma data.
+- Tarifas básicas de domingo a quinta e sexta/sábado. Períodos inclusivos para baixa/alta temporada, feriados, eventos e datas específicas. Prioridade: específica > evento > feriado > temporada > básica; sobreposição na mesma prioridade é rejeitada. O maior mínimo de noites de uma estadia prevalece.
+- Preço calculado no servidor no orçamento e na criação da reserva. Reservas existentes preservam o valor e as condições aceitas.
+- Livro manual de recebimentos e devoluções, com parciais, forma, data, referência, observação, proteção contra duplicidade e histórico persistente. Não movimenta dinheiro. Cancelamentos com valores recebidos ficam a conciliar; a política deve ser verificada antes de devolver valores.
+- Novas tabelas SQLite independentes: pricing_rules e payment_entries, criadas sem alterar as reservas existentes. Não ativa a integração Supabase pendente.
+- Seis testes aprovados, incluindo prioridade de preços, mínimo de noites, concorrência de recebimentos, cancelamento, reembolso, privacidade e persistência.
