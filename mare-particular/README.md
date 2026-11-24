@@ -1,4 +1,4 @@
-# Maré Particular — primeira versão
+# AP House Select — primeira versão
 
 Aplicação exclusiva para um apartamento em Ubatuba. Código independente do Experiência, sem dependências npm em runtime. Node.js 24, HTML/CSS/JavaScript e SQLite nativo com transações.
 
@@ -73,6 +73,6 @@ Fotografias de demonstração: Unsplash, IDs `photo-1600210492486-724fe5c67fb0`,
 
 ## Atualização das fotos em 24 novembro 2026
 
-As 19 fotos reais recebidas foram incluídas na galeria, com filtros por ambiente, nova capa da área externa, fotos dos quartos e atualização do painel. As imagens foram preparadas para web sem alterar as cenas; os arquivos originais permanecem na pasta de origem. Os avisos de fotos ilustrativas foram retirados. Preços, capacidade e regras continuam sujeitos à confirmação. O novo nome ainda será enviado pelo usuário.
+As 19 fotos reais recebidas foram incluídas na galeria, com filtros por ambiente, nova capa da área externa, fotos dos quartos e atualização do painel. As imagens foram preparadas para web sem alterar as cenas; os arquivos originais permanecem na pasta de origem. Os avisos de fotos ilustrativas foram retirados. Preços, capacidade e regras continuam sujeitos à confirmação. Nome definido pelo usuário: AP House Select.
 
 Esta publicação modifica apenas arquivos de apresentação e imagens na branch `codex/mare-particular`. Não ativa a integração Supabase preparada na outra branch.

@@ -2,7 +2,7 @@ export class AppError extends Error {
   constructor(message, status = 400) { super(message); this.status = status; }
 }
 export const defaults = {
-  name: 'Maré Particular', title: 'Um tempo só seu, em Ubatuba.',
+  name: 'AP House Select', title: 'Um tempo só seu, em Ubatuba.',
   description: 'Abra as janelas, desacelere e encontre seu ritmo no litoral norte. Um apartamento inteiro para viver Ubatuba do seu jeito.',
   location: 'Ubatuba, São Paulo', guests: 4, bedrooms: 2, beds: 3, bathrooms: 2,
   weekday: 38000, weekend: 46000, cleaning: 15000, minNights: 2, maxNights: 30,
