@@ -30,7 +30,7 @@ node server.mjs
 node --test --test-isolation=none tests/reservations.test.mjs
 ```
 
-Endereços locais: `http://127.0.0.1:4317/` e `/proprietaria`. No modo demonstrativo, clique em **Explorar o painel demonstrativo**. Use exclusivamente dados fictícios: todos os avaliadores da demonstração podem acessar o mesmo painel.
+Endereços locais: `http://127.0.0.1:4317/` e `/proprietaria`. O painel exige o usuário e a senha da proprietária, mesmo no modo demonstrativo. Use exclusivamente dados fictícios: todos os avaliadores da demonstração podem acessar o mesmo painel.
 
 ## Infraestrutura e isolamento
 
@@ -88,3 +88,15 @@ Esta publicação modifica apenas arquivos de apresentação e imagens na branch
 - Livro manual de recebimentos e devoluções, com parciais, forma, data, referência, observação, proteção contra duplicidade e histórico persistente. Não movimenta dinheiro. Cancelamentos com valores recebidos ficam a conciliar; a política deve ser verificada antes de devolver valores.
 - Novas tabelas SQLite independentes: pricing_rules e payment_entries, criadas sem alterar as reservas existentes. Não ativa a integração Supabase pendente.
 - Seis testes aprovados, incluindo prioridade de preços, mínimo de noites, concorrência de recebimentos, cancelamento, reembolso, privacidade e persistência.
+
+## Acesso protegido e checkout — 24/11/2026
+
+O painel exige usuário e senha mesmo em demonstração. O primeiro cadastro usa uma capacidade aleatória de uso único e validade de 30 minutos, exibida somente no log privado do serviço. Depois de provisionado, o endpoint inicial é desativado. Senhas são armazenadas com scrypt e salt aleatório; sessões opacas persistem somente como hash, expiram em 8 horas e são revogadas na troca de senha. A senha inicial exige troca no primeiro acesso. Não versionar arquivos de acesso.
+
+Checkout Asaas preparado para Pix e cartão à vista em página hospedada. Configuração exclusiva AP_ASAAS_API_KEY, AP_ASAAS_WEBHOOK_TOKEN, AP_ASAAS_MODE e AP_PUBLIC_URL; habilitação explícita AP_PAYMENTS_ENABLED=true. Cobranças de produção também exigem DEMO_MODE=false. A publicação inicial mantém pagamentos desativados até validar a conta da proprietária.
+
+Webhook: POST /api/payments/asaas/webhook, autenticado pelo header asaas-access-token. Assinar CHECKOUT_PAID, CHECKOUT_CANCELED, CHECKOUT_EXPIRED, PAYMENT_CONFIRMED, PAYMENT_RECEIVED, PAYMENT_REFUNDED, PAYMENT_PARTIALLY_REFUNDED e eventos de contestação. A fila é persistida antes do HTTP 200 e consulta o estado real do pagamento pela API. Eventos duplicados não duplicam o recebimento. Valores, checkout e referência são conferidos; o retorno do navegador não confirma pagamento.
+
+O hóspede acompanha em /pagamento com capacidade secreta guardada somente na sessão do navegador, sem token na URL. O checkout reserva as noites por 30 minutos. Pagamentos tardios com conflito de disponibilidade são registrados no financeiro e sinalizados para conferência, sem sobrepor outra reserva. O painel atualiza os indicadores a cada 30 segundos quando não há edição em andamento. Devoluções são sincronizadas após efetivadas no provedor; não há disparo automático de reembolsos.
+
+Validação: onze testes de integração locais, com provedor simulado para Pix/cartão, duplicidade, webhook falso, valor divergente, reinício, reembolso e pagamento tardio. A homologação no sandbox real e um teste de ponta a ponta dependem das credenciais da proprietária. Não confundir esses testes simulados com pagamentos reais aprovados.

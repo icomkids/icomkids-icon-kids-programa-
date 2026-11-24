@@ -22,8 +22,8 @@ test('season, holiday, event and custom priorities; inclusive end; minimum stay 
 });
 
 test('admin prices and money persist; concurrent payments cannot overpay; cancellation requires recorded refund',async()=>{
-  const dir=mkdtempSync(join(tmpdir(),'ap-admin-'));let app=createApp({dataDir:dir,demo:true});let base,cookie;
-  const listen=async()=>{await new Promise(r=>app.server.listen(0,'127.0.0.1',r));base=`http://127.0.0.1:${app.server.address().port}`;cookie=(await call('/api/login','POST',{},false)).cookie;};
+  const dir=mkdtempSync(join(tmpdir(),'ap-admin-'));let app=createApp({dataDir:dir,demo:true,password:'local-test-password'});let base,cookie;
+  const listen=async()=>{await new Promise(r=>app.server.listen(0,'127.0.0.1',r));base=`http://127.0.0.1:${app.server.address().port}`;cookie=(await call('/api/login','POST',{username:'proprietaria',password:'local-test-password'},false)).cookie;};
   const call=async(path,method='GET',data,auth=true)=>{const res=await fetch(base+path,{method,headers:{...(method==='GET'?{}:{'Content-Type':'application/json'}),...(auth&&cookie?{Cookie:cookie}:{})},...(data?{body:JSON.stringify(data)}:{})});return {status:res.status,data:await res.json(),cookie:res.headers.get('set-cookie')?.split(';')[0]};};
   await listen();
   try{
@@ -62,7 +62,7 @@ test('admin prices and money persist; concurrent payments cannot overpay; cancel
     assert.equal((await call(paymentPath,'POST',{...payment,type:'refund',amount:95000,requestKey:randomUUID()})).status,201);
     owner=(await call('/api/owner')).data;s=report(owner,'all');assert.equal(s.net,0);assert.equal(s.refunded,95000);assert.equal(s.cancelled,1);assert.equal(s.confirmed,0);assert.equal(s.forecast,0);assert.equal(s.refundDue,0);assert.equal(owner.reservations[0].payment.status,'refunded');
     const pub=JSON.stringify((await call('/api/public','GET',null,false)).data);assert.equal(pub.includes('admin@example.test'),false);assert.equal(pub.includes('Teste manual'),false);assert.equal(pub.includes('request_key'),false);
-    await app.close();app=createApp({dataDir:dir,demo:true});await listen();owner=(await call('/api/owner')).data;assert.equal(owner.payments.length,3);assert.equal(owner.pricingRules[0].weekday,50000);assert.equal(owner.reservations[0].payment.status,'refunded');
+    await app.close();app=createApp({dataDir:dir,demo:true,password:'local-test-password'});await listen();owner=(await call('/api/owner')).data;assert.equal(owner.payments.length,3);assert.equal(owner.pricingRules[0].weekday,50000);assert.equal(owner.reservations[0].payment.status,'refunded');
     assert.equal((await call(`/api/owner/pricing-rules/${ruleId}`,'DELETE',{})).status,200);
     assert.equal((await call('/api/owner')).data.pricingRules.length,0);
   }finally{await app.close();rmSync(dir,{recursive:true,force:true});}

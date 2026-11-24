@@ -4,3 +4,6 @@ data/
 *.sqlite*
 *.log
 screenshots/
+
+private/
+data-*/

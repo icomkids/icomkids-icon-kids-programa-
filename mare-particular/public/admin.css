@@ -7,3 +7,11 @@
 @media(max-width:900px){.admin-shell{grid-template-columns:minmax(0,1fr)}}
 
 @media(max-width:600px){.admin-calendar-day .admin-currency{display:none}.admin-calendar-day strong{font-size:.6875rem;letter-spacing:-.4px}}
+
+.login-form>label{font-size:.9375rem;display:block;margin:18px 0 0}.login-form>label input{margin-top:8px}.login-form .auth-help{font-size:.8125rem;line-height:1.6;margin-top:28px}.password-page{min-height:100dvh;padding:45px 25px}.password-page .brand{margin-bottom:40px}.password-page .eyebrow{margin-top:20px}
+
+.checkout-page{max-width:1050px;margin:auto;padding:28px 30px 70px}.checkout-page>header{display:flex;align-items:center;justify-content:space-between;gap:20px;border-bottom:1px solid #dfe7df;padding-bottom:24px}.checkout-summary{max-width:600px;margin:55px auto 0;padding:35px;border:1px solid #dfe7df;border-radius:18px;background:white}.checkout-summary h1{font-size:2.55rem;line-height:1.15;margin:17px 0 22px}.checkout-summary .detail-list{margin:25px 0}.checkout-summary .btn.full{margin:20px 0 15px}.checkout-actions{display:flex;gap:25px;align-items:center;flex-wrap:wrap;margin:25px 0}.checkout-summary>p{line-height:1.7;color:#617369}.checkout-summary .success-code{overflow-wrap:anywhere}@media(max-width:600px){.checkout-page{padding:24px 20px 50px}.checkout-page>header{display:block}.checkout-page>header>a:last-child{margin-top:20px}.checkout-summary{padding:25px 20px;margin-top:30px}.checkout-summary h1{font-size:2rem}}
+
+.admin-payment-alert{border-color:#d6b46b!important;background:#fff8e8!important;margin-bottom:22px}.admin-payment-alert p{font-size:.875rem;margin:15px 0 0}
+
+.login-screen{min-height:100dvh}.login-form>.brand{margin-bottom:30px}
