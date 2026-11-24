@@ -14,7 +14,7 @@ Aplicação exclusiva para um apartamento em Ubatuba. Código independente do Ex
 
 ## O que já funciona
 
-- Página responsiva do apartamento e galeria de fotografias ilustrativas.
+- Página responsiva do apartamento e galeria com as 19 fotografias reais enviadas pela responsável.
 - Consulta de datas, seleção por calendário e cálculo de diárias por noite; sexta e sábado têm valores próprios.
 - Solicitação de reserva com código, aceite registrado e valores congelados.
 - Bloqueio transacional por noite: duas solicitações concorrentes não ocupam a mesma data. Saída não ocupa uma nova noite.
@@ -70,3 +70,9 @@ Os testes verificam datas e tarifas, limites de hóspedes, disputa simultânea d
 
 Fotografias de demonstração: Unsplash, IDs `photo-1600210492486-724fe5c67fb0`, `photo-1611892440504-42a792e24d32`, `photo-1510414842594-a61c69b5ae57` e `photo-1556912172-45b7abe8b7e1`. Não representam o apartamento real.
 
+
+## Atualização das fotos em 24 novembro 2026
+
+As 19 fotos reais recebidas foram incluídas na galeria, com filtros por ambiente, nova capa da área externa, fotos dos quartos e atualização do painel. As imagens foram preparadas para web sem alterar as cenas; os arquivos originais permanecem na pasta de origem. Os avisos de fotos ilustrativas foram retirados. Preços, capacidade e regras continuam sujeitos à confirmação. O novo nome ainda será enviado pelo usuário.
+
+Esta publicação modifica apenas arquivos de apresentação e imagens na branch `codex/mare-particular`. Não ativa a integração Supabase preparada na outra branch.
