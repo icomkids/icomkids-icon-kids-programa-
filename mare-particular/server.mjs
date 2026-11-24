@@ -60,6 +60,7 @@ export function createApp(options={}) {
           const existing=db.prepare('SELECT * FROM reservations WHERE request_key=?').get(input.requestKey);
           if(existing){if(existing.email!==guest.email||existing.checkin!==input.checkin||existing.checkout!==input.checkout||existing.guests!==Number(input.guests))throw new AppError('Solicitação já utilizada. Atualize a página.',409);return existing;}
           const cfg=config(),q=quote(input,cfg,busy(),pricingRules()),id=randomUUID(),code=`MP-${randomBytes(4).toString('hex').toUpperCase()}`,created=new Date().toISOString(),expires=new Date(Date.now()+86400000).toISOString();
+          if(input.expectedTotal!==undefined&&(!Number.isSafeInteger(input.expectedTotal)||input.expectedTotal!==q.total))throw new AppError('O valor deste período mudou. Consulte novamente e confira o novo total antes de solicitar a reserva.',409);
           db.prepare('INSERT INTO reservations VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').run(id,code,guest.name,guest.email,guest.phone,guest.note,q.checkin,q.checkout,q.guests,q.nights,q.subtotal,q.cleaning,q.total,'pending',created,expires,JSON.stringify({rules:cfg.rules,cancellation:cfg.cancellation,quote:q,acceptedAt:created,demo}),input.requestKey);
           for(const day of q.items.map(x=>x.day))db.prepare('INSERT INTO occupancy(day,reservation_id) VALUES(?,?)').run(day,id);
           audit('reservation.requested',id);return db.prepare('SELECT * FROM reservations WHERE id=?').get(id);

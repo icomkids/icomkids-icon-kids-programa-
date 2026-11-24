@@ -34,6 +34,8 @@ test('admin prices and money persist; concurrent payments cannot overpay; cancel
     assert.equal((await call('/api/owner/pricing-rules','POST',rule)).status,409);
     let owner=(await call('/api/owner')).data;const ruleId=owner.pricingRules[0].id;
     const payload={name:'Teste Admin',email:'admin@example.test',phone:'11900000000',note:'Fictício',accepted:true,checkin:'2030-06-07',checkout:'2030-06-10',guests:3,requestKey:randomUUID()};
+    assert.equal((await call('/api/reservations','POST',{...payload,expectedTotal:1},false)).status,409,'changed quote must be reviewed before booking');
+    assert.equal((await call('/api/public','GET',null,false)).data.busy.length,0);
     const reservation=await call('/api/reservations','POST',payload,false);assert.equal(reservation.status,201);assert.equal(reservation.data.total,95000);
     owner=(await call('/api/owner')).data;const id=owner.reservations[0].id,paymentPath=`/api/owner/reservations/${id}/payments`;
     const payment={type:'payment',amount:30000,method:'pix',occurred_on:today(),reference:'Teste manual',note:'Sem dinheiro real',requestKey:randomUUID()};
